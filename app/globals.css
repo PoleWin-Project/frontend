@@ -1,26 +1,167 @@
 @import "tailwindcss";
+@import "tw-animate-css";
 
-:root {
-    --background: #ffffff;
-    --foreground: #171717;
-}
+@custom-variant dark (&:is(.dark *));
 
 @theme inline {
-    --color-background: var(--background);
-    --color-foreground: var(--foreground);
-    --font-sans: var(--font-geist-sans);
-    --font-mono: var(--font-geist-mono);
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --font-sans: var(--font-body);
+  --font-mono: var(--font-code);
+  --color-sidebar-ring: var(--sidebar-ring);
+  --color-sidebar-border: var(--sidebar-border);
+  --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
+  --color-sidebar-accent: var(--sidebar-accent);
+  --color-sidebar-primary-foreground: var(--sidebar-primary-foreground);
+  --color-sidebar-primary: var(--sidebar-primary);
+  --color-sidebar-foreground: var(--sidebar-foreground);
+  --color-sidebar: var(--sidebar);
+  --color-chart-5: var(--chart-5);
+  --color-chart-4: var(--chart-4);
+  --color-chart-3: var(--chart-3);
+  --color-chart-2: var(--chart-2);
+  --color-chart-1: var(--chart-1);
+  --color-ring: var(--ring);
+  --color-input: var(--input);
+  --color-border: var(--border);
+  --color-destructive: var(--destructive);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-accent: var(--accent);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-muted: var(--muted);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-secondary: var(--secondary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-primary: var(--primary);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-popover: var(--popover);
+  --color-card-foreground: var(--card-foreground);
+  --color-card: var(--card);
+  --radius-sm: calc(var(--radius) - 4px);
+  --radius-md: calc(var(--radius) - 2px);
+  --radius-lg: var(--radius);
+  --radius-xl: calc(var(--radius) + 4px);
+  --radius-2xl: calc(var(--radius) + 8px);
+  --radius-3xl: calc(var(--radius) + 12px);
+  --radius-4xl: calc(var(--radius) + 16px);
 }
 
-@media (prefers-color-scheme: dark) {
-    :root {
-        --background: #0a0a0a;
-        --foreground: #ededed;
-    }
+:root {
+  --radius: 0.625rem;
+  --font-heading: var(--font-montserrat, "Montserrat"), "Inter", "Helvetica Neue", Arial, sans-serif;
+  --font-body: var(--font-inter, "Inter"), "Montserrat", "Helvetica Neue", Arial, sans-serif;
+  --font-code: var(--font-jetbrains-mono, "JetBrains Mono"), "SFMono-Regular", Menlo, monospace;
+  --font-sans: var(--font-body);
+  --font-mono: var(--font-code);
+
+  --color-brand-red: #e10600;
+  --color-charcoal: #0b0b0d;
+  --color-night: #1a1a1d;
+  --color-snow: #ffffff;
+  --color-fog: #f5f5f7;
+
+  --background: var(--color-fog);
+  --foreground: var(--color-charcoal);
+  --card: var(--color-snow);
+  --card-foreground: var(--color-charcoal);
+  --popover: var(--color-snow);
+  --popover-foreground: var(--color-charcoal);
+  --primary: var(--color-brand-red);
+  --primary-foreground: var(--color-snow);
+  --secondary: var(--color-night);
+  --secondary-foreground: var(--color-fog);
+  --muted: var(--color-fog);
+  --muted-foreground: var(--color-night);
+  --accent: var(--color-snow);
+  --accent-foreground: var(--color-charcoal);
+  --destructive: var(--color-brand-red);
+  --border: color-mix(in srgb, var(--color-night) 60%, transparent);
+  --input: color-mix(in srgb, var(--color-night) 65%, transparent);
+  --ring: var(--color-brand-red);
+  --chart-1: var(--color-brand-red);
+  --chart-2: var(--color-night);
+  --chart-3: var(--color-charcoal);
+  --chart-4: var(--color-fog);
+  --chart-5: var(--color-snow);
+  --sidebar: var(--color-snow);
+  --sidebar-foreground: var(--color-charcoal);
+  --sidebar-primary: var(--color-brand-red);
+  --sidebar-primary-foreground: var(--color-snow);
+  --sidebar-accent: var(--color-fog);
+  --sidebar-accent-foreground: var(--color-charcoal);
+  --sidebar-border: color-mix(in srgb, var(--color-night) 10%, transparent);
+  --sidebar-ring: color-mix(in srgb, var(--color-brand-red) 50%, transparent);
 }
 
-body {
-    background: var(--background);
+.dark {
+  --background: var(--color-charcoal);
+  --foreground: var(--color-fog);
+  --card: var(--color-night);
+  --card-foreground: var(--color-fog);
+  --popover: var(--color-night);
+  --popover-foreground: var(--color-fog);
+  --primary: var(--color-brand-red);
+  --primary-foreground: var(--color-snow);
+  --secondary: var(--color-fog);
+  --secondary-foreground: var(--color-charcoal);
+  --muted: var(--color-night);
+  --muted-foreground: color-mix(in srgb, var(--color-fog) 80%, transparent);
+  --accent: var(--color-charcoal);
+  --accent-foreground: var(--color-fog);
+  --destructive: var(--color-brand-red);
+  --border: color-mix(in srgb, var(--color-fog) 25%, transparent);
+  --input: color-mix(in srgb, var(--color-fog) 35%, transparent);
+  --ring: color-mix(in srgb, var(--color-brand-red) 80%, var(--color-charcoal));
+  --chart-1: var(--color-brand-red);
+  --chart-2: var(--color-fog);
+  --chart-3: var(--color-night);
+  --chart-4: var(--color-charcoal);
+  --chart-5: var(--color-snow);
+  --sidebar: var(--color-night);
+  --sidebar-foreground: var(--color-fog);
+  --sidebar-primary: var(--color-brand-red);
+  --sidebar-primary-foreground: var(--color-snow);
+  --sidebar-accent: var(--color-charcoal);
+  --sidebar-accent-foreground: var(--color-fog);
+  --sidebar-border: color-mix(in srgb, var(--color-fog) 12%, transparent);
+  --sidebar-ring: color-mix(in srgb, var(--color-brand-red) 65%, transparent);
+}
+
+@layer base {
+  * {
+    @apply border-border outline-ring/50;
+  }
+  body {
+    font-family: var(--font-body);
+    font-weight: 400;
+    letter-spacing: 0.01em;
+    line-height: 1.6;
+    background-color: var(--background);
+    background: linear-gradient(180deg, var(--background) 0%, var(--color-snow) 100%);
     color: var(--foreground);
-    font-family: Arial, Helvetica, sans-serif;
+    @apply antialiased;
+  }
+  h1,
+  h2,
+  h3,
+  h4,
+  h5,
+  h6 {
+    font-family: var(--font-heading);
+    font-weight: 600;
+    letter-spacing: -0.02em;
+    text-transform: uppercase;
+    color: var(--foreground);
+  }
+  strong {
+    color: var(--color-night);
+  }
+  a {
+    color: var(--primary);
+    text-decoration-color: color-mix(in srgb, var(--primary) 45%, transparent);
+    text-underline-offset: 0.2em;
+  }
+  a:hover {
+    text-decoration-color: var(--primary);
+  }
 }
