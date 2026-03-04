@@ -90,6 +90,7 @@ pipeline {
                             --severity HIGH,CRITICAL \
                             --exit-code 0 \
                             --no-progress \
+                            --timeout 15m \
                             ${IMAGE_NAME}:${IMAGE_TAG}
                     """
                 }
