@@ -34,9 +34,9 @@ pipeline {
                         sonarsource/sonar-scanner-cli:latest \
                         sonar-scanner \
                             -Dsonar.projectKey=polewin-frontend \
-                            -Dsonar.sources=app,public,next.config.ts \
+                            -Dsonar.sources=app,components,lib,assets \
                             -Dsonar.inclusions=**/*.ts,**/*.tsx,**/*.js,**/*.jsx,**/*.css,**/*.scss,**/*.mdx \
-                            -Dsonar.exclusions=**/node_modules/**,**/.next/**,**/coverage/**,**/.git/**,**/dist/**,**/*.min.js \
+                            -Dsonar.exclusions=**/node_modules/**,**/.expo/**,**/coverage/**,**/.git/**,**/dist/**,**/*.min.js \
                             -Dsonar.typescript.tsconfigPath=tsconfig.sonar.json \
                             -Dsonar.scm.provider=git \
                             -Dsonar.host.url=$SONAR_HOST_URL \
@@ -59,7 +59,7 @@ pipeline {
                     -w "$WORKSPACE" \
                     aquasec/trivy:latest fs \
                         --scanners secret \
-                        --skip-dirs .git,node_modules,.next \
+                        --skip-dirs .git,node_modules,.expo \
                         --exit-code 0 \
                         --no-progress \
                         "$WORKSPACE"
