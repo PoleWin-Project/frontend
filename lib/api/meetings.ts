@@ -1,4 +1,5 @@
-const API_URL = process.env.EXPO_PUBLIC_API_URL || 'http://localhost:8000/api/v1';
+// Use the EXPO_PUBLIC_API_URL from .env which is mapped to the computer's actual IP address instead of 'localhost'
+const API_URL = process.env.EXPO_PUBLIC_API_URL || 'http://192.168.1.13:8000/api/v1';
 
 export interface MeetingItem {
     meeting_key: number;

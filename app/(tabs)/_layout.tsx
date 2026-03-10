@@ -3,11 +3,35 @@ import { Home, User, Newspaper, CalendarDays, Gamepad2 } from 'lucide-react-nati
 
 export default function TabLayout() {
     return (
-        <Tabs>
+        <Tabs screenOptions={{
+            headerTitleAlign: 'left',
+            headerStyle: {
+                backgroundColor: '#0B0B0D',
+                height: 120,
+            },
+            headerTitleStyle: {
+                fontFamily: 'Montserrat_Bold_Italic',
+                fontSize: 28,
+                color: '#ffffffff',
+            },
+            headerTitleContainerStyle: {
+                paddingHorizontal: 16,
+                marginTop: 20,
+                paddingBottom: 10,
+            },
+            headerShadowVisible: false,
+            tabBarActiveTintColor: '#E10600',
+            tabBarInactiveTintColor: '#888888',
+            tabBarStyle: {
+                backgroundColor: '#0B0B0D',
+                borderTopWidth: 0,
+            }
+        }}>
             <Tabs.Screen
                 name="index"
                 options={{
                     title: 'Home',
+                    headerShown: false,
                     tabBarIcon: ({ color }) => <Home color={color} />,
                 }}
             />

@@ -7,7 +7,7 @@ import { Stack } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import { useColorScheme } from 'nativewind';
 import { useFonts, Inter_400Regular, Inter_500Medium, Inter_600SemiBold, Inter_700Bold } from '@expo-google-fonts/inter';
-import { Montserrat_400Regular, Montserrat_500Medium, Montserrat_600SemiBold, Montserrat_700Bold } from '@expo-google-fonts/montserrat';
+import { Montserrat_400Regular, Montserrat_500Medium, Montserrat_600SemiBold, Montserrat_700Bold, Montserrat_700Bold_Italic } from '@expo-google-fonts/montserrat';
 import * as SplashScreen from 'expo-splash-screen';
 import { useEffect } from 'react';
 
@@ -29,6 +29,7 @@ export default function RootLayout() {
     Montserrat_Medium: Montserrat_500Medium,
     Montserrat_SemiBold: Montserrat_600SemiBold,
     Montserrat_Bold: Montserrat_700Bold,
+    Montserrat_Bold_Italic: Montserrat_700Bold_Italic,
   });
 
   useEffect(() => {

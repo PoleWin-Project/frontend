@@ -49,43 +49,40 @@ export default function Screen() {
   return (
     <>
       <ScrollView className="flex-1 bg-background" contentContainerStyle={{ paddingBottom: 40 }}>
-        {/* ─── Hero Section v6: Minimalist Clean ─── */}
-        <View style={{ height: 210, backgroundColor: '#050505', position: 'relative', overflow: 'hidden' }}>
+        {/* ─── Hero Section v7: Immersive Full Bleed ─── */}
+        <ImageBackground
+          source={require('@/assets/images/hero-bg.png')}
+          style={{ height: 400, width: '100%', justifyContent: 'center', alignItems: 'center' }}
+          resizeMode="cover"
+        >
+          {/* Gradient Overlay for blending into the background and text readability */}
           <LinearGradient
-            colors={['#0a0a0a', '#1a050a', '#0a0a0a']}
-            start={{ x: 0, y: 0 }}
-            end={{ x: 1, y: 1 }}
-            style={{ flex: 1, alignItems: 'center', justifyContent: 'center' }}
+            colors={['rgba(11, 11, 13, 0.2)', 'rgba(11, 11, 13, 0.7)', '#0B0B0D']}
+            style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0 }}
+          />
+
+          {/* Logo center piece */}
+          <View
+            style={{
+              shadowColor: '#E10600', shadowOffset: { width: 0, height: 10 },
+              shadowOpacity: 0.3, shadowRadius: 25, elevation: 15,
+              marginTop: 40,
+            }}
           >
-            {/* Very subtle glow behind logo */}
-            <View
-              style={{
-                position: 'absolute', width: 140, height: 140,
-                borderRadius: 70, backgroundColor: '#ef4444',
-                opacity: 0.05, transform: [{ scale: 1.5 }]
-              }}
+            <Image
+              source={require('@/assets/images/polewin.png')}
+              style={{ width: 140, height: 140 }}
+              resizeMode="contain"
             />
+          </View>
 
-            {/* Logo alone (since it already contains the brand name) */}
-            <View
-              style={{
-                shadowColor: '#000', shadowOffset: { width: 0, height: 15 },
-                shadowOpacity: 0.4, shadowRadius: 20, elevation: 20
-              }}
-            >
-              <Image
-                source={require('@/assets/images/polewin.png')}
-                style={{ width: 100, height: 100 }}
-                resizeMode="contain"
-              />
-            </View>
-
-            {/* Discrete season info at the bottom-right of the hero */}
-            <View className="absolute bottom-4 right-6 bg-white/5 border border-white/10 px-2 py-0.5 rounded-sm">
-              <Text className="text-white/40 text-[9px] font-bold uppercase tracking-widest">Season 2026</Text>
-            </View>
-          </LinearGradient>
-        </View>
+          {/* Stylized Season Badge */}
+          <View className="absolute bottom-6 bg-[#E10600]/20 border border-[#E10600]/50 px-3 py-1 rounded-full">
+            <Text style={{ fontFamily: 'Montserrat_700Bold', color: '#E10600', letterSpacing: 2 }}>
+              SEASON 2026
+            </Text>
+          </View>
+        </ImageBackground>
 
         <View className="px-4 mt-6">
           {/* Prochain Grand Prix (Sessions) */}
