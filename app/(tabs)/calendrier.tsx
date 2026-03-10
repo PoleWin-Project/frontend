@@ -86,7 +86,7 @@ export default function ExploreScreen() {
                     <FlatList
                         data={pastMeetings}
                         keyExtractor={(item) => item.meeting_key.toString()}
-                        renderItem={({ item }) => <MeetingCard meeting={item} />}
+                        renderItem={({ item }) => <MeetingCard meeting={item} isPast />}
                         contentContainerStyle={{ padding: 16, paddingBottom: 32 }}
                         showsVerticalScrollIndicator={false}
                         ListEmptyComponent={

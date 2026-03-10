@@ -1,16 +1,30 @@
-import { View, Image, Text, TouchableOpacity } from 'react-native';
-// Removed custom Card import
-import { MeetingItem } from '@/lib/api/meetings';
-import { Calendar, MapPin, Clock } from 'lucide-react-native';
+import { View, Image, Text, TouchableOpacity, ActivityIndicator } from 'react-native';
+import { MeetingItem, SessionItem, fetchSessions } from '@/lib/api/meetings';
+import { Calendar, MapPin, Clock, ChevronDown, ChevronUp } from 'lucide-react-native';
 import { useState, useEffect } from 'react';
 import { useRouter } from 'expo-router';
 
 interface MeetingCardProps {
     meeting: MeetingItem;
+    isPast?: boolean;
 }
 
-export function MeetingCard({ meeting }: MeetingCardProps) {
+export function MeetingCard({ meeting, isPast = false }: MeetingCardProps) {
     const router = useRouter();
+
+    const [sessions, setSessions] = useState<SessionItem[]>([]);
+    const [sessionsLoading, setSessionsLoading] = useState(false);
+    const [expanded, setExpanded] = useState(false);
+
+    useEffect(() => {
+        setSessionsLoading(true);
+        fetchSessions(meeting.meeting_key, meeting.year)
+            .then(data =>
+                setSessions(data.sort((a, b) => new Date(a.date_start).getTime() - new Date(b.date_start).getTime()))
+            )
+            .catch(() => setSessions([]))
+            .finally(() => setSessionsLoading(false));
+    }, [meeting.meeting_key, meeting.year]);
 
     const handlePress = () => {
         router.push({
@@ -30,7 +44,6 @@ export function MeetingCard({ meeting }: MeetingCardProps) {
         });
     };
 
-    // Formatting the date range gracefully
     const startDate = new Date(meeting.date_start);
     const endDate = new Date(meeting.date_end);
 
@@ -49,20 +62,29 @@ export function MeetingCard({ meeting }: MeetingCardProps) {
                     mins: Math.floor((difference / 1000 / 60) % 60)
                 });
             } else {
-                setTimeLeft(null); // Event started
+                setTimeLeft(null);
                 setIsUpcoming(false);
             }
         }
 
         updateCountdown();
-        const interval = setInterval(updateCountdown, 60000); // Mettre à jour toutes les minutes
+        const interval = setInterval(updateCountdown, 60000);
         return () => clearInterval(interval);
     }, [meeting.date_start, isUpcoming]);
 
     const formatMonth = (date: Date) => date.toLocaleDateString('fr-FR', { month: 'short' });
     const formatDay = (date: Date) => date.getDate();
 
-    // E.g. "21 - 23 Août" or "30 Août - 01 Sept" if months differ
+    const formatSessionTime = (isoString: string) => {
+        const date = new Date(isoString);
+        return date.toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' });
+    };
+
+    const formatSessionDay = (isoString: string) => {
+        const date = new Date(isoString);
+        return date.toLocaleDateString('fr-FR', { weekday: 'short', day: 'numeric', month: 'short' });
+    };
+
     let dateRangeStr = '';
     if (startDate.getMonth() === endDate.getMonth()) {
         dateRangeStr = `${formatDay(startDate)} - ${formatDay(endDate)} ${formatMonth(endDate)}`;
@@ -112,7 +134,6 @@ export function MeetingCard({ meeting }: MeetingCardProps) {
                             </Text>
                         </View>
 
-                        {/* Countdown Timer for Upcoming */}
                         {isUpcoming && timeLeft && (
                             <View className="flex-row items-center bg-primary/10 px-2 py-1 rounded-md gap-1">
                                 <Clock size={12} className="text-primary" color="#ef4444" />
@@ -129,10 +150,73 @@ export function MeetingCard({ meeting }: MeetingCardProps) {
                                 source={{ uri: meeting.circuit_image }}
                                 style={{ width: '100%', height: '100%', opacity: 0.8 }}
                                 resizeMode="contain"
-                                // Adding negative scale trick + tinting to mimic a highly precise, thin stroke
                                 className="scale-95"
-                                tintColor="#9ca3af" // Tailwind gray-400 for a sharper, subtle look
+                                tintColor="#9ca3af"
                             />
+                        </View>
+                    )}
+
+                    {/* Inline Session Details */}
+                    {(
+                        <View className="mt-4">
+                            <TouchableOpacity
+                                onPress={(e) => { e.stopPropagation(); setExpanded(!expanded); }}
+                                activeOpacity={0.7}
+                                className="flex-row items-center justify-between py-2 border-t border-border/40"
+                            >
+                                <Text className="text-xs uppercase tracking-widest text-primary font-bold">
+                                    Sessions ({sessions.length})
+                                </Text>
+                                {expanded ? (
+                                    <ChevronUp size={16} color="#ef4444" />
+                                ) : (
+                                    <ChevronDown size={16} color="#ef4444" />
+                                )}
+                            </TouchableOpacity>
+
+                            {expanded && (
+                                sessionsLoading ? (
+                                    <View className="py-4 items-center">
+                                        <ActivityIndicator size="small" color="#ef4444" />
+                                    </View>
+                                ) : sessions.length > 0 ? (
+                                    <View className="gap-1 mt-1">
+                                        {sessions.map((session, index) => {
+                                            const isRace = session.session_type === 'Race' || session.session_name.toLowerCase().includes('race');
+                                            const isQuali = session.session_name.toLowerCase().includes('qualifying');
+
+                                            return (
+                                                <View
+                                                    key={session.session_key}
+                                                    className={`flex-row items-center justify-between py-2.5 px-2 rounded-lg ${isRace ? 'bg-primary/10' : ''} ${index !== sessions.length - 1 ? 'border-b border-border/20' : ''}`}
+                                                >
+                                                    <View className="flex-row items-center flex-1">
+                                                        <View className={`w-2 h-2 rounded-full mr-2.5 ${isRace ? 'bg-primary' : isQuali ? 'bg-orange-500' : 'bg-muted-foreground/40'}`} />
+                                                        <Text className={`text-sm ${isRace ? 'font-bold text-foreground' : 'font-medium text-muted-foreground'}`}>
+                                                            {session.session_name}
+                                                        </Text>
+                                                    </View>
+
+                                                    <View className="flex-row items-center gap-3">
+                                                        <Text className="text-[11px] text-muted-foreground capitalize">
+                                                            {formatSessionDay(session.date_start)}
+                                                        </Text>
+                                                        <View className={`px-2 py-0.5 rounded-md ${isRace ? 'bg-primary' : 'bg-muted/80'}`}>
+                                                            <Text className={`text-xs font-bold font-mono ${isRace ? 'text-white' : 'text-foreground'}`}>
+                                                                {formatSessionTime(session.date_start)}
+                                                            </Text>
+                                                        </View>
+                                                    </View>
+                                                </View>
+                                            );
+                                        })}
+                                    </View>
+                                ) : (
+                                    <Text className="text-xs text-muted-foreground text-center py-3">
+                                        Aucune session enregistrée.
+                                    </Text>
+                                )
+                            )}
                         </View>
                     )}
                 </View>
