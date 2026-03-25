@@ -1,5 +1,13 @@
 const API_URL = process.env.EXPO_PUBLIC_API_URL || 'http://10.6.0.177:8000/api/v1';
 
+// In a real app, this would come from an auth context/storage
+const getHeaders = async () => {
+    return {
+        'Content-Type': 'application/json',
+        // 'Authorization': `Bearer ${token}`
+    };
+};
+
 const MAX_RETRIES = 2;
 
 async function fetchWithRetry(url: string, retries = MAX_RETRIES): Promise<Response> {
@@ -148,3 +156,107 @@ export async function fetchTeamStandings(year: number = 2026): Promise<TeamStand
         throw error;
     }
 }
+
+export interface RaceSession {
+    id: number;
+    idCourseExternal: number;
+    name: string;
+    type: string;
+    dateStart: string;
+}
+
+export async function fetchRaceSessions(limit: number = 50): Promise<RaceSession[]> {
+    const url = `${API_URL}/sessions?limit=${limit}`;
+    try {
+        const response = await fetchWithRetry(url);
+        const data = await response.json();
+        return data.items || [];
+    } catch (error) {
+        console.error('Failed to fetch race sessions:', error);
+        return [];
+    }
+}
+
+export interface Prediction {
+    id: number;
+    sessionId: number;
+    type: string;
+    closesAt: string;
+}
+
+export interface Pronostic {
+    id: number;
+    predictionId: number;
+    pointsStaked: number;
+    pointsEarned: number;
+    status: string;
+    detail?: {
+        value: string;
+        multiplier: number;
+    };
+}
+
+export interface Driver {
+    driver_number: number;
+    full_name: string;
+    name_acronym: string;
+    team_name: string;
+    team_colour: string;
+}
+
+export async function fetchPredictions(sessionId: number): Promise<Prediction[]> {
+    const url = `${API_URL}/predictions/sessions/${sessionId}/predictions`;
+    try {
+        const response = await fetchWithRetry(url);
+        const data = await response.json();
+        return data.predictions || [];
+    } catch (error) {
+        console.error(`Failed to fetch predictions for session ${sessionId}:`, error);
+        return [];
+    }
+}
+
+export async function fetchDrivers(sessionKey: number): Promise<Driver[]> {
+    const url = `${API_URL}/openf1/sessions/${sessionKey}/drivers`;
+    try {
+        const response = await fetchWithRetry(url);
+        const data = await response.json();
+        return data.drivers || [];
+    } catch (error) {
+        console.error(`Failed to fetch drivers for session ${sessionKey}:`, error);
+        return [];
+    }
+}
+
+export async function placePronostic(predictionId: number, pointsStaked: number, value: string): Promise<any> {
+    const url = `${API_URL}/predictions/predictions/${predictionId}/pronostic`;
+    const headers = await getHeaders();
+    
+    try {
+        const response = await fetch(url, {
+            method: 'POST',
+            headers,
+            body: JSON.stringify({ pointsStaked, value }),
+        });
+        return await response.json();
+    } catch (error) {
+        console.error(`Failed to place pronostic for prediction ${predictionId}:`, error);
+        throw error;
+    }
+}
+
+export async function fetchMyPronostic(predictionId: number): Promise<Pronostic | null> {
+    const url = `${API_URL}/predictions/predictions/${predictionId}/pronostic`;
+    const headers = await getHeaders();
+
+    try {
+        const response = await fetch(url, { headers });
+        if (response.status === 404) return null;
+        const data = await response.json();
+        return data.pronostic || null;
+    } catch (error) {
+        console.error(`Failed to fetch my pronostic for prediction ${predictionId}:`, error);
+        return null;
+    }
+}
+
