@@ -101,3 +101,50 @@ export async function fetchSessionResults(sessionKey: number): Promise<SessionRe
         throw error;
     }
 }
+
+export interface DriverStanding {
+    driver_number: number;
+    position: number;
+    points: number;
+    driver?: {
+        broadcast_name: string;
+        full_name: string;
+        name_acronym: string;
+        team_name: string;
+        team_colour: string;
+        headshot_url: string;
+    };
+}
+
+export async function fetchDriverStandings(year: number = 2026): Promise<DriverStanding[]> {
+    const url = `${API_URL}/openf1/standings/drivers?year=${year}`;
+
+    try {
+        const response = await fetchWithRetry(url);
+        const data = await response.json();
+        return data.standings || [];
+    } catch (error) {
+        console.error('Failed to fetch F1 driver standings:', error);
+        throw error;
+    }
+}
+
+export interface TeamStanding {
+    team_name: string;
+    position: number;
+    points: number;
+    team_colour: string;
+}
+
+export async function fetchTeamStandings(year: number = 2026): Promise<TeamStanding[]> {
+    const url = `${API_URL}/openf1/standings/teams?year=${year}`;
+
+    try {
+        const response = await fetchWithRetry(url);
+        const data = await response.json();
+        return data.standings || [];
+    } catch (error) {
+        console.error('Failed to fetch F1 team standings:', error);
+        throw error;
+    }
+}

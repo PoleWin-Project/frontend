@@ -1,5 +1,5 @@
 import { Tabs } from 'expo-router';
-import { Home, User, Newspaper, CalendarDays, Gamepad2 } from 'lucide-react-native';
+import { Home, User, Newspaper, CalendarDays, Gamepad2, Trophy } from 'lucide-react-native';
 
 export default function TabLayout() {
     return (
@@ -40,6 +40,13 @@ export default function TabLayout() {
                 options={{
                     title: 'Calendrier',
                     tabBarIcon: ({ color }) => <CalendarDays color={color} />,
+                }}
+            />
+            <Tabs.Screen
+                name="classement"
+                options={{
+                    title: 'Classement',
+                    tabBarIcon: ({ color }) => <Trophy color={color} />,
                 }}
             />
             <Tabs.Screen
