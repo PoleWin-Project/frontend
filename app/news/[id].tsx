@@ -1,8 +1,9 @@
-import { View, Image, ScrollView, Linking } from 'react-native';
+import { View, Image, ScrollView, Alert } from 'react-native';
 import { Text } from '@/components/ui/text';
 import { Button } from '@/components/ui/button';
 import { Stack, useLocalSearchParams } from 'expo-router';
 import { ExternalLink } from 'lucide-react-native';
+import * as WebBrowser from 'expo-web-browser';
 
 export default function ArticleScreen() {
     const { title, description, content, image_url, source_id, pubDate, link } = useLocalSearchParams<{
@@ -15,9 +16,14 @@ export default function ArticleScreen() {
         link: string;
     }>();
 
-    const handleOpenOriginal = () => {
+    const handleOpenOriginal = async () => {
         if (link) {
-            Linking.openURL(link);
+            try {
+                await WebBrowser.openBrowserAsync(link);
+            } catch (error) {
+                console.error("Failed to open article:", error);
+                Alert.alert("Erreur", "Impossible d'ouvrir l'article original.");
+            }
         }
     };
 

@@ -1,6 +1,6 @@
 import { View, Image, Text, TouchableOpacity, ActivityIndicator } from 'react-native';
-import { MeetingItem, SessionItem, fetchSessions } from '@/lib/api/meetings';
-import { Calendar, MapPin, Clock, ChevronDown, ChevronUp } from 'lucide-react-native';
+import { MeetingItem, SessionItem, fetchSessions, fetchSessionResults, SessionResult } from '@/lib/api/meetings';
+import { Calendar, MapPin, Clock, ChevronDown, ChevronUp, Trophy } from 'lucide-react-native';
 import { useState, useEffect } from 'react';
 import { useRouter } from 'expo-router';
 
@@ -14,17 +14,20 @@ export function MeetingCard({ meeting, isPast = false }: MeetingCardProps) {
 
     const [sessions, setSessions] = useState<SessionItem[]>([]);
     const [sessionsLoading, setSessionsLoading] = useState(false);
+    const [sessionsFetched, setSessionsFetched] = useState(false);
     const [expanded, setExpanded] = useState(false);
 
     useEffect(() => {
+        if (!expanded || sessionsFetched) return;
         setSessionsLoading(true);
+        setSessionsFetched(true);
         fetchSessions(meeting.meeting_key, meeting.year)
             .then(data =>
                 setSessions(data.sort((a, b) => new Date(a.date_start).getTime() - new Date(b.date_start).getTime()))
             )
             .catch(() => setSessions([]))
             .finally(() => setSessionsLoading(false));
-    }, [meeting.meeting_key, meeting.year]);
+    }, [expanded, sessionsFetched, meeting.meeting_key, meeting.year]);
 
     const handlePress = () => {
         router.push({
@@ -157,70 +160,161 @@ export function MeetingCard({ meeting, isPast = false }: MeetingCardProps) {
                     )}
 
                     {/* Inline Session Details */}
-                    {(
-                        <View className="mt-4">
-                            <TouchableOpacity
-                                onPress={(e) => { e.stopPropagation(); setExpanded(!expanded); }}
-                                activeOpacity={0.7}
-                                className="flex-row items-center justify-between py-2 border-t border-border/40"
-                            >
-                                <Text className="text-xs uppercase tracking-widest text-primary font-bold">
-                                    Sessions ({sessions.length})
-                                </Text>
-                                {expanded ? (
-                                    <ChevronUp size={16} color="#ef4444" />
-                                ) : (
-                                    <ChevronDown size={16} color="#ef4444" />
-                                )}
-                            </TouchableOpacity>
-
-                            {expanded && (
-                                sessionsLoading ? (
-                                    <View className="py-4 items-center">
-                                        <ActivityIndicator size="small" color="#ef4444" />
-                                    </View>
-                                ) : sessions.length > 0 ? (
-                                    <View className="gap-1 mt-1">
-                                        {sessions.map((session, index) => {
-                                            const isRace = session.session_type === 'Race' || session.session_name.toLowerCase().includes('race');
-                                            const isQuali = session.session_name.toLowerCase().includes('qualifying');
-
-                                            return (
-                                                <View
-                                                    key={session.session_key}
-                                                    className={`flex-row items-center justify-between py-2.5 px-2 rounded-lg ${isRace ? 'bg-primary/10' : ''} ${index !== sessions.length - 1 ? 'border-b border-border/20' : ''}`}
-                                                >
-                                                    <View className="flex-row items-center flex-1">
-                                                        <View className={`w-2 h-2 rounded-full mr-2.5 ${isRace ? 'bg-primary' : isQuali ? 'bg-orange-500' : 'bg-muted-foreground/40'}`} />
-                                                        <Text className={`text-sm ${isRace ? 'font-bold text-foreground' : 'font-medium text-muted-foreground'}`}>
-                                                            {session.session_name}
-                                                        </Text>
-                                                    </View>
-
-                                                    <View className="flex-row items-center gap-3">
-                                                        <Text className="text-[11px] text-muted-foreground capitalize">
-                                                            {formatSessionDay(session.date_start)}
-                                                        </Text>
-                                                        <View className={`px-2 py-0.5 rounded-md ${isRace ? 'bg-primary' : 'bg-muted/80'}`}>
-                                                            <Text className={`text-xs font-bold font-mono ${isRace ? 'text-white' : 'text-foreground'}`}>
-                                                                {formatSessionTime(session.date_start)}
-                                                            </Text>
-                                                        </View>
-                                                    </View>
-                                                </View>
-                                            );
-                                        })}
-                                    </View>
-                                ) : (
-                                    <Text className="text-xs text-muted-foreground text-center py-3">
-                                        Aucune session enregistrée.
-                                    </Text>
-                                )
+                    <View className="mt-4">
+                        <TouchableOpacity
+                            onPress={(e) => { e.stopPropagation(); setExpanded(!expanded); }}
+                            activeOpacity={0.7}
+                            className="flex-row items-center justify-between py-2 border-t border-border/40"
+                        >
+                            <Text className="text-xs uppercase tracking-widest text-primary font-bold">
+                                Sessions{sessionsFetched ? ` (${sessions.length})` : ''}
+                            </Text>
+                            {expanded ? (
+                                <ChevronUp size={16} color="#ef4444" />
+                            ) : (
+                                <ChevronDown size={16} color="#ef4444" />
                             )}
-                        </View>
-                    )}
+                        </TouchableOpacity>
+
+                        {expanded && (
+                            sessionsLoading ? (
+                                <View className="py-4 items-center">
+                                    <ActivityIndicator size="small" color="#ef4444" />
+                                </View>
+                            ) : sessions.length > 0 ? (
+                                <View className="gap-1 mt-1">
+                                    {sessions.map((session, index) => (
+                                        <SessionListItem
+                                            key={session.session_key}
+                                            session={session}
+                                            index={index}
+                                            isLast={index === sessions.length - 1}
+                                            formatSessionDay={formatSessionDay}
+                                            formatSessionTime={formatSessionTime}
+                                        />
+                                    ))}
+                                </View>
+                            ) : (
+                                <Text className="text-xs text-muted-foreground text-center py-3">
+                                    Aucune session enregistrée.
+                                </Text>
+                            )
+                        )}
+                    </View>
                 </View>
             </View>
         </TouchableOpacity>
     );
 }
+
+function SessionListItem({ session, index, isLast, formatSessionDay, formatSessionTime }: {
+    session: SessionItem;
+    index: number;
+    isLast: boolean;
+    formatSessionDay: (date: string) => string;
+    formatSessionTime: (date: string) => string;
+}) {
+    const [results, setResults] = useState<SessionResult[]>([]);
+    const [loading, setLoading] = useState(false);
+    const [showResults, setShowResults] = useState(false);
+
+    const formatLapTime = (seconds: number) => {
+        const mins = Math.floor(seconds / 60);
+        const secs = (seconds % 60).toFixed(3);
+        return mins > 0 ? `${mins}:${secs.padStart(6, '0')}` : `${secs}s`;
+    };
+
+    const isRace = session.session_type === 'Race' || session.session_name.toLowerCase().includes('race');
+    const isQuali = session.session_name.toLowerCase().includes('qualifying');
+    const isPast = new Date(session.date_end).getTime() < Date.now();
+
+    const fetchResults = async () => {
+        if (loading || results.length > 0) {
+            setShowResults(!showResults);
+            return;
+        }
+        setLoading(true);
+        try {
+            const data = await fetchSessionResults(session.session_key);
+            setResults(data);
+            setShowResults(true);
+        } catch (error) {
+            console.error("Failed to load session results:", error);
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    return (
+        <View className={`py-2 px-2 rounded-lg ${isRace ? 'bg-primary/5' : ''} ${!isLast ? 'border-b border-border/20' : ''}`}>
+            <View className="flex-row items-center justify-between">
+                <View className="flex-row items-center flex-1">
+                    <View className={`w-2 h-2 rounded-full mr-2.5 ${isRace ? 'bg-primary' : isQuali ? 'bg-orange-500' : 'bg-muted-foreground/40'}`} />
+                    <Text className={`text-sm ${isRace ? 'font-bold text-foreground' : 'font-medium text-muted-foreground'}`}>
+                        {session.session_name}
+                    </Text>
+                </View>
+
+                <View className="flex-row items-center gap-3">
+                    <Text className="text-[11px] text-muted-foreground capitalize">
+                        {formatSessionDay(session.date_start)}
+                    </Text>
+                    <View className={`px-2 py-0.5 rounded-md ${isRace ? 'bg-primary' : 'bg-muted/80'}`}>
+                        <Text className={`text-xs font-bold font-mono ${isRace ? 'text-white' : 'text-foreground'}`}>
+                            {formatSessionTime(session.date_start)}
+                        </Text>
+                    </View>
+                </View>
+            </View>
+
+            {isPast && (
+                <View className="mt-2 pl-4">
+                    <TouchableOpacity
+                        onPress={fetchResults}
+                        activeOpacity={0.7}
+                        className="flex-row items-center gap-1.5"
+                    >
+                        {loading ? (
+                            <ActivityIndicator size="small" color="#ef4444" style={{ transform: [{ scale: 0.7 }] }} />
+                        ) : (
+                            <Trophy size={10} color={showResults ? "#ef4444" : "gray"} />
+                        )}
+                        <Text className={`text-[10px] font-bold uppercase tracking-wider ${showResults ? 'text-primary' : 'text-muted-foreground'}`}>
+                            {showResults ? 'Masquer les résultats' : 'Voir les résultats'}
+                        </Text>
+                    </TouchableOpacity>
+
+                    {showResults && results.length > 0 && (
+                        <View className="mt-2 gap-1.5 bg-muted/30 p-2 rounded-lg border border-border/40">
+                            {results.map((res) => (
+                                <View key={res.driver_number} className="flex-row items-center justify-between">
+                                    <View className="flex-row items-center gap-2">
+                                        <Text className="text-[10px] font-mono font-bold text-muted-foreground w-8">
+                                            P{res.position}
+                                        </Text>
+                                        {res.driver?.team_colour && (
+                                            <View style={{ width: 2, height: 10, backgroundColor: `#${res.driver.team_colour}` }} />
+                                        )}
+                                        <Text className="text-[11px] font-bold text-foreground">
+                                            {res.driver?.broadcast_name || res.driver_number}
+                                        </Text>
+                                    </View>
+                                    {res.time ? (
+                                        <Text className="text-[10px] font-mono text-muted-foreground">
+                                            {formatLapTime(res.time)}
+                                        </Text>
+                                    ) : (
+                                        <Text className="text-[10px] font-mono text-muted-foreground">
+                                            {res.driver?.name_acronym}
+                                        </Text>
+                                    )}
+                                </View>
+                            ))}
+                        </View>
+                    )}
+                </View>
+            )}
+        </View>
+    );
+}
+

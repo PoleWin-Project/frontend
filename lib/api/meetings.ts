@@ -1,5 +1,24 @@
-// Use the EXPO_PUBLIC_API_URL from .env which is mapped to the computer's actual IP address instead of 'localhost'
-const API_URL = process.env.EXPO_PUBLIC_API_URL || 'http://192.168.1.13:8000/api/v1';
+const API_URL = process.env.EXPO_PUBLIC_API_URL || 'http://10.6.0.177:8000/api/v1';
+
+const MAX_RETRIES = 2;
+
+async function fetchWithRetry(url: string, retries = MAX_RETRIES): Promise<Response> {
+    for (let attempt = 0; attempt <= retries; attempt++) {
+        try {
+            const response = await fetch(url);
+            if (response.ok) return response;
+            throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+        } catch (error: any) {
+            const isLastAttempt = attempt === retries;
+            if (isLastAttempt) throw error;
+
+            console.warn(`[API] Attempt ${attempt + 1} failed for ${url}, retrying...`);
+            const delay = Math.min(1000 * Math.pow(2, attempt), 4000);
+            await new Promise(resolve => setTimeout(resolve, delay));
+        }
+    }
+    throw new Error('fetchWithRetry: unreachable');
+}
 
 export interface MeetingItem {
     meeting_key: number;
@@ -16,23 +35,16 @@ export interface MeetingItem {
     circuit_info_url: string;
     circuit_image: string;
     gmt_offset: string;
-    date_start: string; // ISO string 2026-08-21T10:30:00+00:00
+    date_start: string;
     date_end: string;
     year: number;
 }
 
-/**
- * Fetches F1 meetings (races) for a specific year from the custom local backend.
- */
 export async function fetchMeetings(year: number = new Date().getFullYear()): Promise<MeetingItem[]> {
     const url = `${API_URL}/openf1/calendar?year=${year}`;
 
     try {
-        const response = await fetch(url);
-        if (!response.ok) {
-            throw new Error(`Error fetching meetings for year ${year}: ${response.statusText}`);
-        }
-
+        const response = await fetchWithRetry(url);
         const data = await response.json();
         return data.meetings || [];
     } catch (error) {
@@ -41,37 +53,51 @@ export async function fetchMeetings(year: number = new Date().getFullYear()): Pr
     }
 }
 
-/**
- * Interface representing a single session during a Grand Prix weekend.
- */
 export interface SessionItem {
     session_key: number;
     meeting_key: number;
-    session_name: string; // e.g. "Practice 1", "Qualifying", "Race"
+    session_name: string;
     session_type: string;
     date_start: string;
     date_end: string;
     year: number;
 }
 
-/**
- * Fetches sessions for a specific meeting (Grand Prix).
- * Example URL: http://localhost:8000/api/v1/openf1/sessions?meeting_key=1279&year=2026
- */
 export async function fetchSessions(meetingKey: number, year: number = new Date().getFullYear()): Promise<SessionItem[]> {
     const url = `${API_URL}/openf1/sessions?meeting_key=${meetingKey}&year=${year}`;
 
     try {
-        const response = await fetch(url);
-        if (!response.ok) {
-            throw new Error(`Error fetching sessions for meeting ${meetingKey}: ${response.statusText}`);
-        }
-
+        const response = await fetchWithRetry(url);
         const data = await response.json();
-        // Assuming the backend returns { sessions: [...] } similarly to meetings
         return data.sessions || [];
     } catch (error) {
         console.error(`Failed to fetch F1 sessions for meeting ${meetingKey}:`, error);
+        throw error;
+    }
+}
+
+export interface SessionResult {
+    position: number;
+    driver_number: number;
+    time?: number;
+    driver?: {
+        broadcast_name: string;
+        full_name: string;
+        name_acronym: string;
+        team_name: string;
+        team_colour: string;
+    };
+}
+
+export async function fetchSessionResults(sessionKey: number): Promise<SessionResult[]> {
+    const url = `${API_URL}/openf1/sessions/${sessionKey}/results`;
+
+    try {
+        const response = await fetchWithRetry(url);
+        const data = await response.json();
+        return data.results || [];
+    } catch (error) {
+        console.error(`Failed to fetch F1 session results for session ${sessionKey}:`, error);
         throw error;
     }
 }
