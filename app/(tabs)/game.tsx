@@ -1,24 +1,30 @@
 import React, { useEffect, useState } from 'react';
 import { View, ScrollView, RefreshControl, Image, ActivityIndicator } from 'react-native';
 import { Text } from '@/components/ui/text';
-import { SafeAreaView } from 'react-native-safe-area-context';
-import { Trophy, Calendar, MapPin, ChevronRight, Info } from 'lucide-react-native';
-import { fetchRaceSessions, RaceSession, fetchPredictions, Prediction, fetchMyPronostic, Pronostic, fetchDrivers, Driver } from '@/lib/api/meetings';
+import { Calendar, MapPin, ChevronRight, Info } from 'lucide-react-native';
+import { fetchRaceSessions, RaceSession, fetchPredictions, Prediction, fetchMyPronostic, Pronostic, fetchDrivers, Driver, fetchMyPronosticsForSession, fetchMyPronosticsHistory } from '@/lib/api/meetings';
 import { PredictionCard } from '@/components/game/PredictionCard';
+import { PronosticHistoryCard } from '@/components/game/PronosticHistoryCard';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { F1Loader } from '@/components/ui/F1Loader';
+import { ScreenHeader } from '@/components/ui/ScreenHeader';
+import { useAuth } from '@/context/AuthContext';
 
 export default function GameScreen() {
+    const { user } = useAuth();
     const [loading, setLoading] = useState(true);
     const [refreshing, setRefreshing] = useState(false);
     const [upcomingSessions, setUpcomingSessions] = useState<RaceSession[]>([]);
     const [predictionsMap, setPredictionsMap] = useState<Record<number, Prediction[]>>({});
     const [pronosticsMap, setPronosticsMap] = useState<Record<number, Pronostic | null>>({});
     const [driversMap, setDriversMap] = useState<Record<number, Driver[]>>({});
+    const [activeTab, setActiveTab] = useState('upcoming');
+    const [history, setHistory] = useState<Pronostic[]>([]);
 
     const loadData = async () => {
         setLoading(true);
         try {
-            const sessions = await fetchRaceSessions(10);
+            const sessions = await fetchRaceSessions(50);
             // Sort by date and filter for upcoming or very recent
             const sorted = sessions
                 .filter(s => ['Race', 'Qualifying', 'Sprint'].includes(s.type))
@@ -40,15 +46,18 @@ export default function GameScreen() {
                 const drivers = await fetchDrivers(session.idCourseExternal);
                 drvs[session.id] = drivers;
 
-                for (const pred of sessionPredictions) {
-                    const pronostic = await fetchMyPronostic(pred.id);
-                    prons[pred.id] = pronostic;
+                const myPronostics = await fetchMyPronosticsForSession(session.id);
+                for (const p of myPronostics) {
+                    prons[p.predictionId] = p;
                 }
             }
 
             setPredictionsMap(preds);
             setPronosticsMap(prons);
             setDriversMap(drvs);
+
+            const hist = await fetchMyPronosticsHistory();
+            setHistory(hist);
         } catch (error) {
             console.error('Failed to load game data:', error);
         } finally {
@@ -78,25 +87,27 @@ export default function GameScreen() {
 
     return (
         <View className="flex-1 bg-background">
-            <SafeAreaView edges={['top']} className="bg-card">
-                <View className="px-6 py-4 flex-row items-center justify-between border-b border-border/10">
-                    <Text className="text-3xl font-black italic uppercase tracking-tighter text-foreground">
-                        Pronos <Text className="text-primary">Win</Text>
-                    </Text>
-                    <View className="flex-row items-center bg-primary/10 px-3 py-1.5 rounded-full">
-                        <Trophy size={14} color="#ef4444" />
-                        <Text className="text-sm font-bold text-primary ml-2 tracking-tight">2,450 pts</Text>
-                    </View>
-                </View>
-            </SafeAreaView>
+            <ScreenHeader title="Pronos Win" subtitle="Sessions & Paris" showPoints={true} />
 
-            <ScrollView 
-                className="flex-1"
-                refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor="#ef4444" />}
-                showsVerticalScrollIndicator={false}
-            >
-                {nextGP ? (
-                    <View className="p-4">
+            <Tabs value={activeTab} onValueChange={setActiveTab} className="flex-1">
+                <View className="mx-4 mt-4 mb-2">
+                    <TabsList className="flex-row">
+                        <TabsTrigger value="upcoming" className="flex-1">
+                            <Text>À venir</Text>
+                        </TabsTrigger>
+                        <TabsTrigger value="history" className="flex-1">
+                            <Text>Historique</Text>
+                        </TabsTrigger>
+                    </TabsList>
+                </View>
+
+                <TabsContent value="upcoming" className="flex-1">
+                    <ScrollView 
+                        refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor="#ef4444" />}
+                        showsVerticalScrollIndicator={false}
+                    >
+                        {nextGP ? (
+                            <View className="p-4">
                         {/* Next GP Hero */}
                         <View className="bg-zinc-900 rounded-3xl overflow-hidden mb-6 border border-white/5 shadow-2xl">
                             <Image 
@@ -119,7 +130,9 @@ export default function GameScreen() {
                                     </Text>
                                     <View className="flex-row items-center">
                                         <MapPin size={14} color="#ef4444" />
-                                        <Text className="text-white/80 text-sm font-medium ml-1">Melbourne Grand Prix Circuit</Text>
+                                        <Text className="text-white/80 text-sm font-medium ml-1">
+                                            {nextGP.location || nextGP.name.split(' - ')[0]}
+                                        </Text>
                                     </View>
                                 </View>
                             </View>
@@ -137,6 +150,7 @@ export default function GameScreen() {
                                     <View>
                                         <Text className="text-base font-black text-foreground uppercase italic">{session.type}</Text>
                                         <Text className="text-[10px] text-muted-foreground font-bold uppercase">
+                                            {session.location ? `${session.location} • ` : ''}
                                             {new Date(session.dateStart).toLocaleDateString('fr-FR', { weekday: 'long', day: 'numeric', month: 'long' })}
                                         </Text>
                                     </View>
@@ -175,6 +189,31 @@ export default function GameScreen() {
                     </View>
                 )}
             </ScrollView>
-        </View>
+        </TabsContent>
+        <TabsContent value="history" className="flex-1">
+            <ScrollView 
+                refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor="#ef4444" />}
+                showsVerticalScrollIndicator={false}
+                contentContainerStyle={{ padding: 16, paddingBottom: 40 }}
+            >
+                {history.length > 0 ? (
+                    history.map(prono => (
+                        <PronosticHistoryCard key={prono.id} pronostic={prono} />
+                    ))
+                ) : (
+                    <View className="flex-1 items-center justify-center p-12 mt-20">
+                        <View className="w-16 h-16 bg-muted rounded-full items-center justify-center mb-4">
+                            <Info size={32} color="#9ca3af" />
+                        </View>
+                        <Text className="text-lg font-bold text-foreground mb-2 text-center">Aucun pronostic</Text>
+                        <Text className="text-muted-foreground text-center text-sm">
+                            Vous n'avez pas encore fait de pronostics.
+                        </Text>
+                    </View>
+                )}
+            </ScrollView>
+        </TabsContent>
+    </Tabs>
+</View>
     );
 }

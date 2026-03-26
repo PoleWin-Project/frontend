@@ -2,7 +2,7 @@ import { Button } from '@/components/ui/button';
 import { Icon } from '@/components/ui/icon';
 import { Text } from '@/components/ui/text';
 import { Link, Stack } from 'expo-router';
-import { MoonStar, Star, Sun, ChevronRight } from 'lucide-react-native';
+import { MoonStar, Star, Sun, ChevronRight, Info, Trophy, User } from 'lucide-react-native';
 import { useColorScheme } from 'nativewind';
 import * as React from 'react';
 import { useEffect, useState } from 'react';
@@ -13,6 +13,7 @@ import { NewsCard } from '@/components/news/NewsCard';
 import { NextSessionWidget } from '@/components/calendar/NextSessionWidget';
 import { QuickStats } from '@/components/home/QuickStats';
 import { F1Loader } from '@/components/ui/F1Loader';
+import { useAuth } from '@/context/AuthContext';
 
 const LOGO = {
   light: require('@/assets/images/react-native-reusables-light.png'),
@@ -25,6 +26,7 @@ const IMAGE_STYLE: ImageStyle = {
 };
 
 export default function Screen() {
+  const { user } = useAuth();
   const { colorScheme } = useColorScheme();
   const [latestNews, setLatestNews] = useState<NewsArticle[]>([]);
   const [loading, setLoading] = useState(true);
@@ -85,6 +87,27 @@ export default function Screen() {
         </ImageBackground>
 
         <View className="px-4 mt-6">
+          {/* User Points Card */}
+          {user && (
+            <View className="bg-card border border-white/5 p-4 rounded-3xl mb-6 flex-row items-center justify-between shadow-sm">
+              <View className="flex-row items-center">
+                <View className="w-12 h-12 rounded-full bg-primary/20 items-center justify-center mr-4">
+                  <User size={24} className="text-primary" />
+                </View>
+                <View>
+                  <Text className="text-muted-foreground text-[10px] font-bold uppercase tracking-wider">Pilote</Text>
+                  <Text className="text-foreground font-bold text-base">{user.username}</Text>
+                </View>
+              </View>
+              <View className="bg-primary/10 px-4 py-2 rounded-2xl border border-primary/20 flex-row items-center">
+                <Trophy size={16} color="#ef4444" />
+                <Text className="text-primary font-black ml-2 text-lg">
+                  {user.points?.toLocaleString() || '0'} <Text className="text-[10px] uppercase opacity-70">pts</Text>
+                </Text>
+              </View>
+            </View>
+          )}
+
           {/* Prochain Grand Prix (Sessions) */}
           <NextSessionWidget />
 
@@ -106,8 +129,16 @@ export default function Screen() {
               <F1Loader />
             </View>
           ) : error ? (
-            <View className="items-center rounded-lg bg-destructive/10 p-4">
-              <Text className="text-center text-destructive">{error}</Text>
+            <View className="items-center justify-center py-10 px-6 bg-card/30 border border-white/5 rounded-3xl">
+              <View className="w-12 h-12 bg-primary/10 rounded-full items-center justify-center mb-4">
+                <Icon as={Info} size={24} color="#ef4444" />
+              </View>
+              <Text className="text-center text-foreground font-bold mb-1">
+                Actualités indisponibles
+              </Text>
+              <Text className="text-center text-muted-foreground text-xs">
+                Le service d'information est temporairement hors ligne.
+              </Text>
             </View>
           ) : (
             <View className="gap-4">

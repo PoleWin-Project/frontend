@@ -1,7 +1,7 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import * as React from 'react';
 import type { AuthUser } from '@/lib/api/auth';
-import { login as apiLogin, refreshTokens, register as apiRegister } from '@/lib/api/auth';
+import { login as apiLogin, refreshTokens, register as apiRegister, fetchCurrentUser } from '@/lib/api/auth';
 
 const ACCESS_TOKEN_KEY = '@polewin/accessToken';
 const REFRESH_TOKEN_KEY = '@polewin/refreshToken';
@@ -25,6 +25,7 @@ type AuthContextValue = AuthState & {
   }) => Promise<{ ok: boolean; error?: string }>;
   logout: () => Promise<void>;
   clearError: () => void;
+  refreshProfile: () => Promise<void>;
 };
 
 const AuthContext = React.createContext<AuthContextValue | null>(null);
@@ -149,12 +150,22 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     setState((s) => ({ ...s, error: null }));
   }, []);
 
+  const refreshProfile = React.useCallback(async () => {
+    if (!state.accessToken) return;
+    const result = await fetchCurrentUser(state.accessToken);
+    if (result.ok) {
+      await AsyncStorage.setItem(USER_KEY, JSON.stringify(result.user));
+      setState((s) => ({ ...s, user: result.user }));
+    }
+  }, [state.accessToken]);
+
   const value: AuthContextValue = {
     ...state,
     login,
     register,
     logout,
     clearError,
+    refreshProfile,
   };
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

@@ -4,7 +4,8 @@ import { Text } from '@/components/ui/text';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Trophy, Clock, CheckCircle2, Lock, User, Coins } from 'lucide-react-native';
-import { Prediction, Pronostic, Driver, placePronostic } from '@/lib/api/meetings';
+import { Prediction, Pronostic, Driver, placePronostic, updatePronostic } from '@/lib/api/meetings';
+import { useAuth } from '@/context/AuthContext';
 
 interface PredictionCardProps {
     prediction: Prediction;
@@ -14,12 +15,25 @@ interface PredictionCardProps {
 }
 
 export function PredictionCard({ prediction, initialPronostic, drivers, onRefresh }: PredictionCardProps) {
+    const { refreshProfile } = useAuth();
     const [pickerVisible, setPickerVisible] = useState(false);
     const [selectedDriver, setSelectedDriver] = useState<Driver | null>(
         initialPronostic ? drivers.find(d => d.name_acronym === initialPronostic.detail?.value) || null : null
     );
     const [points, setPoints] = useState(initialPronostic?.pointsStaked.toString() || '10');
     const [loading, setLoading] = useState(false);
+
+    // Sync state when props change (important for refresh after placing a prono)
+    React.useEffect(() => {
+        if (initialPronostic) {
+            const driver = drivers.find(d => d.name_acronym === initialPronostic.detail?.value);
+            if (driver) setSelectedDriver(driver);
+            setPoints(initialPronostic.pointsStaked.toString());
+        } else {
+            setSelectedDriver(null);
+            setPoints('10');
+        }
+    }, [initialPronostic, drivers]);
 
     const isLocked = new Date(prediction.closesAt).getTime() < Date.now();
     const hasBet = !!initialPronostic;
@@ -28,9 +42,14 @@ export function PredictionCard({ prediction, initialPronostic, drivers, onRefres
         if (!selectedDriver) return;
         setLoading(true);
         try {
-            await placePronostic(prediction.id, parseInt(points), selectedDriver.name_acronym);
+            if (hasBet) {
+                await updatePronostic(prediction.id, parseInt(points), selectedDriver.name_acronym);
+            } else {
+                await placePronostic(prediction.id, parseInt(points), selectedDriver.name_acronym);
+            }
             setPickerVisible(false);
             onRefresh();
+            refreshProfile(); // Call refreshProfile after onRefresh
         } catch (error) {
             console.error(error);
         } finally {
@@ -66,36 +85,59 @@ export function PredictionCard({ prediction, initialPronostic, drivers, onRefres
 
             <CardContent className="pt-2">
                 {hasBet ? (
-                    <View className="bg-primary/5 border border-primary/20 rounded-xl p-3 flex-row items-center justify-between">
-                        <View className="flex-row items-center">
-                            <View 
-                                style={{ backgroundColor: selectedDriver ? `#${selectedDriver.team_colour}` : '#3b82f6' }} 
-                                className="w-1 h-8 rounded-full mr-3" 
-                            />
-                            <View>
-                                <Text className="text-xs text-muted-foreground font-medium">Votre pronostic</Text>
-                                <Text className="text-base font-bold text-foreground">
-                                    {selectedDriver?.full_name || initialPronostic?.detail?.value}
-                                </Text>
+                    <View className="bg-primary/5 border border-primary/20 rounded-xl p-3">
+                        <View className="flex-row items-center justify-between">
+                            <View className="flex-row items-center">
+                                <View 
+                                    style={{ backgroundColor: selectedDriver ? `#${selectedDriver.team_colour}` : '#3b82f6' }} 
+                                    className="w-1 h-8 rounded-full mr-3" 
+                                />
+                                <View>
+                                    <Text className="text-xs text-muted-foreground font-medium">Votre pronostic</Text>
+                                    <Text className="text-base font-bold text-foreground">
+                                        {selectedDriver?.full_name || initialPronostic?.detail?.value}
+                                    </Text>
+                                </View>
+                            </View>
+                            <View className="items-end">
+                                <View className="flex-row items-center bg-primary/20 px-2 py-1 rounded-md mb-1">
+                                    <Coins size={14} color="#ef4444" />
+                                    <Text className="text-sm font-bold text-primary ml-1">{initialPronostic?.pointsStaked}</Text>
+                                </View>
+                                <View className="flex-row items-center">
+                                    <Text className="text-[10px] text-green-500 font-bold uppercase">Gain : +{Math.floor((initialPronostic?.pointsStaked || 0) * (initialPronostic?.detail?.multiplier || 2))}</Text>
+                                    <Text className="text-[10px] text-muted-foreground font-bold ml-1 uppercase">pts (x{(initialPronostic?.detail?.multiplier || 2).toFixed(1)})</Text>
+                                </View>
                             </View>
                         </View>
-                        <View className="items-end">
-                            <View className="flex-row items-center bg-primary/20 px-2 py-1 rounded-md">
-                                <Coins size={14} color="#ef4444" />
-                                <Text className="text-sm font-bold text-primary ml-1">{initialPronostic?.pointsStaked}</Text>
-                            </View>
-                            <Text className="text-[10px] text-primary/70 font-bold uppercase mt-1">Validé</Text>
-                        </View>
+                        {!isLocked && (
+                            <Button 
+                                variant="outline" 
+                                onPress={() => setPickerVisible(true)}
+                                className="w-full mt-3 h-8 border-primary/20 bg-transparent"
+                            >
+                                <Text className="text-primary text-xs font-bold uppercase">Modifier mon pari</Text>
+                            </Button>
+                        )}
                     </View>
                 ) : (
-                    <View className="bg-muted/30 border border-border/50 rounded-xl p-4 items-center justify-center">
-                        <Text className="text-muted-foreground text-sm mb-3">Aucun pronostic placé</Text>
+                    <View className="bg-muted/30 border border-border/50 rounded-xl p-4">
+                        <View className="flex-row justify-between items-center mb-4">
+                            <View>
+                                <Text className="text-muted-foreground text-[10px] font-bold uppercase tracking-wider">Cote Standard</Text>
+                                <Text className="text-xl font-black text-foreground italic">x2.0</Text>
+                            </View>
+                            <View className="items-end">
+                                <Text className="text-muted-foreground text-[10px] font-bold uppercase tracking-wider">Gain Potentiel</Text>
+                                <Text className="text-xl font-black text-green-500 italic">+{parseInt(points) * 2} pts</Text>
+                            </View>
+                        </View>
                         <Button 
                             onPress={() => !isLocked && setPickerVisible(true)} 
                             disabled={isLocked}
                             className="w-full bg-foreground h-10"
                         >
-                            <Text className="text-background font-bold">Placer un Prono</Text>
+                            <Text className="text-background font-bold uppercase tracking-widest text-xs">Parier {points} pts</Text>
                         </Button>
                     </View>
                 )}
@@ -111,7 +153,7 @@ export function PredictionCard({ prediction, initialPronostic, drivers, onRefres
                 <View className="flex-1 justify-end bg-black/60">
                     <View className="bg-card rounded-t-3xl p-6 h-[80%] border-t border-border/50">
                         <View className="flex-row justify-between items-center mb-6">
-                            <Text className="text-2xl font-bold text-foreground">Faire son Prono</Text>
+                            <Text className="text-2xl font-bold text-foreground">{hasBet ? "Modifier le Prono" : "Faire son Prono"}</Text>
                             <TouchableOpacity onPress={() => setPickerVisible(false)}>
                                 <Text className="text-primary font-bold">Annuler</Text>
                             </TouchableOpacity>

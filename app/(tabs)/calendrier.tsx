@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react';
 import { MeetingItem, fetchMeetings } from '@/lib/api/meetings';
 import { MeetingCard } from '@/components/calendar/MeetingCard';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { ScreenHeader } from '@/components/ui/ScreenHeader';
 
 export default function ExploreScreen() {
     const [meetings, setMeetings] = useState<MeetingItem[]>([]);
@@ -53,6 +54,7 @@ export default function ExploreScreen() {
 
     return (
         <View className="flex-1 bg-background">
+            <ScreenHeader title="Calendrier F1" subtitle="Saison 2026" />
             <Tabs value={activeTab} onValueChange={setActiveTab} className="flex-1">
                 {/* Custom Tabs */}
                 <View className="mx-4 mt-4 mb-2">

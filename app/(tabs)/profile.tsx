@@ -12,6 +12,7 @@ import { Text } from '@/components/ui/text';
 import { useAuth } from '@/context/AuthContext';
 import { LogOut, User } from 'lucide-react-native';
 import { ScrollView, View } from 'react-native';
+import { ScreenHeader } from '@/components/ui/ScreenHeader';
 
 export default function ProfileScreen() {
   const { user, isInitialized, logout } = useAuth();
@@ -32,9 +33,11 @@ export default function ProfileScreen() {
 
   if (user) {
     return (
-      <ScrollView
-        keyboardShouldPersistTaps="handled"
-        contentContainerClassName="flex-1 p-4 py-8 sm:py-4 sm:p-6 mt-safe">
+      <View className="flex-1 bg-background">
+        <ScreenHeader title="Mon Profil" subtitle="Paramètres Compte" />
+        <ScrollView
+          keyboardShouldPersistTaps="handled"
+          contentContainerClassName="flex-1 p-4 py-8 sm:py-4 sm:p-6">
         <View className="w-full max-w-sm mx-auto gap-6">
           <Card className="border-border shadow-sm">
             <CardHeader className="flex-row items-center gap-3">
@@ -65,6 +68,7 @@ export default function ProfileScreen() {
           </Card>
         </View>
       </ScrollView>
+    </View>
     );
   }
 

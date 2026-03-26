@@ -3,6 +3,7 @@ import { Text } from '@/components/ui/text';
 import { useState, useEffect } from 'react';
 import { fetchDriverStandings, fetchTeamStandings, DriverStanding, TeamStanding } from '@/lib/api/meetings';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { ScreenHeader } from '@/components/ui/ScreenHeader';
 
 export default function StandingsScreen() {
     const [driverStandings, setDriverStandings] = useState<DriverStanding[]>([]);
@@ -57,6 +58,7 @@ export default function StandingsScreen() {
 
     return (
         <View className="flex-1 bg-background">
+            <ScreenHeader title="Classement F1" subtitle="Championnat du Monde" />
             <Tabs value={activeTab} onValueChange={setActiveTab} className="flex-1">
                 {/* Custom Tabs List */}
                 <View className="mx-4 mt-4 mb-2">
@@ -88,13 +90,13 @@ export default function StandingsScreen() {
                                             {item.position}
                                         </Text>
                                     </View>
-                                    
+
                                     <View className="flex-row items-center flex-1">
                                         <View style={{ width: 4, height: 36, backgroundColor: item.driver?.team_colour ? `#${item.driver.team_colour}` : '#333', borderRadius: 2, marginRight: 12 }} />
-                                        
+
                                         {item.driver?.headshot_url ? (
-                                            <Image 
-                                                source={{ uri: item.driver.headshot_url }} 
+                                            <Image
+                                                source={{ uri: item.driver.headshot_url }}
                                                 className="w-12 h-12 rounded-full mr-3 bg-muted"
                                                 resizeMode="contain"
                                             />
@@ -110,7 +112,7 @@ export default function StandingsScreen() {
                                             </Text>
                                             <View className="flex-row items-center mt-0.5">
                                                 {item.driver?.team_name && getTeamLogo(item.driver.team_name) && (
-                                                    <Image 
+                                                    <Image
                                                         source={{ uri: getTeamLogo(item.driver.team_name)! }}
                                                         className="w-4 h-4 mr-1.5"
                                                         resizeMode="contain"
@@ -156,7 +158,7 @@ export default function StandingsScreen() {
                                     <View className="flex-row items-center flex-1">
                                         <View style={{ width: 4, height: 36, backgroundColor: item.team_colour ? `#${item.team_colour}` : '#333', borderRadius: 2, marginRight: 12 }} />
                                         {getTeamLogo(item.team_name) ? (
-                                            <Image 
+                                            <Image
                                                 source={{ uri: getTeamLogo(item.team_name)! }}
                                                 className="w-8 h-8 mr-3"
                                                 resizeMode="contain"

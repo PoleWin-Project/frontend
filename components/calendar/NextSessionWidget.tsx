@@ -1,11 +1,12 @@
-import { View, ActivityIndicator } from 'react-native';
+import { View, ActivityIndicator, TouchableOpacity } from 'react-native';
 import { Text } from '@/components/ui/text';
 import { Card } from '@/components/ui/card';
 import { useEffect, useState, useRef } from 'react';
 import { fetchMeetings, fetchSessions, MeetingItem, SessionItem } from '@/lib/api/meetings';
-import { Calendar as CalendarIcon, MapPin, Clock } from 'lucide-react-native';
+import { Calendar as CalendarIcon, MapPin, Clock, Gamepad2 } from 'lucide-react-native';
 import { BlurView } from 'expo-blur';
 import { LinearGradient } from 'expo-linear-gradient';
+import { Link } from 'expo-router';
 
 interface CountdownValues {
     days: number;
@@ -259,6 +260,20 @@ export function NextSessionWidget() {
                                 <Text className="text-[10px] text-muted-foreground font-black uppercase tracking-widest mt-4 opacity-30">Loading Telemetry...</Text>
                             </View>
                         )}
+                    </View>
+                    {/* Action: Parier maintenant */}
+                    <View className="mt-6">
+                        <Link href="/game" asChild>
+                            <TouchableOpacity
+                                activeOpacity={0.8}
+                                className="bg-primary py-4 rounded-xl items-center justify-center flex-row gap-2 shadow-lg shadow-primary/30"
+                            >
+                                <Gamepad2 size={18} color="white" />
+                                <Text className="text-white font-black uppercase tracking-widest italic">
+                                    Parier maintenant
+                                </Text>
+                            </TouchableOpacity>
+                        </Link>
                     </View>
                 </BlurView>
             </View>

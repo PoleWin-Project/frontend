@@ -4,22 +4,7 @@ import { Home, User, Newspaper, CalendarDays, Gamepad2, Trophy } from 'lucide-re
 export default function TabLayout() {
     return (
         <Tabs screenOptions={{
-            headerTitleAlign: 'left',
-            headerStyle: {
-                backgroundColor: '#0B0B0D',
-                height: 120,
-            },
-            headerTitleStyle: {
-                fontFamily: 'Montserrat_Bold_Italic',
-                fontSize: 28,
-                color: '#ffffffff',
-            },
-            headerTitleContainerStyle: {
-                paddingHorizontal: 16,
-                marginTop: 20,
-                paddingBottom: 10,
-            },
-            headerShadowVisible: false,
+            headerShown: false,
             tabBarActiveTintColor: '#E10600',
             tabBarInactiveTintColor: '#888888',
             tabBarStyle: {

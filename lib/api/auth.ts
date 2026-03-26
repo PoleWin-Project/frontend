@@ -6,6 +6,7 @@ export interface AuthUser {
   username: string;
   roles: string[];
   isEmailVerified?: boolean;
+  points: number;
 }
 
 export interface AuthTokens {
@@ -152,6 +153,31 @@ export async function refreshTokens(
       ok: true,
       accessToken: data.accessToken,
       refreshToken: data.refreshToken,
+    };
+  } catch (e: unknown) {
+    const msg = e instanceof Error ? e.message : 'Erreur reseau';
+    return { ok: false, error: msg };
+  }
+}
+
+export async function fetchCurrentUser(accessToken: string): Promise<{ ok: true; user: AuthUser } | { ok: false; error: string }> {
+  try {
+    const res = await fetch(`${API_URL}/auth/me`, {
+      method: 'GET',
+      headers: { 
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${accessToken}`
+      },
+    });
+    const data = await res.json();
+
+    if (!res.ok) {
+      return { ok: false, error: data.message || 'Impossible de recuperer le profil' };
+    }
+
+    return {
+      ok: true,
+      user: data.user,
     };
   } catch (e: unknown) {
     const msg = e instanceof Error ? e.message : 'Erreur reseau';

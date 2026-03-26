@@ -1,10 +1,13 @@
-const API_URL = process.env.EXPO_PUBLIC_API_URL || 'http://10.6.0.177:8000/api/v1';
+import AsyncStorage from '@react-native-async-storage/async-storage';
+
+const API_URL = process.env.EXPO_PUBLIC_API_URL || 'http://localhost:8000/api/v1';
 
 // In a real app, this would come from an auth context/storage
 const getHeaders = async () => {
+    const token = await AsyncStorage.getItem('@polewin/accessToken');
     return {
         'Content-Type': 'application/json',
-        // 'Authorization': `Bearer ${token}`
+        ...(token ? { 'Authorization': `Bearer ${token}` } : {})
     };
 };
 
@@ -162,6 +165,7 @@ export interface RaceSession {
     idCourseExternal: number;
     name: string;
     type: string;
+    location?: string;
     dateStart: string;
 }
 
@@ -194,6 +198,7 @@ export interface Pronostic {
         value: string;
         multiplier: number;
     };
+    prediction?: any;
 }
 
 export interface Driver {
@@ -229,9 +234,9 @@ export async function fetchDrivers(sessionKey: number): Promise<Driver[]> {
 }
 
 export async function placePronostic(predictionId: number, pointsStaked: number, value: string): Promise<any> {
-    const url = `${API_URL}/predictions/predictions/${predictionId}/pronostic`;
+    const url = `${API_URL}/predictions/${predictionId}/pronostic`;
     const headers = await getHeaders();
-    
+
     try {
         const response = await fetch(url, {
             method: 'POST',
@@ -245,8 +250,39 @@ export async function placePronostic(predictionId: number, pointsStaked: number,
     }
 }
 
+export async function updatePronostic(predictionId: number, pointsStaked: number, value: string): Promise<any> {
+    const url = `${API_URL}/predictions/${predictionId}/pronostic`;
+    const headers = await getHeaders();
+
+    try {
+        const response = await fetch(url, {
+            method: 'PATCH',
+            headers,
+            body: JSON.stringify({ pointsStaked, value }),
+        });
+        return await response.json();
+    } catch (error) {
+        console.error(`Failed to update pronostic for prediction ${predictionId}:`, error);
+        throw error;
+    }
+}
+
+export async function fetchMyPronosticsHistory(limit = 50, offset = 0): Promise<Pronostic[]> {
+    const url = `${API_URL}/predictions/users/me/pronostics?limit=${limit}&offset=${offset}`;
+    const headers = await getHeaders();
+
+    try {
+        const response = await fetch(url, { headers });
+        const data = await response.json();
+        return data.items || [];
+    } catch (error) {
+        console.error('Failed to fetch pronostics history:', error);
+        return [];
+    }
+}
+
 export async function fetchMyPronostic(predictionId: number): Promise<Pronostic | null> {
-    const url = `${API_URL}/predictions/predictions/${predictionId}/pronostic`;
+    const url = `${API_URL}/predictions/${predictionId}/pronostic`;
     const headers = await getHeaders();
 
     try {
@@ -257,6 +293,19 @@ export async function fetchMyPronostic(predictionId: number): Promise<Pronostic 
     } catch (error) {
         console.error(`Failed to fetch my pronostic for prediction ${predictionId}:`, error);
         return null;
+    }
+}
+export async function fetchMyPronosticsForSession(sessionId: number): Promise<Pronostic[]> {
+    const url = `${API_URL}/predictions/sessions/${sessionId}/pronostics/me`;
+    const headers = await getHeaders();
+
+    try {
+        const response = await fetch(url, { headers });
+        const data = await response.json();
+        return data.pronostics || [];
+    } catch (error) {
+        console.error(`Failed to fetch my pronostics for session ${sessionId}:`, error);
+        return [];
     }
 }
 
