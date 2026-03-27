@@ -31,11 +31,19 @@ function AuthGuard({ children }: { children: React.ReactNode }) {
     if (!isInitialized) return;
 
     const inAuthGroup = segments[0] === '(auth)';
+    const inOnboarding = segments[0] === 'onboarding';
 
-    if (!user && !inAuthGroup) {
+    if (!user && !inAuthGroup && !inOnboarding) {
       router.replace('/(auth)/sign-in');
     } else if (user && inAuthGroup) {
-      router.replace('/(tabs)');
+      // Vérifier si le profil est complet (onboarding terminé)
+      const hasCompletedOnboarding = user.profile?.favoriteTeamCode || user.profile?.favoriteDriverCode;
+      
+      if (!hasCompletedOnboarding) {
+        router.replace('/onboarding');
+      } else {
+        router.replace('/(tabs)');
+      }
     }
   }, [user, isInitialized, segments]);
 
@@ -74,6 +82,7 @@ export default function RootLayout() {
           <Stack>
             <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
             <Stack.Screen name="(auth)" options={{ headerShown: false }} />
+            <Stack.Screen name="onboarding" options={{ headerShown: false, presentation: 'fullScreenModal' }} />
           </Stack>
           <PortalHost />
         </AuthGuard>

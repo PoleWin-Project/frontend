@@ -2,6 +2,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import * as React from 'react';
 import type { AuthUser } from '@/lib/api/auth';
 import { login as apiLogin, refreshTokens, register as apiRegister, fetchCurrentUser } from '@/lib/api/auth';
+import { updateUserProfile as apiUpdateUserProfile, type UpdateProfileInput } from '@/lib/api/users';
 
 const ACCESS_TOKEN_KEY = '@polewin/accessToken';
 const REFRESH_TOKEN_KEY = '@polewin/refreshToken';
@@ -26,6 +27,8 @@ type AuthContextValue = AuthState & {
   logout: () => Promise<void>;
   clearError: () => void;
   refreshProfile: () => Promise<void>;
+  updateUserProfile: (data: UpdateProfileInput) => Promise<{ ok: boolean; error?: string }>;
+  deleteAccount: () => Promise<{ ok: boolean; error?: string }>;
 };
 
 const AuthContext = React.createContext<AuthContextValue | null>(null);
@@ -150,6 +153,29 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     setState((s) => ({ ...s, error: null }));
   }, []);
 
+  const updateUserProfile = React.useCallback(
+    async (data: UpdateProfileInput) => {
+      if (!state.accessToken) return { ok: false, error: 'Non authentiqué' };
+      setState((s) => ({ ...s, isLoading: true, error: null }));
+      
+      const result = await apiUpdateUserProfile(data, state.accessToken);
+      if (!result.ok) {
+        setState((s) => ({ ...s, isLoading: false, error: result.error }));
+        return { ok: false, error: result.error };
+      }
+      
+      await AsyncStorage.setItem(USER_KEY, JSON.stringify(result.user));
+      setState((s) => ({
+        ...s,
+        user: result.user,
+        isLoading: false,
+        error: null,
+      }));
+      return { ok: true };
+    },
+    [state.accessToken]
+  );
+
   const refreshProfile = React.useCallback(async () => {
     if (!state.accessToken) return;
     const result = await fetchCurrentUser(state.accessToken);
@@ -159,6 +185,22 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
   }, [state.accessToken]);
 
+  const deleteAccount = React.useCallback(async () => {
+    if (!state.accessToken) return { ok: false, error: 'Non authentiqué' };
+    setState((s) => ({ ...s, isLoading: true, error: null }));
+    
+    const { deleteUserAccount } = await import('@/lib/api/users');
+    const result = await deleteUserAccount(state.accessToken);
+    
+    if (!result.ok) {
+      setState((s) => ({ ...s, isLoading: false, error: result.error }));
+      return { ok: false, error: result.error };
+    }
+    
+    await logout();
+    return { ok: true };
+  }, [state.accessToken, logout]);
+
   const value: AuthContextValue = {
     ...state,
     login,
@@ -166,6 +208,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     logout,
     clearError,
     refreshProfile,
+    updateUserProfile,
+    deleteAccount,
   };
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

@@ -110,11 +110,6 @@ export default function GameScreen() {
                             <View className="p-4">
                         {/* Next GP Hero */}
                         <View className="bg-zinc-900 rounded-3xl overflow-hidden mb-6 border border-white/5 shadow-2xl">
-                            <Image 
-                                source={{ uri: 'https://media.formula1.com/content/dam/fom-website/manual/Misc/2024-Postcard-Landscape/Australia.jpg' }}
-                                className="w-full h-48 opacity-60"
-                                style={{ position: 'absolute' }}
-                            />
                             <View className="p-6 h-48 justify-between bg-black/40">
                                 <View className="flex-row justify-between items-start">
                                     <View className="bg-primary px-3 py-1 rounded-sm">

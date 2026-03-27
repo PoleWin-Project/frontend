@@ -7,6 +7,11 @@ export interface AuthUser {
   roles: string[];
   isEmailVerified?: boolean;
   points: number;
+  profile?: {
+    favoriteTeamCode?: string | null;
+    favoriteDriverCode?: string | null;
+    bio?: string | null;
+  };
 }
 
 export interface AuthTokens {

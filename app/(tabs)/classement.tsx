@@ -11,30 +11,7 @@ export default function StandingsScreen() {
     const [loading, setLoading] = useState(true);
     const [activeTab, setActiveTab] = useState('drivers');
 
-    const getTeamLogo = (teamName: string) => {
-        const normalized = teamName.toLowerCase().replace(/ /g, '');
-        const teamIdMap: Record<string, string> = {
-            'mercedes': 'mercedes',
-            'ferrari': 'ferrari',
-            'mclaren': 'mclaren',
-            'haas': 'haasf1team',
-            'redbull': 'redbullracing',
-            'rb': 'racingbulls',
-            'racingbulls': 'racingbulls',
-            'alpine': 'alpine',
-            'audi': 'audi',
-            'sauber': 'audi',
-            'williams': 'williams',
-            'astonmartin': 'astonmartin',
-            'cadillac': 'cadillac',
-        };
-
-        const id = Object.keys(teamIdMap).find(k => normalized.includes(k));
-        if (!id) return null;
-
-        const teamId = teamIdMap[id];
-        return `https://media.formula1.com/image/upload/c_lfill,w_48/q_auto/v1740000001/common/f1/2026/${teamId}/2026${teamId}logowhite.webp`;
-    };
+    const getTeamLogo = () => require('@/assets/images/placeholder_team.png');
 
     useEffect(() => {
         async function loadData() {
@@ -94,26 +71,20 @@ export default function StandingsScreen() {
                                     <View className="flex-row items-center flex-1">
                                         <View style={{ width: 4, height: 36, backgroundColor: item.driver?.team_colour ? `#${item.driver.team_colour}` : '#333', borderRadius: 2, marginRight: 12 }} />
 
-                                        {item.driver?.headshot_url ? (
-                                            <Image
-                                                source={{ uri: item.driver.headshot_url }}
-                                                className="w-12 h-12 rounded-full mr-3 bg-muted"
-                                                resizeMode="contain"
-                                            />
-                                        ) : (
-                                            <View className="w-12 h-12 rounded-full mr-3 bg-muted items-center justify-center">
-                                                <Text className="text-[10px] text-muted-foreground font-bold">{item.driver?.name_acronym || '#' + item.driver_number}</Text>
-                                            </View>
-                                        )}
+                                        <Image
+                                            source={require('@/assets/images/placeholder_driver.png')}
+                                            className="w-12 h-12 rounded-full mr-3 bg-muted"
+                                            resizeMode="cover"
+                                        />
 
                                         <View className="flex-1">
                                             <Text className="font-bold text-foreground text-sm" numberOfLines={1}>
                                                 {item.driver?.full_name || `Driver #${item.driver_number}`}
                                             </Text>
                                             <View className="flex-row items-center mt-0.5">
-                                                {item.driver?.team_name && getTeamLogo(item.driver.team_name) && (
+                                                {item.driver?.team_name && (
                                                     <Image
-                                                        source={{ uri: getTeamLogo(item.driver.team_name)! }}
+                                                        source={getTeamLogo()}
                                                         className="w-4 h-4 mr-1.5"
                                                         resizeMode="contain"
                                                     />
@@ -157,15 +128,11 @@ export default function StandingsScreen() {
 
                                     <View className="flex-row items-center flex-1">
                                         <View style={{ width: 4, height: 36, backgroundColor: item.team_colour ? `#${item.team_colour}` : '#333', borderRadius: 2, marginRight: 12 }} />
-                                        {getTeamLogo(item.team_name) ? (
-                                            <Image
-                                                source={{ uri: getTeamLogo(item.team_name)! }}
-                                                className="w-8 h-8 mr-3"
-                                                resizeMode="contain"
-                                            />
-                                        ) : (
-                                            <View className="w-8 h-8 rounded bg-muted mr-3" />
-                                        )}
+                                        <Image
+                                            source={getTeamLogo()}
+                                            className="w-8 h-8 mr-3"
+                                            resizeMode="contain"
+                                        />
                                         <Text className="font-bold text-foreground text-sm flex-1" numberOfLines={1}>
                                             {item.team_name}
                                         </Text>
