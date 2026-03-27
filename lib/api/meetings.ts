@@ -117,6 +117,7 @@ export interface DriverStanding {
     driver_number: number;
     position: number;
     points: number;
+    wins: number;
     driver?: {
         broadcast_name: string;
         full_name: string;
@@ -124,6 +125,8 @@ export interface DriverStanding {
         team_name: string;
         team_colour: string;
         headshot_url: string;
+        nationality?: string;
+        driver_id?: string;
     };
 }
 
@@ -142,9 +145,12 @@ export async function fetchDriverStandings(year: number = 2026): Promise<DriverS
 
 export interface TeamStanding {
     team_name: string;
+    team_id?: string;
     position: number;
     points: number;
+    wins: number;
     team_colour: string;
+    nationality?: string;
 }
 
 export async function fetchTeamStandings(year: number = 2026): Promise<TeamStanding[]> {
