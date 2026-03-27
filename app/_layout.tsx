@@ -19,6 +19,29 @@ export {
   ErrorBoundary,
 } from 'expo-router';
 
+import { useAuth } from '@/context/AuthContext';
+import { useSegments, useRouter } from 'expo-router';
+
+function AuthGuard({ children }: { children: React.ReactNode }) {
+  const { user, isInitialized } = useAuth();
+  const segments = useSegments();
+  const router = useRouter();
+
+  useEffect(() => {
+    if (!isInitialized) return;
+
+    const inAuthGroup = segments[0] === '(auth)';
+
+    if (!user && !inAuthGroup) {
+      router.replace('/(auth)/sign-in');
+    } else if (user && inAuthGroup) {
+      router.replace('/(tabs)');
+    }
+  }, [user, isInitialized, segments]);
+
+  return <>{children}</>;
+}
+
 export default function RootLayout() {
   const { colorScheme } = useColorScheme();
   const [loaded, error] = useFonts({
@@ -46,12 +69,14 @@ export default function RootLayout() {
   return (
     <ThemeProvider value={NAV_THEME[colorScheme ?? 'light']}>
       <AuthProvider>
-        <StatusBar style="auto" />
-        <Stack>
-          <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
-          <Stack.Screen name="(auth)" options={{ headerShown: false }} />
-        </Stack>
-        <PortalHost />
+        <AuthGuard>
+          <StatusBar style="auto" />
+          <Stack>
+            <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
+            <Stack.Screen name="(auth)" options={{ headerShown: false }} />
+          </Stack>
+          <PortalHost />
+        </AuthGuard>
       </AuthProvider>
     </ThemeProvider>
   );

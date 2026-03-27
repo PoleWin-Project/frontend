@@ -31,13 +31,16 @@ export default function ProfileScreen() {
     );
   }
 
-  if (user) {
-    return (
-      <View className="flex-1 bg-background">
-        <ScreenHeader title="Mon Profil" subtitle="Paramètres Compte" />
-        <ScrollView
-          keyboardShouldPersistTaps="handled"
-          contentContainerClassName="flex-1 p-4 py-8 sm:py-4 sm:p-6">
+  if (!user) {
+    return null;
+  }
+
+  return (
+    <View className="flex-1 bg-background">
+      <ScreenHeader title="Mon Profil" subtitle="Paramètres Compte" />
+      <ScrollView
+        keyboardShouldPersistTaps="handled"
+        contentContainerClassName="flex-1 p-4 py-8 sm:py-4 sm:p-6">
         <View className="w-full max-w-sm mx-auto gap-6">
           <Card className="border-border shadow-sm">
             <CardHeader className="flex-row items-center gap-3">
@@ -68,15 +71,6 @@ export default function ProfileScreen() {
           </Card>
         </View>
       </ScrollView>
-    </View>
-    );
-  }
-
-  return (
-    <View className="flex-1 bg-[#050507] px-4 pt-6">
-      <View className="w-full max-w-sm self-center">
-        <SignInForm />
-      </View>
     </View>
   );
 }

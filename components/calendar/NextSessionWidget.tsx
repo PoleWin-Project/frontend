@@ -23,6 +23,7 @@ export function NextSessionWidget() {
 
     const [nextSession, setNextSession] = useState<SessionItem | null>(null);
     const [countdown, setCountdown] = useState<CountdownValues | null>(null);
+    const [isLive, setIsLive] = useState(false);
     const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
     useEffect(() => {
@@ -61,20 +62,35 @@ export function NextSessionWidget() {
 
         function findNextAndUpdate() {
             const now = Date.now();
-            const upcoming = sessions.find(s => new Date(s.date_start).getTime() > now);
+            const SESSION_DURATION = 2 * 60 * 60 * 1000; // Assume 2 hours per session
 
-            if (upcoming) {
-                setNextSession(upcoming);
-                const diff = new Date(upcoming.date_start).getTime() - now;
-                setCountdown({
-                    days: Math.floor(diff / (1000 * 60 * 60 * 24)),
-                    hours: Math.floor((diff / (1000 * 60 * 60)) % 24),
-                    mins: Math.floor((diff / (1000 * 60)) % 60),
-                    secs: Math.floor((diff / 1000) % 60),
-                });
-            } else {
-                setNextSession(null);
+            const liveSession = sessions.find(s => {
+                const start = new Date(s.date_start).getTime();
+                return now >= start && now <= start + SESSION_DURATION;
+            });
+
+            if (liveSession) {
+                setNextSession(liveSession);
                 setCountdown(null);
+                setIsLive(true);
+            } else {
+                const upcoming = sessions.find(s => new Date(s.date_start).getTime() > now);
+
+                if (upcoming) {
+                    setNextSession(upcoming);
+                    setIsLive(false);
+                    const diff = new Date(upcoming.date_start).getTime() - now;
+                    setCountdown({
+                        days: Math.floor(diff / (1000 * 60 * 60 * 24)),
+                        hours: Math.floor((diff / (1000 * 60 * 60)) % 24),
+                        mins: Math.floor((diff / (1000 * 60)) % 60),
+                        secs: Math.floor((diff / 1000) % 60),
+                    });
+                } else {
+                    setNextSession(null);
+                    setCountdown(null);
+                    setIsLive(false);
+                }
             }
         }
 
@@ -179,8 +195,15 @@ export function NextSessionWidget() {
                         </View>
                     </View>
 
-                    {/* Countdown to Next Session */}
-                    {nextSession && countdown && (
+                    {/* Countdown or LIVE badge */}
+                    {nextSession && (isLive ? (
+                        <View className="mb-6 px-4 py-5 rounded-xl bg-red-500/20 border border-red-500/30 flex-row items-center justify-center gap-3 shadow-[0_0_15px_rgba(239,68,68,0.3)]">
+                            <View className="w-4 h-4 rounded-full bg-red-500 border-2 border-white/20" />
+                            <Text className="text-xl font-black text-white uppercase tracking-widest italic">
+                                {nextSession.session_name} EN COURS
+                            </Text>
+                        </View>
+                    ) : countdown && (
                         <View className="mb-6 p-4 rounded-xl bg-primary/10 border border-primary/30">
                             <View className="flex-row items-center gap-2 mb-3">
                                 <Clock size={14} color="#ef4444" />
@@ -214,7 +237,7 @@ export function NextSessionWidget() {
                                 </View>
                             </View>
                         </View>
-                    )}
+                    ))}
 
                     {/* Body: Sessions Schedule */}
                     <View className="gap-3">
