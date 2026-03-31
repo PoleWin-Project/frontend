@@ -14,6 +14,7 @@ import { NextSessionWidget } from '@/components/calendar/NextSessionWidget';
 import { QuickStats } from '@/components/home/QuickStats';
 import { F1Loader } from '@/components/ui/F1Loader';
 import { useAuth } from '@/context/AuthContext';
+import { PitStopWidget } from '@/components/home/PitStopWidget';
 
 const LOGO = {
   light: require('@/assets/images/react-native-reusables-light.png'),
@@ -50,11 +51,15 @@ export default function Screen() {
 
   return (
     <>
-      <ScrollView className="flex-1 bg-background" contentContainerStyle={{ paddingBottom: 40 }}>
+      <ScrollView 
+        className="flex-1 bg-background" 
+        contentContainerStyle={{ paddingBottom: 140 }}
+        showsVerticalScrollIndicator={false}
+      >
         {/* ─── Hero Section v7: Immersive Full Bleed ─── */}
         <ImageBackground
           source={require('@/assets/images/hero-bg.png')}
-          style={{ height: 400, width: '100%', justifyContent: 'center', alignItems: 'center' }}
+          style={{ height: 350, width: '100%', justifyContent: 'center', alignItems: 'center' }}
           resizeMode="cover"
         >
           {/* Gradient Overlay for blending into the background and text readability */}
@@ -86,7 +91,7 @@ export default function Screen() {
           </View>
         </ImageBackground>
 
-        <View className="px-4 mt-6">
+        <View className="px-4 mt-10">
           {/* User Points Card */}
           {user && (
             <View className="bg-card border border-white/5 p-4 rounded-3xl mb-6 flex-row items-center justify-between shadow-sm">
@@ -107,6 +112,9 @@ export default function Screen() {
               </View>
             </View>
           )}
+
+          {/* Pit Stop / Garage Widget */}
+          <PitStopWidget />
 
           {/* Prochain Grand Prix (Sessions) */}
           <NextSessionWidget />

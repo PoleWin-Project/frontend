@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
-import { View, ScrollView, RefreshControl, Image, ActivityIndicator } from 'react-native';
+import { View, ScrollView, RefreshControl, ActivityIndicator } from 'react-native';
 import { Text } from '@/components/ui/text';
-import { Calendar, MapPin, ChevronRight, Info } from 'lucide-react-native';
+import { Calendar, MapPin, Info } from 'lucide-react-native';
 import { fetchRaceSessions, RaceSession, fetchPredictions, Prediction, fetchMyPronostic, Pronostic, fetchDrivers, Driver, fetchMyPronosticsForSession, fetchMyPronosticsHistory } from '@/lib/api/meetings';
 import { PredictionCard } from '@/components/game/PredictionCard';
 import { PronosticHistoryCard } from '@/components/game/PronosticHistoryCard';
@@ -10,7 +10,7 @@ import { F1Loader } from '@/components/ui/F1Loader';
 import { ScreenHeader } from '@/components/ui/ScreenHeader';
 import { useAuth } from '@/context/AuthContext';
 
-export default function GameScreen() {
+export default function PronosticsScreen() {
     const { user } = useAuth();
     const [loading, setLoading] = useState(true);
     const [refreshing, setRefreshing] = useState(false);
@@ -25,16 +25,13 @@ export default function GameScreen() {
         setLoading(true);
         try {
             const sessions = await fetchRaceSessions(50);
-            // Sort by date and filter for upcoming or very recent
             const sorted = sessions
                 .filter(s => ['Race', 'Qualifying', 'Sprint'].includes(s.type))
                 .sort((a, b) => new Date(a.dateStart).getTime() - new Date(b.dateStart).getTime());
             
-            // Find the next 3 sessions with predictions
             const nextSessions = sorted.filter(s => new Date(s.dateStart).getTime() > Date.now() - 3600000).slice(0, 3);
             setUpcomingSessions(nextSessions);
 
-            // Fetch predictions and drivers for each session
             const preds: Record<number, Prediction[]> = {};
             const prons: Record<number, Pronostic | null> = {};
             const drvs: Record<number, Driver[]> = {};

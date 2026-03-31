@@ -21,9 +21,10 @@ export default function AllNewsScreen() {
                 setNews(data.results);
                 setNextPage(data.nextPage);
             }
-        } catch (err: any) {
-            setError(err.message || 'Impossible de charger les actualités.');
-        } finally {
+    } catch (err: any) {
+        console.warn(`[NewsAPI] Fetching failed: ${err.message}`);
+        return { status: 'error', totalResults: 0, results: [], nextPage: null };
+    } finally {
             setLoading(false);
         }
     };

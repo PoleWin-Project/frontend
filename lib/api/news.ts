@@ -41,18 +41,8 @@ export async function fetchF1News(page: string | null = null): Promise<NewsRespo
         const response = await fetch(url);
         
         if (!response.ok) {
-            if (response.status === 503) {
-                throw new Error('Service temporairement indisponible (NewsAPI 503)');
-            }
-            
-            let errorDetails = '';
-            try {
-                const errorData = await response.json();
-                errorDetails = errorData.message || JSON.stringify(errorData);
-            } catch (e) {
-                errorDetails = response.statusText || `Status ${response.status}`;
-            }
-            throw new Error(`Error fetching news: ${errorDetails}`);
+            console.warn(`[NewsAPI] Request failed with status ${response.status}`);
+            return { status: 'error', totalResults: 0, results: [], nextPage: null };
         }
 
         const data: NewsResponse = await response.json();

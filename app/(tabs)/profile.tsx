@@ -126,7 +126,7 @@ export default function ProfileScreen() {
                />
             </View>
             <View className="flex-1">
-              <Text className="text-2xl font-black text-white uppercase italic italic">{user.username}</Text>
+              <Text className="text-2xl font-black text-white uppercase italic">{user.username}</Text>
               <Text className="text-white/40 font-bold mb-2">{user.email}</Text>
               <View className="flex-row">
                 <View className="bg-primary/10 px-2 py-1 rounded-md border border-primary/20">
@@ -148,14 +148,16 @@ export default function ProfileScreen() {
             <View className="gap-4">
               <View>
                 <Text className="text-[10px] text-white/40 font-black uppercase tracking-widest mb-2 ml-1">Mini Bio</Text>
-                <View className="bg-black/40 border border-white/5 rounded-xl overflow-hidden">
+                <View className="bg-black/40 border border-white/10 rounded-2xl">
                    <Input 
                       multiline
-                      numberOfLines={3}
+                      numberOfLines={4}
                       value={editBio}
                       onChangeText={setEditBio}
-                      className="text-white h-auto min-h-[80px] p-4 border-0"
+                      className="text-white text-base min-h-[100px] px-4 py-3 border-0 bg-transparent"
                       textAlignVertical="top"
+                      placeholder="Parlez-nous de votre passion F1..."
+                      placeholderTextColor="rgba(255,255,255,0.3)"
                    />
                 </View>
               </View>
@@ -216,22 +218,22 @@ export default function ProfileScreen() {
                   <Text className="text-[10px] text-white/30 font-black uppercase tracking-widest mb-1">Écurie</Text>
                   <View className="flex-row items-center">
                     <View style={{ backgroundColor: teamColor }} className="w-2 h-2 rounded-full mr-2" />
-                    <Text className="text-white font-black uppercase italic italic">{user.profile?.favoriteTeamCode || 'None'}</Text>
+                    <Text className="text-white font-black uppercase italic">{user.profile?.favoriteTeamCode || 'None'}</Text>
                   </View>
                 </View>
                 <View className="flex-1 items-center border-r border-white/5">
                    <Text className="text-[10px] text-white/30 font-black uppercase tracking-widest mb-1">Pilote</Text>
-                   <Text className="text-white font-black uppercase italic italic">{user.profile?.favoriteDriverCode || 'None'}</Text>
+                   <Text className="text-white font-black uppercase italic">{user.profile?.favoriteDriverCode || 'None'}</Text>
                 </View>
                 <View className="flex-1 items-center">
                    <Text className="text-[10px] text-white/30 font-black uppercase tracking-widest mb-1">Points</Text>
-                   <Text className="text-primary font-black text-lg italic italic">{user.points}</Text>
+                   <Text className="text-primary font-black text-xl italic">{user.points?.toLocaleString() ?? '0'}</Text>
                 </View>
               </View>
 
               <View className="bg-black/40 p-4 rounded-2xl border border-white/5">
                 <Text className="text-[10px] text-white/30 font-black uppercase tracking-widest mb-2">Ma Bio</Text>
-                <Text className="text-white/70 text-sm leading-5 italic italic">
+                <Text className="text-white/70 text-sm leading-5 italic">
                   {user.profile?.bio || "Pas encore de bio. Cliquez sur éditer pour en ajouter une !"}
                 </Text>
               </View>
@@ -244,7 +246,7 @@ export default function ProfileScreen() {
            <View className="flex-1 bg-[#0c0c0f] border border-white/10 rounded-2xl p-4">
               <Icon as={Trophy} size={20} className="text-amber-400 mb-2" />
               <Text className="text-white/40 text-[10px] font-black uppercase mb-1">Victoires</Text>
-              <Text className="text-white font-black text-xl italic italic">{stats?.won ?? 0}</Text>
+              <Text className="text-white font-black text-xl italic">{stats?.won ?? 0}</Text>
            </View>
            <View className="flex-1 bg-[#0c0c0f] border border-white/10 rounded-2xl p-4">
               <Icon as={Star} size={20} className="text-primary mb-2" />
