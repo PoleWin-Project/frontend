@@ -1,5 +1,29 @@
 const API_URL = process.env.EXPO_PUBLIC_API_URL || 'http://localhost:8000/api/v1';
 
+export interface SearchUser {
+  id: number;
+  username: string;
+  profile?: {
+    displayName: string | null;
+    avatarUrl: string | null;
+    points: number;
+    isProfilePublic: boolean;
+  } | null;
+}
+
+export async function searchUsers(q: string, accessToken: string): Promise<SearchUser[]> {
+  if (!q.trim()) return [];
+  try {
+    const res = await fetch(`${API_URL}/users/search?q=${encodeURIComponent(q)}`, {
+      headers: { Authorization: `Bearer ${accessToken}` },
+    });
+    const data = await res.json();
+    return data.users ?? [];
+  } catch {
+    return [];
+  }
+}
+
 export type UpdateProfileInput = {
   profile: {
     favoriteTeamCode?: string | null;

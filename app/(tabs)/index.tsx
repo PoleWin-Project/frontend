@@ -1,12 +1,12 @@
 import { Button } from '@/components/ui/button';
 import { Icon } from '@/components/ui/icon';
 import { Text } from '@/components/ui/text';
-import { Link, Stack } from 'expo-router';
-import { MoonStar, Star, Sun, ChevronRight, Info, Trophy, User } from 'lucide-react-native';
+import { Link, Stack, useRouter } from 'expo-router';
+import { MoonStar, Star, Sun, ChevronRight, Info, Trophy, User, MessageCircle } from 'lucide-react-native';
 import { useColorScheme } from 'nativewind';
 import * as React from 'react';
 import { useEffect, useState } from 'react';
-import { Image, type ImageStyle, View, ScrollView, ImageBackground } from 'react-native';
+import { Image, type ImageStyle, View, ScrollView, ImageBackground, TouchableOpacity } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { fetchF1News, NewsArticle } from '@/lib/api/news';
 import { NewsCard } from '@/components/news/NewsCard';
@@ -15,6 +15,7 @@ import { QuickStats } from '@/components/home/QuickStats';
 import { F1Loader } from '@/components/ui/F1Loader';
 import { useAuth } from '@/context/AuthContext';
 import { PitStopWidget } from '@/components/home/PitStopWidget';
+import { fetchUnreadCount } from '@/lib/api/dms';
 
 const LOGO = {
   light: require('@/assets/images/react-native-reusables-light.png'),
@@ -27,11 +28,13 @@ const IMAGE_STYLE: ImageStyle = {
 };
 
 export default function Screen() {
-  const { user } = useAuth();
+  const { user, accessToken } = useAuth();
   const { colorScheme } = useColorScheme();
+  const router = useRouter();
   const [latestNews, setLatestNews] = useState<NewsArticle[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [unreadCount, setUnreadCount] = useState(0);
 
   useEffect(() => {
     async function loadNews() {
@@ -49,6 +52,15 @@ export default function Screen() {
     loadNews();
   }, []);
 
+  useEffect(() => {
+    if (!accessToken) return;
+    fetchUnreadCount(accessToken).then(setUnreadCount);
+    const interval = setInterval(() => {
+      fetchUnreadCount(accessToken).then(setUnreadCount);
+    }, 15000);
+    return () => clearInterval(interval);
+  }, [accessToken]);
+
   return (
     <>
       <ScrollView 
@@ -59,9 +71,24 @@ export default function Screen() {
         {/* ─── Hero Section v7: Immersive Full Bleed ─── */}
         <ImageBackground
           source={require('@/assets/images/hero-bg.png')}
-          style={{ height: 350, width: '100%', justifyContent: 'center', alignItems: 'center' }}
+          style={{ height: 350, width: '100%', justifyContent: 'center', alignItems: 'center', position: 'relative' }}
           resizeMode="cover"
         >
+          {/* Message icon — top right */}
+          {user && (
+            <TouchableOpacity
+              onPress={() => router.push('/messages' as any)}
+              style={{ position: 'absolute', top: 52, right: 16, zIndex: 10 }}
+              className="w-10 h-10 bg-black/40 border border-white/20 rounded-full items-center justify-center"
+            >
+              <MessageCircle size={20} color="white" />
+              {unreadCount > 0 && (
+                <View className="absolute -top-1 -right-1 min-w-[16px] h-4 bg-primary rounded-full items-center justify-center px-1">
+                  <Text className="text-white text-[9px] font-black">{unreadCount > 99 ? '99' : unreadCount}</Text>
+                </View>
+              )}
+            </TouchableOpacity>
+          )}
           {/* Gradient Overlay for blending into the background and text readability */}
           <LinearGradient
             colors={['rgba(11, 11, 13, 0.2)', 'rgba(11, 11, 13, 0.7)', '#0B0B0D']}

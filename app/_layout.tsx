@@ -1,6 +1,7 @@
 import '@/global.css';
 
 import { AuthProvider } from '@/context/AuthContext';
+import { SocketProvider } from '@/context/SocketContext';
 import { NAV_THEME } from '@/lib/theme';
 import { ThemeProvider } from '@react-navigation/native';
 import { PortalHost } from '@rn-primitives/portal';
@@ -77,15 +78,22 @@ export default function RootLayout() {
   return (
     <ThemeProvider value={NAV_THEME[colorScheme ?? 'light']}>
       <AuthProvider>
-        <AuthGuard>
-          <StatusBar style="auto" />
-          <Stack>
-            <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
-            <Stack.Screen name="(auth)" options={{ headerShown: false }} />
-            <Stack.Screen name="onboarding" options={{ headerShown: false, presentation: 'fullScreenModal' }} />
-          </Stack>
-          <PortalHost />
-        </AuthGuard>
+        <SocketProvider>
+          <AuthGuard>
+            <StatusBar style="auto" />
+            <Stack>
+              <Stack.Screen name="(tabs)"    options={{ headerShown: false }} />
+              <Stack.Screen name="(auth)"    options={{ headerShown: false }} />
+              <Stack.Screen name="onboarding" options={{ headerShown: false, presentation: 'fullScreenModal' }} />
+              <Stack.Screen name="messages"          options={{ headerShown: false }} />
+              <Stack.Screen name="messages/[userId]" options={{ headerShown: false }} />
+              <Stack.Screen name="user"              options={{ headerShown: false }} />
+              <Stack.Screen name="user/[id]"         options={{ headerShown: false }} />
+              <Stack.Screen name="search"            options={{ headerShown: false }} />
+            </Stack>
+            <PortalHost />
+          </AuthGuard>
+        </SocketProvider>
       </AuthProvider>
     </ThemeProvider>
   );
