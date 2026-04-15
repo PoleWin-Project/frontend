@@ -57,7 +57,7 @@ pipeline {
                     --network polewin_default \
                     --volumes-from jenkins \
                     -w "$WORKSPACE" \
-                    aquasec/trivy:latest fs \
+                    aquasec/trivy:0.69.3 fs \
                         --scanners secret \
                         --skip-dirs .git,node_modules,.expo \
                         --exit-code 0 \
@@ -86,7 +86,7 @@ pipeline {
 
                         docker run --rm \
                         -v /var/run/docker.sock:/var/run/docker.sock \
-                        aquasec/trivy:latest image \
+                        aquasec/trivy:0.69.3 image \
                             --severity HIGH,CRITICAL \
                             --exit-code 0 \
                             --no-progress \
