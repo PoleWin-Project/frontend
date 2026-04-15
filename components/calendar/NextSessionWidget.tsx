@@ -197,8 +197,8 @@ export function NextSessionWidget() {
 
                     {/* Countdown or LIVE badge */}
                     {nextSession && (isLive ? (
-                        <TouchableOpacity 
-                            onPress={() => {}} // We'll use expo-router Link or router.push
+                        <TouchableOpacity
+                            onPress={() => { }} // We'll use expo-router Link or router.push
                             activeOpacity={0.7}
                             className="mb-6"
                         >
@@ -294,7 +294,7 @@ export function NextSessionWidget() {
                     </View>
                     {/* Action: Parier maintenant */}
                     <View className="mt-6">
-                        <Link href="/game" asChild>
+                        <Link href="/pronostics" asChild>
                             <TouchableOpacity
                                 activeOpacity={0.8}
                                 className="bg-primary py-4 rounded-xl items-center justify-center flex-row gap-2 shadow-lg shadow-primary/30"

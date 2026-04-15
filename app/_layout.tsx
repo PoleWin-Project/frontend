@@ -85,10 +85,8 @@ export default function RootLayout() {
               <Stack.Screen name="(tabs)"    options={{ headerShown: false }} />
               <Stack.Screen name="(auth)"    options={{ headerShown: false }} />
               <Stack.Screen name="onboarding" options={{ headerShown: false, presentation: 'fullScreenModal' }} />
-              <Stack.Screen name="messages"          options={{ headerShown: false }} />
-              <Stack.Screen name="messages/[userId]" options={{ headerShown: false }} />
-              <Stack.Screen name="user"              options={{ headerShown: false }} />
-              <Stack.Screen name="user/[id]"         options={{ headerShown: false }} />
+              <Stack.Screen name="messages" options={{ headerShown: false }} />
+              <Stack.Screen name="user"     options={{ headerShown: false }} />
               <Stack.Screen name="search"            options={{ headerShown: false }} />
             </Stack>
             <PortalHost />
