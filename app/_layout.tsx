@@ -7,7 +7,6 @@ import { ThemeProvider } from '@react-navigation/native';
 import { PortalHost } from '@rn-primitives/portal';
 import { Stack } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
-import { useColorScheme } from 'nativewind';
 import { useFonts, Inter_400Regular, Inter_500Medium, Inter_600SemiBold, Inter_700Bold } from '@expo-google-fonts/inter';
 import { Montserrat_400Regular, Montserrat_500Medium, Montserrat_600SemiBold, Montserrat_700Bold, Montserrat_700Bold_Italic } from '@expo-google-fonts/montserrat';
 import * as SplashScreen from 'expo-splash-screen';
@@ -52,7 +51,6 @@ function AuthGuard({ children }: { children: React.ReactNode }) {
 }
 
 export default function RootLayout() {
-  const { colorScheme } = useColorScheme();
   const [loaded, error] = useFonts({
     Inter: Inter_400Regular,
     Inter_Medium: Inter_500Medium,
@@ -76,7 +74,7 @@ export default function RootLayout() {
   }
 
   return (
-    <ThemeProvider value={NAV_THEME[colorScheme ?? 'light']}>
+    <ThemeProvider value={NAV_THEME['dark']}>
       <AuthProvider>
         <SocketProvider>
           <AuthGuard>
@@ -88,6 +86,7 @@ export default function RootLayout() {
               <Stack.Screen name="messages" options={{ headerShown: false }} />
               <Stack.Screen name="user"     options={{ headerShown: false }} />
               <Stack.Screen name="search"            options={{ headerShown: false }} />
+              <Stack.Screen name="games"             options={{ headerShown: false, animation: 'slide_from_right' }} />
             </Stack>
             <PortalHost />
           </AuthGuard>
