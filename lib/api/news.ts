@@ -1,5 +1,10 @@
-const API_KEY = process.env.EXPO_PUBLIC_NEWS_DATA_API_KEY;
-const BASE_URL = 'https://newsdata.io/api/1';
+const RSS_TO_JSON = 'https://api.rss2json.com/v1/api.json';
+
+const RSS_FEEDS = [
+    { url: 'https://fr.motorsport.com/rss/f1/news/', source: 'motorsport.com' },
+    { url: 'https://www.f1only.fr/feed/', source: 'f1only.fr' },
+    { url: 'https://www.nextgen-auto.com/formule-1/feed', source: 'nextgen-auto.com' },
+];
 
 export interface NewsArticle {
     article_id: string;
@@ -19,35 +24,77 @@ export interface NewsResponse {
     nextPage: string | null;
 }
 
-/**
- * Fetches the latest F1 news from NewsData.io.
- * Supports pagination via the `page` argument.
- */
-export async function fetchF1News(page: string | null = null): Promise<NewsResponse> {
-    if (!API_KEY) {
-        throw new Error('API Key for newsdata.io is missing. Check your .env file.');
-    }
+interface RssItem {
+    title: string;
+    pubDate: string;
+    link: string;
+    description: string;
+    content: string;
+    thumbnail: string;
+    enclosure: { link?: string; type?: string };
+    author: string;
+}
 
-    const query = encodeURIComponent('Formula 1 OR Formule 1 OR Grand Prix');
-    let url = `${BASE_URL}/news?apikey=${API_KEY}&q=${query}&language=fr&removeduplicate=1&size=10`;
+function stripHtml(html: string): string {
+    return html
+        .replace(/<[^>]*>/g, '')
+        .replace(/&nbsp;/g, ' ')
+        .replace(/&amp;/g, '&')
+        .replace(/&lt;/g, '<')
+        .replace(/&gt;/g, '>')
+        .replace(/&quot;/g, '"')
+        .replace(/&#39;/g, "'")
+        .trim();
+}
 
-    if (page) {
-        url += `&page=${page}`;
-    }
-
+async function fetchFeed(feedUrl: string, sourceName: string): Promise<NewsArticle[]> {
     try {
-        console.log(`[NewsAPI] Fetching: ${url.replace(API_KEY, 'HIDDEN')}`);
+        const url = `${RSS_TO_JSON}?rss_url=${encodeURIComponent(feedUrl)}&count=10`;
         const response = await fetch(url);
-        
-        if (!response.ok) {
-            console.warn(`[NewsAPI] Request failed with status ${response.status}`);
-            return { status: 'error', totalResults: 0, results: [], nextPage: null };
-        }
+        if (!response.ok) return [];
+        const data = await response.json();
+        if (data.status !== 'ok' || !Array.isArray(data.items)) return [];
 
-        const data: NewsResponse = await response.json();
-        return data;
-    } catch (error: any) {
-        console.error('Failed to fetch F1 news:', error.message);
-        throw error;
+        return data.items.map((item: RssItem): NewsArticle => ({
+            article_id: encodeURIComponent(item.link),
+            title: stripHtml(item.title || ''),
+            link: item.link,
+            description: stripHtml(item.description || ''),
+            content: item.content ? stripHtml(item.content) : null,
+            pubDate: item.pubDate,
+            image_url: item.thumbnail || item.enclosure?.link || null,
+            source_id: sourceName,
+        }));
+    } catch {
+        return [];
     }
+}
+
+export async function fetchF1News(_page: string | null = null): Promise<NewsResponse> {
+    const settled = await Promise.allSettled(
+        RSS_FEEDS.map(feed => fetchFeed(feed.url, feed.source))
+    );
+
+    const seenLinks = new Set<string>();
+    const allArticles: NewsArticle[] = [];
+
+    for (const result of settled) {
+        if (result.status === 'fulfilled') {
+            for (const article of result.value) {
+                if (!seenLinks.has(article.link)) {
+                    seenLinks.add(article.link);
+                    allArticles.push(article);
+                }
+            }
+        }
+    }
+
+    allArticles.sort((a, b) => new Date(b.pubDate).getTime() - new Date(a.pubDate).getTime());
+
+    return {
+        status: 'ok',
+        totalResults: allArticles.length,
+        results: allArticles,
+        nextPage: null,
+    };
 }
