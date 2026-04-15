@@ -28,23 +28,27 @@ export async function fetchF1News(page: string | null = null): Promise<NewsRespo
         throw new Error('API Key for newsdata.io is missing. Check your .env file.');
     }
 
-    // On force la recherche stricte avec des guillemets et on limite à la catégorie sports
-    let url = `${BASE_URL}/news?apikey=${API_KEY}&q="formula 1" OR "f1"&category=sports&language=fr&size=3`;
+    // Simplification de la requête pour plus de fiabilité
+    const query = encodeURIComponent('Formula 1');
+    let url = `${BASE_URL}/news?apikey=${API_KEY}&q=${query}&size=3`;
 
     if (page) {
         url += `&page=${page}`;
     }
 
     try {
+        console.log(`[NewsAPI] Fetching: ${url.replace(API_KEY, 'HIDDEN')}`);
         const response = await fetch(url);
+        
         if (!response.ok) {
-            throw new Error(`Error fetching news: ${response.statusText}`);
+            console.warn(`[NewsAPI] Request failed with status ${response.status}`);
+            return { status: 'error', totalResults: 0, results: [], nextPage: null };
         }
 
         const data: NewsResponse = await response.json();
         return data;
-    } catch (error) {
-        console.error('Failed to fetch F1 news:', error);
+    } catch (error: any) {
+        console.error('Failed to fetch F1 news:', error.message);
         throw error;
     }
 }

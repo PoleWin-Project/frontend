@@ -1,38 +1,63 @@
 import { Tabs } from 'expo-router';
-import { Home, User, Newspaper, CalendarDays, Gamepad2 } from 'lucide-react-native';
+import { Home, User, Newspaper, Trophy, Medal } from 'lucide-react-native';
 
 export default function TabLayout() {
     return (
-        <Tabs>
+        <Tabs screenOptions={{
+            headerShown: false,
+            tabBarActiveTintColor: '#E10600',
+            tabBarInactiveTintColor: '#888888',
+            tabBarStyle: {
+                backgroundColor: '#0B0B0D',
+                borderTopWidth: 0,
+                height: 85,
+                paddingBottom: 25,
+                paddingTop: 10,
+            }
+        }}>
             <Tabs.Screen
                 name="index"
                 options={{
-                    title: 'Home',
-                    tabBarIcon: ({ color }) => <Home color={color} />,
+                    title: 'Accueil',
+                    tabBarIcon: ({ color }) => <Home color={color} size={24} />,
                 }}
             />
             <Tabs.Screen
-                name="calendrier"
+                name="championnat"
                 options={{
-                    title: 'Calendrier',
-                    tabBarIcon: ({ color }) => <CalendarDays color={color} />,
+                    title: 'Championnat',
+                    tabBarIcon: ({ color }) => <Trophy color={color} size={24} />,
                 }}
             />
             <Tabs.Screen
-                name="game"
+                name="classement"
                 options={{
-                    title: 'Jeux',
-                    tabBarIcon: ({ color }) => <Gamepad2 color={color} />,
+                    title: 'Classement',
+                    tabBarIcon: ({ color }) => <Medal color={color} size={24} />,
+                }}
+            />
+            <Tabs.Screen
+                name="pronostics"
+                options={{
+                    title: 'Pronos',
+                    tabBarIcon: ({ color }) => <Newspaper color={color} size={24} />,
                 }}
             />
             <Tabs.Screen
                 name="profile"
                 options={{
-                    title: 'Profile',
-                    tabBarIcon: ({ color }) => <User color={color} />,
+                    title: 'Profil',
+                    tabBarIcon: ({ color }) => <User color={color} size={24} />,
                 }}
             />
-
+            <Tabs.Screen
+                name="calendrier"
+                options={{ href: null }}
+            />
+            <Tabs.Screen
+                name="game"
+                options={{ href: null }}
+            />
         </Tabs>
     );
 }

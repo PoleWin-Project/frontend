@@ -1,15 +1,10 @@
-import { Button } from '@/components/ui/button';
-import { Text } from '@/components/ui/text';
-import { Link } from 'expo-router';
-import * as React from 'react';
 import { View } from 'react-native';
+import { Text } from '@/components/ui/text';
 
-export default function ExploreScreen() {
+export default function GameScreen() {
     return (
-        <View className="flex-1 items-center justify-center gap-8 p-4">
-            <Link href="https://reactnativereusables.com" asChild>
-                <Text>Game</Text>
-            </Link>
+        <View className="flex-1 bg-background items-center justify-center">
+            <Text className="text-white">Game</Text>
         </View>
     );
 }
