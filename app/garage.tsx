@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import { View, ScrollView, Pressable, Image, TouchableOpacity } from 'react-native';
 import { Stack, useRouter } from 'expo-router';
 import { BlurView } from 'expo-blur';
@@ -7,17 +7,26 @@ import { ChevronLeft, Zap, Trophy, Timer, Settings2, ShieldCheck, ArrowRight } f
 import { Text } from '@/components/ui/text';
 import { Icon } from '@/components/ui/icon';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { useAuth } from '@/context/AuthContext';
+import { fetchPlaysToday, type PlaysToday } from '@/lib/api/games';
 
 export default function GarageScreen() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
+  const { accessToken } = useAuth();
+  const [reactionPlays, setReactionPlays] = useState<PlaysToday | null>(null);
+
+  useEffect(() => {
+    if (!accessToken) return;
+    fetchPlaysToday(accessToken, 'reaction').then(setReactionPlays);
+  }, [accessToken]);
 
   const games = [
     {
       id: 'reaction',
       title: 'Reaction Test',
       subtitle: 'Réveillez le pilote en vous',
-      reward: 'Jusqu\'à 50 pts',
+      reward: 'Jusqu\'à 10 pts',
       icon: Timer,
       color: '#E10600',
       status: 'Disponible'
@@ -41,6 +50,18 @@ export default function GarageScreen() {
       status: 'Bientôt'
     }
   ];
+
+  const reactionPlaysLeft = reactionPlays
+    ? reactionPlays.limit === null ? null : Math.max(0, reactionPlays.limit - reactionPlays.played)
+    : undefined; // undefined = chargement
+
+  function handleGamePress(id: string, status: string) {
+    if (status !== 'Disponible') return;
+    if (id === 'reaction') {
+      if (reactionPlaysLeft === 0) return; // bloqué
+      router.push('/games/reaction-test');
+    }
+  }
 
   return (
     <View className="flex-1 bg-[#050505]">
@@ -108,6 +129,7 @@ export default function GarageScreen() {
             <Pressable
               key={game.id}
               className="mb-6"
+              onPress={() => handleGamePress(game.id, game.status)}
               style={{
                 shadowColor: game.color,
                 shadowOffset: { width: 0, height: 4 },
@@ -158,7 +180,24 @@ export default function GarageScreen() {
                 {/* Bottom Info Bar */}
                 <View className="bg-white/[0.03] px-6 py-2.5 border-t border-white/5 flex-row items-center justify-between">
                   <Text style={{ color: game.color }} className="text-[9px] font-black uppercase tracking-wider">{game.reward}</Text>
-                  <Text className="text-white/20 text-[9px] font-bold uppercase tracking-widest">Temps estimé: 1 min</Text>
+                  {game.id === 'reaction' && game.status === 'Disponible' ? (
+                    reactionPlaysLeft === 0 ? (
+                      <Text className="text-white/30 text-[9px] font-bold uppercase tracking-widest">Reviens demain</Text>
+                    ) : reactionPlaysLeft != null ? (
+                      <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
+                        {[...Array(reactionPlays!.limit!)].map((_, i) => (
+                          <View key={i} style={{ width: 6, height: 6, borderRadius: 3, backgroundColor: i < reactionPlaysLeft ? game.color : 'rgba(255,255,255,0.15)' }} />
+                        ))}
+                        <Text className="text-white/30 text-[9px] font-bold uppercase" style={{ marginLeft: 4 }}>
+                          {reactionPlaysLeft}/3
+                        </Text>
+                      </View>
+                    ) : (
+                      <Text className="text-white/20 text-[9px] font-bold uppercase tracking-widest">Temps estimé: 1 min</Text>
+                    )
+                  ) : (
+                    <Text className="text-white/20 text-[9px] font-bold uppercase tracking-widest">Temps estimé: 1 min</Text>
+                  )}
                 </View>
               </View>
             </Pressable>
