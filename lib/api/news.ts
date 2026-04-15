@@ -28,9 +28,8 @@ export async function fetchF1News(page: string | null = null): Promise<NewsRespo
         throw new Error('API Key for newsdata.io is missing. Check your .env file.');
     }
 
-    // Simplification de la requête pour plus de fiabilité
-    const query = encodeURIComponent('Formula 1');
-    let url = `${BASE_URL}/news?apikey=${API_KEY}&q=${query}&size=3`;
+    const query = encodeURIComponent('Formula 1 OR Formule 1 OR Grand Prix');
+    let url = `${BASE_URL}/news?apikey=${API_KEY}&q=${query}&language=fr&removeduplicate=1&size=10`;
 
     if (page) {
         url += `&page=${page}`;
