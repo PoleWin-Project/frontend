@@ -24,12 +24,10 @@ export default function PronosticsScreen() {
     const loadData = async () => {
         setLoading(true);
         try {
-            const sessions = await fetchRaceSessions(50);
-            const sorted = sessions
-                .filter(s => ['Race', 'Qualifying', 'Sprint'].includes(s.type))
-                .sort((a, b) => new Date(a.dateStart).getTime() - new Date(b.dateStart).getTime());
-            
-            const nextSessions = sorted.filter(s => new Date(s.dateStart).getTime() > Date.now() - 3600000).slice(0, 3);
+            const sessions = await fetchRaceSessions(50, true);
+            const nextSessions = sessions
+                .filter(s => ['Race', 'Qualifying', 'Sprint', 'Sprint Qualifying'].includes(s.type))
+                .slice(0, 3);
             setUpcomingSessions(nextSessions);
 
             const preds: Record<number, Prediction[]> = {};

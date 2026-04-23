@@ -292,7 +292,7 @@ export function NextSessionWidget() {
                             </View>
                         )}
                     </View>
-                    {/* Action: Parier maintenant */}
+                    {/* Action: Faire vos pronostics */}
                     <View className="mt-6">
                         <Link href="/pronostics" asChild>
                             <TouchableOpacity
@@ -301,7 +301,7 @@ export function NextSessionWidget() {
                             >
                                 <Gamepad2 size={18} color="white" />
                                 <Text className="text-white font-black uppercase tracking-widest italic">
-                                    Parier maintenant
+                                    Faire vos pronostics
                                 </Text>
                             </TouchableOpacity>
                         </Link>

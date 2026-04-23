@@ -3,7 +3,6 @@ pipeline {
 
     environment {
         IMAGE_NAME = 'polewin-frontend'
-        SONAR_HOST_URL = 'http://sonarqube:9000'    
     }
 
     stages {
@@ -22,15 +21,16 @@ pipeline {
             }
         }
 
-    stage('SonarQube analysis') {
+        stage('SonarQube analysis') {
             steps {
-                withCredentials([string(credentialsId: 'sonar-token-frontend', variable: 'SONAR_TOKEN')]) {
+                withSonarQubeEnv('SonarQube') {
                     sh '''
                         docker run --rm \
                         --network polewin_default \
                         --volumes-from jenkins \
                         -w "$WORKSPACE" \
-                        -e SONAR_TOKEN="$SONAR_TOKEN" \
+                        -e SONAR_HOST_URL="$SONAR_HOST_URL" \
+                        -e SONAR_TOKEN="$SONAR_AUTH_TOKEN" \
                         sonarsource/sonar-scanner-cli:latest \
                         sonar-scanner \
                             -Dsonar.projectKey=polewin-frontend \
@@ -38,9 +38,7 @@ pipeline {
                             -Dsonar.inclusions=**/*.ts,**/*.tsx,**/*.js,**/*.jsx,**/*.css,**/*.scss,**/*.mdx \
                             -Dsonar.exclusions=**/node_modules/**,**/.expo/**,**/coverage/**,**/.git/**,**/dist/**,**/*.min.js \
                             -Dsonar.typescript.tsconfigPath=tsconfig.sonar.json \
-                            -Dsonar.scm.provider=git \
-                            -Dsonar.host.url=$SONAR_HOST_URL \
-                            -Dsonar.token=$SONAR_TOKEN
+                            -Dsonar.scm.provider=git
                     '''
                 }
             }
@@ -50,9 +48,6 @@ pipeline {
             steps {
                 sh '''
                     echo "=== Trivy FS scan (frontend workspace) ==="
-                    echo "Workspace path: $WORKSPACE"
-                    ls -la "$WORKSPACE"
-
                     docker run --rm \
                     --network polewin_default \
                     --volumes-from jenkins \
@@ -66,7 +61,6 @@ pipeline {
                 '''
             }
         }
-
 
         stage('Build Docker image') {
             steps {
@@ -82,8 +76,6 @@ pipeline {
                 script {
                     sh """
                         echo "=== Trivy image scan ==="
-                        echo "Scanning image: ${IMAGE_NAME}:${IMAGE_TAG}"
-
                         docker run --rm \
                         -v /var/run/docker.sock:/var/run/docker.sock \
                         aquasec/trivy:0.69.3 image \
