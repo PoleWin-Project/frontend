@@ -87,6 +87,7 @@ export default function RootLayout() {
               <Stack.Screen name="user"     options={{ headerShown: false }} />
               <Stack.Screen name="search"            options={{ headerShown: false }} />
               <Stack.Screen name="games"             options={{ headerShown: false, animation: 'slide_from_right' }} />
+              <Stack.Screen name="live-session/[sessionKey]" options={{ headerShown: false, animation: 'slide_from_bottom' }} />
             </Stack>
             <PortalHost />
           </AuthGuard>

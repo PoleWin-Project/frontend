@@ -197,20 +197,16 @@ export function NextSessionWidget() {
 
                     {/* Countdown or LIVE badge */}
                     {nextSession && (isLive ? (
-                        <TouchableOpacity
-                            onPress={() => { }} // We'll use expo-router Link or router.push
-                            activeOpacity={0.7}
-                            className="mb-6"
-                        >
-                            <Link href={`/live-session/${nextSession.session_key}`} asChild>
+                        <Link href={`/live-session/${nextSession.session_key}`} asChild>
+                            <TouchableOpacity activeOpacity={0.7} className="mb-6">
                                 <View className="px-4 py-5 rounded-xl bg-red-500/20 border border-red-500/30 flex-row items-center justify-center gap-3 shadow-[0_0_15px_rgba(239,68,68,0.3)]">
                                     <View className="w-4 h-4 rounded-full bg-red-500 border-2 border-white/20" />
                                     <Text className="text-xl font-black text-white uppercase tracking-widest italic">
                                         {nextSession.session_name} EN COURS
                                     </Text>
                                 </View>
-                            </Link>
-                        </TouchableOpacity>
+                            </TouchableOpacity>
+                        </Link>
                     ) : countdown && (
                         <View className="mb-6 p-4 rounded-xl bg-primary/10 border border-primary/30">
                             <View className="flex-row items-center gap-2 mb-3">

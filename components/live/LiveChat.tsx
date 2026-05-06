@@ -7,10 +7,9 @@ import {
     KeyboardAvoidingView,
     Platform,
     ActivityIndicator,
-    Animated,
 } from 'react-native';
 import { Text } from '@/components/ui/text';
-import { MessageCircle, Send, X, ChevronDown } from 'lucide-react-native';
+import { MessageCircle, Send } from 'lucide-react-native';
 import { useAuth } from '@/context/AuthContext';
 import { fetchSessionChatChannel, fetchMessages, sendMessage, ChatMessage, ChatChannel } from '@/lib/api/chat';
 
@@ -23,20 +22,17 @@ interface LiveChatProps {
 export function LiveChat({ sessionKey }: LiveChatProps) {
     const { user, accessToken } = useAuth();
 
-    const [isOpen, setIsOpen] = useState(false);
     const [channel, setChannel] = useState<ChatChannel | null>(null);
     const [messages, setMessages] = useState<ChatMessage[]>([]);
     const [inputText, setInputText] = useState('');
     const [isSending, setIsSending] = useState(false);
-    const [channelLoading, setChannelLoading] = useState(false);
+    const [channelLoading, setChannelLoading] = useState(true);
     const [channelError, setChannelError] = useState(false);
 
     const flatListRef = useRef<FlatList>(null);
     const pollRef = useRef<ReturnType<typeof setInterval> | null>(null);
     const lastMessageIdRef = useRef<number>(0);
-    const slideAnim = useRef(new Animated.Value(0)).current;
 
-    // Load channel once when first opened
     const loadChannel = useCallback(async () => {
         setChannelLoading(true);
         setChannelError(false);
@@ -48,7 +44,6 @@ export function LiveChat({ sessionKey }: LiveChatProps) {
         }
         setChannel(ch);
 
-        // Load initial messages
         const msgs = await fetchMessages(ch.id, { limit: 50 });
         setMessages(msgs);
         if (msgs.length > 0) {
@@ -57,43 +52,28 @@ export function LiveChat({ sessionKey }: LiveChatProps) {
         setChannelLoading(false);
     }, [sessionKey]);
 
-    // Open / close animation + data loading
     useEffect(() => {
-        if (isOpen) {
-            Animated.spring(slideAnim, {
-                toValue: 1,
-                useNativeDriver: true,
-                tension: 65,
-                friction: 11,
-            }).start();
+        loadChannel();
+    }, [loadChannel]);
 
-            if (!channel) {
-                loadChannel();
-            }
-        } else {
-            Animated.spring(slideAnim, {
-                toValue: 0,
-                useNativeDriver: true,
-                tension: 65,
-                friction: 11,
-            }).start();
-        }
-    }, [isOpen]);
-
-    // Polling for new messages
     useEffect(() => {
-        if (!isOpen || !channel) return;
+        if (!channel) return;
 
         const poll = async () => {
-            if (lastMessageIdRef.current === 0) return;
             const newMsgs = await fetchMessages(channel.id, {
-                after: lastMessageIdRef.current,
+                after: lastMessageIdRef.current || undefined,
                 limit: 30,
             });
             if (newMsgs.length > 0) {
-                setMessages(prev => [...prev, ...newMsgs]);
-                lastMessageIdRef.current = newMsgs[newMsgs.length - 1].id;
-                // Scroll to bottom
+                setMessages(prev => {
+                    const seen = new Set(prev.map(m => m.id));
+                    const merged = [...prev, ...newMsgs.filter(m => !seen.has(m.id))];
+                    return merged;
+                });
+                lastMessageIdRef.current = Math.max(
+                    lastMessageIdRef.current,
+                    newMsgs[newMsgs.length - 1].id,
+                );
                 setTimeout(() => flatListRef.current?.scrollToEnd({ animated: true }), 100);
             }
         };
@@ -102,7 +82,7 @@ export function LiveChat({ sessionKey }: LiveChatProps) {
         return () => {
             if (pollRef.current) clearInterval(pollRef.current);
         };
-    }, [isOpen, channel]);
+    }, [channel]);
 
     const handleSend = async () => {
         if (!inputText.trim() || !accessToken || !channel) return;
@@ -118,11 +98,6 @@ export function LiveChat({ sessionKey }: LiveChatProps) {
         }
         setIsSending(false);
     };
-
-    const translateY = slideAnim.interpolate({
-        inputRange: [0, 1],
-        outputRange: [420, 0],
-    });
 
     const formatTime = (dateStr: string) => {
         const d = new Date(dateStr);
@@ -164,138 +139,97 @@ export function LiveChat({ sessionKey }: LiveChatProps) {
     };
 
     return (
-        <>
-            {/* Floating chat button */}
-            <TouchableOpacity
-                onPress={() => setIsOpen(true)}
-                className="absolute bottom-6 right-4 w-14 h-14 bg-primary rounded-full items-center justify-center shadow-lg"
-                style={{ elevation: 8 }}
-            >
-                <MessageCircle size={24} color="white" />
-                {messages.length > 0 && !isOpen && (
-                    <View className="absolute -top-1 -right-1 w-5 h-5 bg-white rounded-full items-center justify-center">
-                        <Text className="text-primary text-[9px] font-black">
-                            {messages.length > 99 ? '99' : messages.length}
+        <KeyboardAvoidingView
+            behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+            keyboardVerticalOffset={Platform.OS === 'ios' ? 80 : 0}
+            style={{ flex: 1 }}
+        >
+            <View className="flex-1 bg-white/[0.03] rounded-3xl border border-white/5 overflow-hidden">
+                <View className="flex-row items-center justify-between px-4 py-3 border-b border-white/5 bg-white/[0.02]">
+                    <View className="flex-row items-center gap-2">
+                        <View className="w-2 h-2 rounded-full bg-red-500" />
+                        <Text className="text-white font-black uppercase italic tracking-widest text-xs">
+                            Chat Live
                         </Text>
                     </View>
-                )}
-            </TouchableOpacity>
-
-            {/* Chat drawer overlay */}
-            {isOpen && (
-                <View className="absolute inset-0" style={{ pointerEvents: 'box-none' as any }}>
-                    {/* Backdrop */}
-                    <TouchableOpacity
-                        className="absolute inset-0 bg-black/40"
-                        activeOpacity={1}
-                        onPress={() => setIsOpen(false)}
-                    />
-
-                    {/* Drawer */}
-                    <Animated.View
-                        style={{ transform: [{ translateY }] }}
-                        className="absolute bottom-0 left-0 right-0 bg-[#0f0f0f] rounded-t-3xl border-t border-white/10"
-                    >
-                        <KeyboardAvoidingView
-                            behavior={Platform.OS === 'ios' ? 'padding' : undefined}
-                        >
-                            {/* Handle & Header */}
-                            <View className="items-center pt-3 pb-2">
-                                <View className="w-10 h-1 bg-white/20 rounded-full" />
-                            </View>
-                            <View className="flex-row items-center justify-between px-4 pb-3 border-b border-white/5">
-                                <View className="flex-row items-center gap-2">
-                                    <View className="w-2 h-2 rounded-full bg-red-500" />
-                                    <Text className="text-white font-black uppercase italic tracking-widest text-sm">
-                                        Chat Live
-                                    </Text>
-                                </View>
-                                <TouchableOpacity
-                                    onPress={() => setIsOpen(false)}
-                                    className="p-1.5 bg-white/5 rounded-full"
-                                >
-                                    <ChevronDown size={18} color="rgba(255,255,255,0.6)" />
-                                </TouchableOpacity>
-                            </View>
-
-                            {/* Messages area */}
-                            <View style={{ height: 340 }}>
-                                {channelLoading ? (
-                                    <View className="flex-1 items-center justify-center">
-                                        <ActivityIndicator color="#E10600" />
-                                        <Text className="text-white/40 text-xs mt-2 uppercase font-bold">
-                                            Connexion au chat...
-                                        </Text>
-                                    </View>
-                                ) : channelError ? (
-                                    <View className="flex-1 items-center justify-center px-6">
-                                        <Text className="text-white/40 text-center text-sm">
-                                            Chat non disponible pour cette session.
-                                        </Text>
-                                    </View>
-                                ) : messages.length === 0 ? (
-                                    <View className="flex-1 items-center justify-center px-6">
-                                        <MessageCircle size={32} color="rgba(255,255,255,0.1)" />
-                                        <Text className="text-white/30 text-center text-sm mt-3">
-                                            Soyez le premier à commenter !
-                                        </Text>
-                                    </View>
-                                ) : (
-                                    <FlatList
-                                        ref={flatListRef}
-                                        data={messages}
-                                        keyExtractor={(item) => String(item.id)}
-                                        renderItem={renderMessage}
-                                        contentContainerStyle={{ padding: 12, paddingBottom: 4 }}
-                                        onContentSizeChange={() =>
-                                            flatListRef.current?.scrollToEnd({ animated: false })
-                                        }
-                                        showsVerticalScrollIndicator={false}
-                                    />
-                                )}
-                            </View>
-
-                            {/* Input area */}
-                            <View className="px-4 py-3 border-t border-white/5">
-                                {!user ? (
-                                    <View className="bg-white/5 rounded-2xl px-4 py-3 items-center">
-                                        <Text className="text-white/40 text-xs font-bold uppercase">
-                                            Connectez-vous pour participer
-                                        </Text>
-                                    </View>
-                                ) : (
-                                    <View className="flex-row items-center gap-2">
-                                        <TextInput
-                                            value={inputText}
-                                            onChangeText={setInputText}
-                                            placeholder="Votre message..."
-                                            placeholderTextColor="rgba(255,255,255,0.25)"
-                                            className="flex-1 bg-white/5 border border-white/10 rounded-2xl px-4 py-2.5 text-white text-sm"
-                                            onSubmitEditing={handleSend}
-                                            returnKeyType="send"
-                                            editable={!isSending}
-                                            maxLength={500}
-                                        />
-                                        <TouchableOpacity
-                                            onPress={handleSend}
-                                            disabled={isSending || !inputText.trim()}
-                                            className={`w-10 h-10 rounded-full items-center justify-center ${
-                                                inputText.trim() ? 'bg-primary' : 'bg-white/10'
-                                            }`}
-                                        >
-                                            {isSending ? (
-                                                <ActivityIndicator size="small" color="white" />
-                                            ) : (
-                                                <Send size={16} color="white" />
-                                            )}
-                                        </TouchableOpacity>
-                                    </View>
-                                )}
-                            </View>
-                        </KeyboardAvoidingView>
-                    </Animated.View>
+                    <Text className="text-white/30 text-[9px] font-bold uppercase tracking-widest">
+                        {messages.length} msg
+                    </Text>
                 </View>
-            )}
-        </>
+
+                <View className="flex-1">
+                    {channelLoading ? (
+                        <View className="flex-1 items-center justify-center">
+                            <ActivityIndicator color="#E10600" />
+                            <Text className="text-white/40 text-xs mt-2 uppercase font-bold">
+                                Connexion au chat...
+                            </Text>
+                        </View>
+                    ) : channelError ? (
+                        <View className="flex-1 items-center justify-center px-6">
+                            <Text className="text-white/40 text-center text-sm">
+                                Chat non disponible pour cette session.
+                            </Text>
+                        </View>
+                    ) : messages.length === 0 ? (
+                        <View className="flex-1 items-center justify-center px-6">
+                            <MessageCircle size={28} color="rgba(255,255,255,0.1)" />
+                            <Text className="text-white/30 text-center text-sm mt-3">
+                                Soyez le premier à commenter !
+                            </Text>
+                        </View>
+                    ) : (
+                        <FlatList
+                            ref={flatListRef}
+                            data={messages}
+                            keyExtractor={(item) => String(item.id)}
+                            renderItem={renderMessage}
+                            contentContainerStyle={{ padding: 12, paddingBottom: 4 }}
+                            onContentSizeChange={() =>
+                                flatListRef.current?.scrollToEnd({ animated: false })
+                            }
+                            showsVerticalScrollIndicator={false}
+                        />
+                    )}
+                </View>
+
+                <View className="px-3 py-2 border-t border-white/5 bg-white/[0.02]">
+                    {!user ? (
+                        <View className="bg-white/5 rounded-2xl px-4 py-2.5 items-center">
+                            <Text className="text-white/40 text-xs font-bold uppercase">
+                                Connectez-vous pour participer
+                            </Text>
+                        </View>
+                    ) : (
+                        <View className="flex-row items-center gap-2">
+                            <TextInput
+                                value={inputText}
+                                onChangeText={setInputText}
+                                placeholder="Votre message..."
+                                placeholderTextColor="rgba(255,255,255,0.25)"
+                                className="flex-1 bg-white/5 border border-white/10 rounded-2xl px-4 py-2 text-white text-sm"
+                                onSubmitEditing={handleSend}
+                                returnKeyType="send"
+                                editable={!isSending}
+                                maxLength={500}
+                            />
+                            <TouchableOpacity
+                                onPress={handleSend}
+                                disabled={isSending || !inputText.trim()}
+                                className={`w-9 h-9 rounded-full items-center justify-center ${
+                                    inputText.trim() ? 'bg-primary' : 'bg-white/10'
+                                }`}
+                            >
+                                {isSending ? (
+                                    <ActivityIndicator size="small" color="white" />
+                                ) : (
+                                    <Send size={14} color="white" />
+                                )}
+                            </TouchableOpacity>
+                        </View>
+                    )}
+                </View>
+            </View>
+        </KeyboardAvoidingView>
     );
 }
