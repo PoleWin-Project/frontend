@@ -175,8 +175,10 @@ export interface RaceSession {
     dateStart: string;
 }
 
-export async function fetchRaceSessions(limit: number = 50): Promise<RaceSession[]> {
-    const url = `${API_URL}/sessions?limit=${limit}`;
+export async function fetchRaceSessions(limit: number = 50, upcomingOnly = true): Promise<RaceSession[]> {
+    const params = new URLSearchParams({ limit: String(limit) });
+    if (upcomingOnly) params.set('upcoming', 'true');
+    const url = `${API_URL}/sessions?${params.toString()}`;
     try {
         const response = await fetchWithRetry(url);
         const data = await response.json();

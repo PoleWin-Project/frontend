@@ -22,8 +22,8 @@ export function ScreenHeader({ title, subtitle, showPoints = false }: ScreenHead
     return (
         <SafeAreaView edges={['top']} className="bg-card">
             <View className="px-6 py-4 flex-row items-center justify-between border-b border-border/10">
-                <View>
-                    <Text className="text-3xl font-black italic uppercase tracking-tighter text-foreground">
+                <View className="flex-1 mr-3">
+                    <Text className="text-3xl font-black italic uppercase tracking-tighter text-foreground" numberOfLines={1} adjustsFontSizeToFit>
                         {firstPart} <Text className="text-primary">{lastWord}</Text>
                     </Text>
                     {subtitle && (
@@ -32,9 +32,9 @@ export function ScreenHeader({ title, subtitle, showPoints = false }: ScreenHead
                         </Text>
                     )}
                 </View>
-                
+
                 {showPoints && (
-                    <View className="flex-row items-center bg-primary/10 px-3 py-1.5 rounded-full border border-primary/20">
+                    <View className="flex-row items-center bg-primary/10 px-3 py-1.5 rounded-full border border-primary/20 flex-shrink-0">
                         <Trophy size={14} color="#ef4444" />
                         <Text className="text-sm font-bold text-primary ml-2 tracking-tight">
                             {user?.points?.toLocaleString() || '0'} pts
