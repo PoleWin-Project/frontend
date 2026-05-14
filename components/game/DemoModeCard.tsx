@@ -2,8 +2,8 @@ import React, { useEffect, useState } from 'react';
 import { View, TouchableOpacity, ActivityIndicator } from 'react-native';
 import { Text } from '@/components/ui/text';
 import { useRouter } from 'expo-router';
-import { Zap, Flag, X } from 'lucide-react-native';
-import { useDemo, DEMO_SESSION_KEY, DEMO_RACE_DURATION_SEC } from '@/context/DemoContext';
+import { Zap, Flag, X, Clock } from 'lucide-react-native';
+import { useDemo, DEMO_SESSION_KEY, DEMO_RACE_DURATION_SEC, DEMO_PRE_RACE_SEC } from '@/context/DemoContext';
 
 function formatCountdown(secs: number): string {
     const m = Math.floor(secs / 60);
@@ -41,6 +41,9 @@ export function DemoModeCard() {
         return () => clearInterval(id);
     }, [demo.active, demo.raceStartsAt, launching, router]);
 
+    const preRaceMin = Math.round(DEMO_PRE_RACE_SEC / 60);
+    const raceMin = Math.round(DEMO_RACE_DURATION_SEC / 60);
+
     if (!demo.active) {
         return (
             <TouchableOpacity
@@ -55,7 +58,7 @@ export function DemoModeCard() {
                     </View>
                     <View className="flex-1">
                         <Text className="text-amber-300 text-xs font-black uppercase tracking-widest">Mode Démo</Text>
-                        <Text className="text-white/70 text-[11px] mt-0.5">Simule un GP Monaco 2024 — 5 min de pronos puis 3 min de course</Text>
+                        <Text className="text-white/70 text-[11px] mt-0.5">Simule un GP Monaco 2024 — {preRaceMin} min de pronos puis {raceMin} min de course</Text>
                     </View>
                     <Text className="text-amber-300 font-black text-lg">›</Text>
                 </View>
@@ -76,9 +79,17 @@ export function DemoModeCard() {
                             Démo active · Monaco 2024
                         </Text>
                     </View>
-                    <TouchableOpacity onPress={demo.cancelDemo} className="p-1">
-                        <X size={14} color="#fbbf24" />
-                    </TouchableOpacity>
+                    <View className="flex-row items-center">
+                        <View className="flex-row items-center bg-amber-400/15 px-2 py-0.5 rounded-full mr-2">
+                            <Clock size={10} color="#fbbf24" />
+                            <Text className="text-amber-300 text-[9px] font-bold uppercase tracking-widest ml-1">
+                                Course {raceMin} min
+                            </Text>
+                        </View>
+                        <TouchableOpacity onPress={demo.cancelDemo} className="p-1">
+                            <X size={14} color="#fbbf24" />
+                        </TouchableOpacity>
+                    </View>
                 </View>
 
                 <View className="flex-row items-center justify-between mt-1">

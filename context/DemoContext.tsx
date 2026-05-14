@@ -4,8 +4,8 @@ const API_URL = process.env.EXPO_PUBLIC_API_URL || 'http://localhost:8000/api/v1
 
 // ─── Configuration de la démo Monaco 2024 ───────────────────────────────
 export const DEMO_SESSION_KEY = 9523;            // OpenF1 Monaco GP 2024 Race
-export const DEMO_PRE_RACE_SEC = 5 * 60;         // 5 minutes de pronos
-export const DEMO_RACE_DURATION_SEC = 180;       // 3 minutes de replay
+export const DEMO_PRE_RACE_SEC = 60;             // 1 minute de pronos (réglable)
+export const DEMO_RACE_DURATION_SEC = 60;        // 1 minute de replay (réglable)
 export const DEMO_WINNER_ACRONYM = 'LEC';        // Leclerc a gagné Monaco 2024
 
 export interface DemoState {

@@ -24,6 +24,11 @@ interface Location {
     y: number;
 }
 
+interface DriverPath {
+    driver_number: number;
+    path: { x: number; y: number }[];
+}
+
 function DemoTimer({ startedAt, durationSec }: { startedAt: string; durationSec: number }) {
     const [text, setText] = useState('--:--');
     useEffect(() => {
@@ -52,6 +57,7 @@ export default function LiveSessionScreen() {
     const router = useRouter();
     const demo = useDemo();
     const [locations, setLocations] = useState<Location[]>([]);
+    const [paths, setPaths] = useState<DriverPath[]>([]);
     const [positions, setPositions] = useState<Position[]>([]);
     const [trackPoints, setTrackPoints] = useState<{ x: number, y: number }[]>([]);
     const [drivers, setDrivers] = useState<Driver[]>([]);
@@ -95,11 +101,15 @@ export default function LiveSessionScreen() {
         }
         init();
 
+        const locationsIntervalMs = isDemo ? 400 : 2000;
+        const positionsIntervalMs = isDemo ? 1500 : 5000;
+
         const buildUrl = (endpoint: 'locations' | 'positions') => {
             if (isDemo) {
                 const qs = new URLSearchParams({
                     startedAt: demoStartedAt,
                     durationSec: String(demoDurationSec),
+                    ...(endpoint === 'locations' ? { frameMs: String(locationsIntervalMs) } : {}),
                 }).toString();
                 return `${API_URL}/openf1/demo/${sessionKey}/${endpoint}?${qs}`;
             }
@@ -110,8 +120,25 @@ export default function LiveSessionScreen() {
             try {
                 const res = await fetch(buildUrl('locations'));
                 const data = await res.json();
-                if (data.locations) {
-                    setLocations(data.locations);
+                if (!data.locations) return;
+
+                if (isDemo) {
+                    // Format démo : chaque entrée a un `path` de waypoints.
+                    const pathsData = data.locations as DriverPath[];
+                    setPaths(pathsData);
+                    // Track scatter alimenté par tous les waypoints
+                    setTrackPoints(prev => {
+                        const next = [...prev];
+                        for (const dp of pathsData) {
+                            for (const p of dp.path) {
+                                const exists = next.some(q => Math.abs(q.x - p.x) < 30 && Math.abs(q.y - p.y) < 30);
+                                if (!exists) next.push({ x: p.x, y: p.y });
+                            }
+                        }
+                        return next.length > 1500 ? next.slice(next.length - 1500) : next;
+                    });
+                } else {
+                    setLocations(data.locations as Location[]);
                     setTrackPoints(prev => {
                         const next = [...prev];
                         data.locations.forEach((loc: Location) => {
@@ -138,14 +165,14 @@ export default function LiveSessionScreen() {
 
         pollLocations();
         pollPositions();
-        locationPoll.current = setInterval(pollLocations, 2000);
-        positionPoll.current = setInterval(pollPositions, 5000);
+        locationPoll.current = setInterval(pollLocations, locationsIntervalMs);
+        positionPoll.current = setInterval(pollPositions, positionsIntervalMs);
 
         return () => {
             if (locationPoll.current) clearInterval(locationPoll.current);
             if (positionPoll.current) clearInterval(positionPoll.current);
         };
-    }, [sessionKey]);
+    }, [sessionKey, isDemo, demoStartedAt, demoDurationSec]);
 
     const teamColorsMap = useMemo(() => {
         const map: Record<number, string> = {};
@@ -207,9 +234,12 @@ export default function LiveSessionScreen() {
             <View className="items-center px-4 pb-3">
                 <LiveCircuitMap
                     locations={locations}
+                    paths={isDemo ? paths : undefined}
+                    pathDurationMs={isDemo ? 400 : undefined}
                     trackPoints={trackPoints}
                     teamColors={teamColorsMap}
                     size={mapSize}
+                    tweenMs={isDemo ? 380 : 1800}
                 />
             </View>
 
