@@ -21,13 +21,34 @@ export default function PronosticsScreen() {
     const [activeTab, setActiveTab] = useState('upcoming');
     const [history, setHistory] = useState<Pronostic[]>([]);
 
+    // Extrait le vrai nom de session depuis le format "{pays} - {session_name}"
+    // ou retombe sur le champ `type`. Permet d'ignorer un `type` corrompu en DB.
+    const realSessionName = (s: RaceSession): string => {
+        if (s.name && s.name.includes(' - ')) {
+            const parts = s.name.split(' - ');
+            return parts[parts.length - 1].trim();
+        }
+        return s.type;
+    };
+
     const loadData = async () => {
         setLoading(true);
         try {
             const sessions = await fetchRaceSessions(50, true);
+            const ALLOWED = ['Race', 'Qualifying', 'Sprint'];
+            // On dédoublonne par (vrai nom + dateStart) au cas où la DB aurait des rows redondants
+            const seen = new Set<string>();
             const nextSessions = sessions
-                .filter(s => ['Race', 'Qualifying', 'Sprint', 'Sprint Qualifying'].includes(s.type))
-                .slice(0, 3);
+                .filter(s => ALLOWED.includes(realSessionName(s)))
+                .filter(s => {
+                    const key = `${realSessionName(s)}|${s.dateStart}`;
+                    if (seen.has(key)) return false;
+                    seen.add(key);
+                    return true;
+                })
+                .slice(0, 3)
+                // Override le `type` affiché pour qu'il corresponde au vrai nom
+                .map(s => ({ ...s, type: realSessionName(s) }));
             setUpcomingSessions(nextSessions);
 
             const preds: Record<number, Prediction[]> = {};
@@ -146,24 +167,26 @@ export default function PronosticsScreen() {
                                     </View>
                                 </View>
 
-                                {predictionsMap[session.id]?.length > 0 ? (
-                                    predictionsMap[session.id].map(prediction => (
-                                        <PredictionCard 
+                                {(() => {
+                                    const allowed = ['POLE_POSITION', 'RACE_WINNER', 'SPRINT_WINNER'];
+                                    const visible = (predictionsMap[session.id] || []).filter(p => allowed.includes(p.type));
+                                    return visible.length > 0 ? visible.map(prediction => (
+                                        <PredictionCard
                                             key={prediction.id}
                                             prediction={prediction}
                                             drivers={driversMap[session.id] || []}
                                             initialPronostic={pronosticsMap[prediction.id] || null}
                                             onRefresh={loadData}
                                         />
-                                    ))
-                                ) : (
-                                    <View className="bg-card/50 border border-border/20 rounded-2xl p-6 items-center border-dashed">
-                                        <Info size={24} color="#9ca3af" className="mb-2" />
-                                        <Text className="text-muted-foreground text-center text-xs font-medium">
-                                            Aucun pronostic disponible pour cette session.
-                                        </Text>
-                                    </View>
-                                )}
+                                    )) : (
+                                        <View className="bg-card/50 border border-border/20 rounded-2xl p-6 items-center border-dashed">
+                                            <Info size={24} color="#9ca3af" className="mb-2" />
+                                            <Text className="text-muted-foreground text-center text-xs font-medium">
+                                                Aucun pronostic disponible pour cette session.
+                                            </Text>
+                                        </View>
+                                    );
+                                })()}
                             </View>
                         ))}
                     </View>

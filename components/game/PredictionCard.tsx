@@ -58,7 +58,12 @@ export function PredictionCard({ prediction, initialPronostic, drivers, onRefres
     };
 
     const formatType = (type: string) => {
-        return type.replace(/_/g, ' ');
+        switch (type) {
+            case 'POLE_POSITION': return 'Qui finira 1er aux qualifs ?';
+            case 'RACE_WINNER':   return 'Qui gagnera la course ?';
+            case 'SPRINT_WINNER': return 'Qui gagnera le sprint ?';
+            default:              return type.replace(/_/g, ' ');
+        }
     };
 
     return (

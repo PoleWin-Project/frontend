@@ -42,14 +42,14 @@ function getRankLabel(points: number): { label: string; color: string; next: num
 }
 
 // ─── Stat card ─────────────────────────────────────────────────────────────
-function StatCard({ icon, label, value, sub, color, delay = 0 }: {
+function StatCard({ icon, label, value, sub, color, valueColor, delay = 0 }: {
     icon: React.ReactNode; label: string; value: string | number;
-    sub?: string; color: string; delay?: number;
+    sub?: string; color: string; valueColor?: string; delay?: number;
 }) {
     return (
         <Animated.View entering={FadeInDown.delay(delay).springify()} style={[styles.statCard]}>
             <View style={[styles.statCardIcon, { backgroundColor: color + '18' }]}>{icon}</View>
-            <Text style={styles.statCardValue}>{value}</Text>
+            <Text style={[styles.statCardValue, valueColor ? { color: valueColor } : null]}>{value}</Text>
             <Text style={styles.statCardLabel}>{label}</Text>
             {sub ? <Text style={styles.statCardSub}>{sub}</Text> : null}
         </Animated.View>
@@ -345,9 +345,13 @@ export default function ProfileScreen() {
                         color="#FFB703" delay={280}
                     />
                     <StatCard
-                        icon={<Star size={18} color="#E10600" />}
-                        label="Net gain" value={stats ? `${stats.netGain >= 0 ? '+' : ''}${stats.netGain} pts` : '—'}
-                        color="#E10600" delay={300}
+                        icon={<Star size={18} color={stats && stats.netGain < 0 ? '#ef4444' : '#22c55e'} />}
+                        label="Bilan paris"
+                        sub="gains − mises"
+                        value={stats ? `${stats.netGain >= 0 ? '+' : ''}${stats.netGain} pts` : '—'}
+                        valueColor={stats ? (stats.netGain < 0 ? '#ef4444' : stats.netGain > 0 ? '#22c55e' : '#fff') : '#fff'}
+                        color={stats && stats.netGain < 0 ? '#ef4444' : '#22c55e'}
+                        delay={300}
                     />
                 </View>
 
