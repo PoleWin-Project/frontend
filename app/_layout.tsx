@@ -2,6 +2,7 @@ import '@/global.css';
 
 import { AuthProvider } from '@/context/AuthContext';
 import { SocketProvider } from '@/context/SocketContext';
+import { DemoProvider } from '@/context/DemoContext';
 import { NAV_THEME } from '@/lib/theme';
 import { ThemeProvider } from '@react-navigation/native';
 import { PortalHost } from '@rn-primitives/portal';
@@ -77,6 +78,7 @@ export default function RootLayout() {
     <ThemeProvider value={NAV_THEME['dark']}>
       <AuthProvider>
         <SocketProvider>
+          <DemoProvider>
           <AuthGuard>
             <StatusBar style="auto" />
             <Stack>
@@ -91,6 +93,7 @@ export default function RootLayout() {
             </Stack>
             <PortalHost />
           </AuthGuard>
+          </DemoProvider>
         </SocketProvider>
       </AuthProvider>
     </ThemeProvider>

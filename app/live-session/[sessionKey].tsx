@@ -1,5 +1,5 @@
 import React, { useEffect, useState, useRef, useMemo } from 'react';
-import { View, TouchableOpacity, ActivityIndicator, Dimensions } from 'react-native';
+import { View, TouchableOpacity, ActivityIndicator, Dimensions, Alert } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { Text } from '@/components/ui/text';
 import { Icon } from '@/components/ui/icon';
@@ -8,6 +8,7 @@ import { LiveCircuitMap } from '@/components/live/LiveCircuitMap';
 import { LiveChat } from '@/components/live/LiveChat';
 import { LeaderboardSheet } from '@/components/live/LeaderboardSheet';
 import { fetchDrivers, Driver } from '@/lib/api/meetings';
+import { useDemo, DEMO_RACE_DURATION_SEC } from '@/context/DemoContext';
 
 const API_URL = process.env.EXPO_PUBLIC_API_URL || 'http://localhost:8000/api/v1';
 const { height: SCREEN_HEIGHT, width: SCREEN_WIDTH } = Dimensions.get('window');
@@ -23,18 +24,68 @@ interface Location {
     y: number;
 }
 
+function DemoTimer({ startedAt, durationSec }: { startedAt: string; durationSec: number }) {
+    const [text, setText] = useState('--:--');
+    useEffect(() => {
+        if (!startedAt) return;
+        const tick = () => {
+            const elapsedSec = Math.max(0, (Date.now() - new Date(startedAt).getTime()) / 1000);
+            const remaining = Math.max(0, Math.floor(durationSec - elapsedSec));
+            const m = Math.floor(remaining / 60);
+            const s = remaining % 60;
+            const pct = Math.min(100, Math.floor((elapsedSec / durationSec) * 100));
+            setText(`${m}:${String(s).padStart(2, '0')} restantes · ${pct}%`);
+        };
+        tick();
+        const id = setInterval(tick, 500);
+        return () => clearInterval(id);
+    }, [startedAt, durationSec]);
+    return <>{text}</>;
+}
+
 export default function LiveSessionScreen() {
-    const { sessionKey } = useLocalSearchParams();
+    const params = useLocalSearchParams<{ sessionKey: string; demo?: string; startedAt?: string; durationSec?: string }>();
+    const sessionKey = params.sessionKey;
+    const isDemo = params.demo === '1';
+    const demoStartedAt = params.startedAt ?? '';
+    const demoDurationSec = Number(params.durationSec ?? DEMO_RACE_DURATION_SEC);
     const router = useRouter();
+    const demo = useDemo();
     const [locations, setLocations] = useState<Location[]>([]);
     const [positions, setPositions] = useState<Position[]>([]);
     const [trackPoints, setTrackPoints] = useState<{ x: number, y: number }[]>([]);
     const [drivers, setDrivers] = useState<Driver[]>([]);
     const [loading, setLoading] = useState(true);
     const [showLeaderboard, setShowLeaderboard] = useState(false);
+    const [demoEnded, setDemoEnded] = useState(false);
 
     const locationPoll = useRef<any>(null);
     const positionPoll = useRef<any>(null);
+
+    // Auto-end de la démo quand le temps écoulé dépasse la durée
+    useEffect(() => {
+        if (!isDemo || !demoStartedAt || demoEnded) return;
+        const tick = () => {
+            const elapsed = (Date.now() - new Date(demoStartedAt).getTime()) / 1000;
+            if (elapsed >= demoDurationSec) {
+                setDemoEnded(true);
+                const result = demo.endDemo();
+                if (result) {
+                    Alert.alert(
+                        result.won ? '🏆 Bravo !' : '😢 Perdu !',
+                        result.won
+                            ? `${result.winner} a gagné Monaco 2024 — comme tu l'avais prédit ! +${demo.stake * 2} pts`
+                            : `Le vainqueur est ${result.winner} (Leclerc). Mise perdue : ${demo.stake} pts.`,
+                        [{ text: 'OK', onPress: () => router.back() }],
+                    );
+                } else {
+                    router.back();
+                }
+            }
+        };
+        const id = setInterval(tick, 1000);
+        return () => clearInterval(id);
+    }, [isDemo, demoStartedAt, demoDurationSec, demoEnded, demo, router]);
 
     useEffect(() => {
         async function init() {
@@ -44,9 +95,20 @@ export default function LiveSessionScreen() {
         }
         init();
 
+        const buildUrl = (endpoint: 'locations' | 'positions') => {
+            if (isDemo) {
+                const qs = new URLSearchParams({
+                    startedAt: demoStartedAt,
+                    durationSec: String(demoDurationSec),
+                }).toString();
+                return `${API_URL}/openf1/demo/${sessionKey}/${endpoint}?${qs}`;
+            }
+            return `${API_URL}/openf1/sessions/${sessionKey}/${endpoint}`;
+        };
+
         const pollLocations = async () => {
             try {
-                const res = await fetch(`${API_URL}/openf1/sessions/${sessionKey}/locations`);
+                const res = await fetch(buildUrl('locations'));
                 const data = await res.json();
                 if (data.locations) {
                     setLocations(data.locations);
@@ -56,7 +118,6 @@ export default function LiveSessionScreen() {
                             const exists = next.some(p => Math.abs(p.x - loc.x) < 30 && Math.abs(p.y - loc.y) < 30);
                             if (!exists) next.push({ x: loc.x, y: loc.y });
                         });
-                        // Cap stored points to avoid unbounded growth
                         return next.length > 1500 ? next.slice(next.length - 1500) : next;
                     });
                 }
@@ -67,7 +128,7 @@ export default function LiveSessionScreen() {
 
         const pollPositions = async () => {
             try {
-                const res = await fetch(`${API_URL}/openf1/sessions/${sessionKey}/positions`);
+                const res = await fetch(buildUrl('positions'));
                 const data = await res.json();
                 if (data.positions) setPositions(data.positions);
             } catch (e) {
@@ -125,13 +186,13 @@ export default function LiveSessionScreen() {
                 </TouchableOpacity>
                 <View className="items-center">
                     <View className="flex-row items-center gap-2">
-                        <View className="w-2 h-2 rounded-full bg-red-500" />
+                        <View className={`w-2 h-2 rounded-full ${isDemo ? 'bg-amber-400' : 'bg-red-500'}`} />
                         <Text className="text-white font-black uppercase italic tracking-widest text-sm">
-                            Séance en direct
+                            {isDemo ? 'Démo Monaco 2024' : 'Séance en direct'}
                         </Text>
                     </View>
-                    <Text className="text-primary text-[9px] font-bold uppercase tracking-widest">
-                        Live Tracker · {locations.length} pilotes
+                    <Text className={`text-[9px] font-bold uppercase tracking-widest ${isDemo ? 'text-amber-300' : 'text-primary'}`}>
+                        {isDemo ? <DemoTimer startedAt={demoStartedAt} durationSec={demoDurationSec} /> : `Live Tracker · ${locations.length} pilotes`}
                     </Text>
                 </View>
                 <View className="flex-row items-center gap-1.5 px-2.5 py-1.5 bg-green-500/10 rounded-full border border-green-500/30">

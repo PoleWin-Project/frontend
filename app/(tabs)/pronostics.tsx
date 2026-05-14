@@ -5,6 +5,9 @@ import { Calendar, MapPin, Info } from 'lucide-react-native';
 import { fetchRaceSessions, RaceSession, fetchPredictions, Prediction, fetchMyPronostic, Pronostic, fetchDrivers, Driver, fetchMyPronosticsForSession, fetchMyPronosticsHistory } from '@/lib/api/meetings';
 import { PredictionCard } from '@/components/game/PredictionCard';
 import { PronosticHistoryCard } from '@/components/game/PronosticHistoryCard';
+import { DemoModeCard } from '@/components/game/DemoModeCard';
+import { DemoPredictionCard } from '@/components/game/DemoPredictionCard';
+import { useDemo } from '@/context/DemoContext';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { F1Loader } from '@/components/ui/F1Loader';
 import { ScreenHeader } from '@/components/ui/ScreenHeader';
@@ -12,6 +15,7 @@ import { useAuth } from '@/context/AuthContext';
 
 export default function PronosticsScreen() {
     const { user } = useAuth();
+    const demo = useDemo();
     const [loading, setLoading] = useState(true);
     const [refreshing, setRefreshing] = useState(false);
     const [upcomingSessions, setUpcomingSessions] = useState<RaceSession[]>([]);
@@ -118,12 +122,16 @@ export default function PronosticsScreen() {
                 </View>
 
                 <TabsContent value="upcoming" className="flex-1">
-                    <ScrollView 
+                    <ScrollView
                         refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor="#ef4444" />}
                         showsVerticalScrollIndicator={false}
                     >
+                        <View className="px-4 pt-4">
+                            <DemoModeCard />
+                            {demo.active && <DemoPredictionCard />}
+                        </View>
                         {nextGP ? (
-                            <View className="p-4">
+                            <View className="p-4 pt-0">
                         {/* Next GP Hero */}
                         <View className="bg-zinc-900 rounded-3xl overflow-hidden mb-6 border border-white/5 shadow-2xl">
                             <View className="p-6 h-48 justify-between bg-black/40">
