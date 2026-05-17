@@ -12,13 +12,15 @@ import { LinearGradient } from 'expo-linear-gradient';
 import Animated, { FadeInDown } from 'react-native-reanimated';
 import {
     LogOut, Trash2, Edit2, Check, X, Shield, Star, Trophy,
-    ArrowRight, Users, Target, TrendingUp, Zap, Flag,
+    ArrowRight, Users, Target, TrendingUp, Zap, Flag, ChevronDown, ChevronUp,
 } from 'lucide-react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { getLatestSessionTeams, getLatestSessionDrivers, type OpenF1Team, type OpenF1Driver } from '@/lib/api/openf1';
 import { fetchUserStats, type UserStats } from '@/lib/api/users';
 import { fetchFriends } from '@/lib/api/friends';
 import { ScreenHeader } from '@/components/ui/ScreenHeader';
+import { fetchMyBadges, fetchAllBadges, type UserBadge, type Badge } from '@/lib/api/badges';
+import { BadgeCatalog, BadgeTileHero } from '@/components/ui/badge-card';
 
 // ─── Couleur avatar déterministe ──────────────────────────────────────────
 const AVATAR_GRADIENTS: [string, string][] = [
@@ -73,11 +75,15 @@ export default function ProfileScreen() {
     const [loadingLists, setLoadingLists] = useState(false);
     const [stats, setStats] = useState<UserStats | null>(null);
     const [friendCount, setFriendCount] = useState<number>(0);
+    const [allBadges, setAllBadges] = useState<Badge[]>([]);
+    const [userBadges, setUserBadges] = useState<UserBadge[]>([]);
+    const [badgesOpen, setBadgesOpen] = useState(false);
 
     useEffect(() => {
         if (accessToken) {
             loadStats();
             loadFriendCount();
+            loadBadges();
         }
     }, [accessToken]);
 
@@ -95,6 +101,13 @@ export default function ProfileScreen() {
         if (!accessToken) return;
         const friends = await fetchFriends(accessToken);
         setFriendCount(friends.length);
+    }
+
+    async function loadBadges() {
+        if (!accessToken) return;
+        const [all, mine] = await Promise.all([fetchAllBadges(), fetchMyBadges(accessToken)]);
+        setAllBadges(all);
+        setUserBadges(mine);
     }
 
     async function loadLists() {
@@ -315,6 +328,40 @@ export default function ProfileScreen() {
                     </Animated.View>
                 )}
 
+                {/* ── Badges ── */}
+                {!isEditing && (() => {
+                    const pionnier = allBadges.find(b => b.code === 'pionnier_du_paddock') ?? null;
+                    return (
+                        <Animated.View entering={FadeInDown.delay(200).springify()} style={styles.badgeCard}>
+                            <Pressable style={styles.badgeHeader} onPress={() => setBadgesOpen(v => !v)}>
+                                <View>
+                                    <Text style={styles.sectionLabel}>Badges</Text>
+                                    <Text style={styles.badgeSubtitle}>
+                                        {userBadges.length} / {allBadges.length} débloqués
+                                    </Text>
+                                </View>
+                                {badgesOpen
+                                    ? <ChevronUp size={18} color="rgba(255,255,255,0.3)" />
+                                    : <ChevronDown size={18} color="rgba(255,255,255,0.3)" />
+                                }
+                            </Pressable>
+
+                            {badgesOpen ? (
+                                <BadgeCatalog allBadges={allBadges} userBadges={userBadges} />
+                            ) : (
+                                <View style={styles.badgePreview}>
+                                    {pionnier && <BadgeTileHero badge={pionnier} userBadge={null} />}
+                                    <Text style={styles.badgeMore}>
+                                        {allBadges.length > 1
+                                            ? `+${allBadges.length - 1} badges à découvrir →`
+                                            : 'Appuie pour voir tous les badges →'}
+                                    </Text>
+                                </View>
+                            )}
+                        </Animated.View>
+                    );
+                })()}
+
                 {/* ── Stats grid ── */}
                 <Text style={styles.sectionTitle}>Statistiques</Text>
                 <View style={styles.statsGrid}>
@@ -462,6 +509,25 @@ const styles = StyleSheet.create({
     favIcon: { width: 36, height: 36, borderRadius: 12, alignItems: 'center', justifyContent: 'center' },
     favLabel: { fontSize: 9, color: 'rgba(255,255,255,0.3)', fontWeight: '800', textTransform: 'uppercase', letterSpacing: 1.5, marginBottom: 2 },
     favValue: { fontSize: 13, color: '#fff', fontWeight: '900', textTransform: 'uppercase', fontStyle: 'italic' },
+
+    // Badges
+    badgeCard: {
+        backgroundColor: '#0c0c0f', borderWidth: 1,
+        borderColor: 'rgba(255,255,255,0.06)', borderRadius: 20, padding: 18, gap: 12,
+    },
+    badgeHeader: {
+        flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
+    },
+    badgeSubtitle: {
+        color: 'rgba(255,255,255,0.2)', fontSize: 11, fontWeight: '600', marginTop: 2,
+    },
+    badgePreview: {
+        flexDirection: 'row', alignItems: 'center', gap: 14,
+    },
+    badgeMore: {
+        flex: 1, color: 'rgba(255,255,255,0.3)', fontSize: 12,
+        fontWeight: '700', fontStyle: 'italic',
+    },
 
     // Bio
     bioCard: {
