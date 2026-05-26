@@ -179,12 +179,12 @@ export function BadgeTileHero({
 
                 {/* Bottom info overlay */}
                 <LinearGradient
-                    colors={['transparent', 'rgba(0,0,0,0.85)']}
+                    colors={['transparent', 'rgba(0,0,0,0.92)']}
                     style={h.bottomOverlay}
                     start={{ x: 0, y: 0 }} end={{ x: 0, y: 1 }}
                     pointerEvents="none"
                 >
-                    <View style={[h.rarityPill, { backgroundColor: rc.color + '25', borderColor: rc.color + '60' }]}>
+                    <View style={h.rarityRow}>
                         <View style={[h.rarityDot, { backgroundColor: rc.color }]} />
                         <Text style={[h.rarityLabel, { color: rc.color }]}>{rc.label.toUpperCase()}</Text>
                     </View>
@@ -490,19 +490,19 @@ const h = StyleSheet.create({
     },
     bottomOverlay: {
         position: 'absolute', bottom: 0, left: 0, right: 0,
-        paddingHorizontal: 10, paddingBottom: 10, paddingTop: 24,
-        gap: 4,
+        paddingHorizontal: 11, paddingBottom: 11, paddingTop: 36,
+        gap: 3,
     },
-    rarityPill: {
-        flexDirection: 'row', alignItems: 'center', gap: 5,
-        paddingHorizontal: 8, paddingVertical: 3,
-        borderRadius: 20, borderWidth: 1, alignSelf: 'flex-start',
+    rarityRow: { flexDirection: 'row', alignItems: 'center', gap: 5 },
+    rarityDot:   { width: 6, height: 6, borderRadius: 3 },
+    rarityLabel: {
+        fontSize: 9, fontWeight: '800', letterSpacing: 2,
+        textShadowColor: 'rgba(0,0,0,0.8)', textShadowOffset: { width: 0, height: 1 }, textShadowRadius: 4,
     },
-    rarityDot:   { width: 5, height: 5, borderRadius: 3 },
-    rarityLabel: { fontSize: 8, fontWeight: '800', letterSpacing: 1.5 },
     name: {
-        color: '#fff', fontSize: 11, fontWeight: '900',
-        textTransform: 'uppercase', letterSpacing: 0.5, lineHeight: 14,
+        color: '#fff', fontSize: 13, fontWeight: '900',
+        fontStyle: 'italic', textTransform: 'uppercase', letterSpacing: 0.4, lineHeight: 16,
+        textShadowColor: 'rgba(0,0,0,0.9)', textShadowOffset: { width: 0, height: 1 }, textShadowRadius: 6,
     },
-    nameLocked: { color: 'rgba(255,255,255,0.45)' },
+    nameLocked: { color: 'rgba(255,255,255,0.5)' },
 });
