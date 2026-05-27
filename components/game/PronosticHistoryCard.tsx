@@ -1,35 +1,43 @@
 import React from 'react';
 import { View } from 'react-native';
 import { Text } from '@/components/ui/text';
-import { CheckCircle2, Clock, XCircle, Trophy, Coins } from 'lucide-react-native';
+import { CheckCircle2, Clock, XCircle, Trophy, Coins, Ban } from 'lucide-react-native';
 import { Pronostic } from '@/lib/api/meetings';
 
 export function PronosticHistoryCard({ pronostic }: { pronostic: Pronostic }) {
     const isWon = pronostic.status === 'won';
     const isLost = pronostic.status === 'lost';
-    const isPending = pronostic.status === 'submitted' || pronostic.status === 'awaiting_verification';
+    const isVoid = pronostic.status === 'void';
 
     const getStatusIcon = () => {
         if (isWon) return <CheckCircle2 size={24} color="#22c55e" />;
         if (isLost) return <XCircle size={24} color="#ef4444" />;
+        if (isVoid) return <Ban size={24} color="#9ca3af" />;
         return <Clock size={24} color="#f59e0b" />;
     };
 
     const getStatusText = () => {
         if (isWon) return 'Gagné';
         if (isLost) return 'Perdu';
+        if (isVoid) return 'Annulé · remboursé';
         return 'En attente';
     };
 
     const getStatusColor = () => {
         if (isWon) return 'text-green-500';
         if (isLost) return 'text-red-500';
+        if (isVoid) return 'text-muted-foreground';
         return 'text-amber-500';
     };
 
     const formatType = (type?: string) => {
         if (!type) return 'Prono';
-        return type.replace(/_/g, ' ');
+        switch (type) {
+            case 'POLE_POSITION': return 'Pole · Qualifs';
+            case 'RACE_WINNER':   return 'Vainqueur Course';
+            case 'SPRINT_WINNER': return 'Vainqueur Sprint';
+            default:              return type.replace(/_/g, ' ');
+        }
     };
 
     const prediction = pronostic.prediction as any;
@@ -65,6 +73,9 @@ export function PronosticHistoryCard({ pronostic }: { pronostic: Pronostic }) {
                 )}
                 {isLost && (
                     <Text className="text-red-500 font-bold text-xs uppercase">-{pronostic.pointsStaked}</Text>
+                )}
+                {isVoid && (
+                    <Text className="text-muted-foreground font-bold text-xs uppercase">+{pronostic.pointsStaked} remb.</Text>
                 )}
             </View>
         </View>

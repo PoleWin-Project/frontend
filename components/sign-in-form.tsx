@@ -5,6 +5,8 @@ import { Separator } from '@/components/ui/separator';
 import { Text } from '@/components/ui/text';
 import { useAuth } from '@/context/AuthContext';
 import * as React from 'react';
+import { GoogleSignin, statusCodes } from '@react-native-google-signin/google-signin';
+import * as AppleAuthentication from 'expo-apple-authentication';
 import {
   Animated,
   Easing,
@@ -61,8 +63,13 @@ function getRegisterErrorMessage(email: string, username: string, password: stri
   return null;
 }
 
+GoogleSignin.configure({
+  webClientId: process.env.EXPO_PUBLIC_GOOGLE_CLIENT_ID_WEB,
+  iosClientId: process.env.EXPO_PUBLIC_GOOGLE_CLIENT_ID_IOS,
+});
+
 export function SignInForm() {
-  const { login, register, isLoading, error, clearError } = useAuth();
+  const { login, register, loginWithGoogle, loginWithApple, isLoading, error, clearError } = useAuth();
   const { height: screenHeight } = useWindowDimensions();
   const usernameInputRef = React.useRef<TextInput>(null);
   const [mode, setMode] = React.useState<AuthMode>('login');
@@ -90,6 +97,10 @@ export function SignInForm() {
     setLocalError(null);
     setSuccessMessage(null);
     clearError();
+    setIdentifier('');
+    setUsername('');
+    setPassword('');
+    setConfirmPassword('');
   }, [mode, clearError]);
 
   React.useEffect(() => {
@@ -240,6 +251,48 @@ export function SignInForm() {
     setSuccessMessage('Compte cree avec succes.');
   }
 
+  async function onGooglePress() {
+    setLocalError(null);
+    try {
+      await GoogleSignin.hasPlayServices();
+      const userInfo = await GoogleSignin.signIn();
+      if (userInfo.data?.idToken) {
+        const result = await loginWithGoogle(userInfo.data.idToken);
+        if (!result.ok) setLocalError(result.error ?? "Erreur Google Auth");
+      } else {
+        setLocalError("Jeton Google introuvable");
+      }
+    } catch (error: any) {
+      if (error.code === statusCodes.SIGN_IN_CANCELLED) {
+        // user cancelled
+      } else {
+        setLocalError(error.message || "Erreur Google");
+      }
+    }
+  }
+
+  async function onApplePress() {
+    setLocalError(null);
+    try {
+      const credential = await AppleAuthentication.signInAsync({
+        requestedScopes: [
+          AppleAuthentication.AppleAuthenticationScope.FULL_NAME,
+          AppleAuthentication.AppleAuthenticationScope.EMAIL,
+        ],
+      });
+      if (credential.identityToken) {
+        const result = await loginWithApple(credential.identityToken, credential.email || undefined, credential.fullName || undefined);
+        if (!result.ok) setLocalError(result.error ?? "Erreur Apple Auth");
+      }
+    } catch (e: any) {
+      if (e.code === 'ERR_REQUEST_CANCELED') {
+        // user cancelled
+      } else {
+        setLocalError(e.message || "Erreur Apple");
+      }
+    }
+  }
+
   const displayError = localError || error;
 
   const isRegister = mode === 'register';
@@ -320,147 +373,143 @@ export function SignInForm() {
           </Pressable>
         </View>
 
-      {displayError ? (
-        <View className="mt-4 rounded-md bg-destructive/10 p-3">
-          <Text className="text-destructive text-sm">{displayError}</Text>
-        </View>
-      ) : null}
-      {successMessage ? (
-        <View className="mt-3 rounded-md border border-emerald-500/30 bg-emerald-500/10 p-3">
-          <Text className="text-emerald-300 text-sm">{successMessage}</Text>
-        </View>
-      ) : null}
-
-      <View className={isRegister ? 'mt-2 gap-2' : 'mt-3 gap-2.5'}>
-        <View className="relative">
-          <View className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2">
-            <Icon as={Mail} size={18} className="text-[#3395ff]" />
+        {displayError ? (
+          <View className="mt-4 rounded-md bg-destructive/10 p-3">
+            <Text className="text-destructive text-sm">{displayError}</Text>
           </View>
-          <Input
-            id="identifier"
-            placeholder={mode === 'login' ? 'Email ou pseudo' : 'Email'}
-            value={identifier}
-            onChangeText={setIdentifier}
-            keyboardType="email-address"
-            autoComplete={mode === 'login' ? 'username' : 'email'}
-            autoCapitalize="none"
-            onSubmitEditing={onEmailSubmitEditing}
-            returnKeyType="next"
-            submitBehavior="submit"
-            editable={!isLoading}
-            className="h-12 rounded-xl border-white/20 bg-black/30 pl-11 text-white placeholder:text-white/50"
-          />
-        </View>
+        ) : null}
+        {successMessage ? (
+          <View className="mt-3 rounded-md border border-emerald-500/30 bg-emerald-500/10 p-3">
+            <Text className="text-emerald-300 text-sm">{successMessage}</Text>
+          </View>
+        ) : null}
 
-        {mode === 'register' ? (
+        <View className={isRegister ? 'mt-2 gap-2' : 'mt-3 gap-2.5'}>
           <View className="relative">
             <View className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2">
-              <Icon as={User} size={18} className="text-[#3395ff]" />
+              <Icon as={Mail} size={18} className="text-[#3395ff]" />
             </View>
             <Input
-              ref={usernameInputRef}
-              id="username"
-              placeholder="Pseudo"
-              value={username}
-              onChangeText={setUsername}
-              autoComplete="username"
+              id="identifier"
+              placeholder={mode === 'login' ? 'Email ou pseudo' : 'Email'}
+              value={identifier}
+              onChangeText={setIdentifier}
+              keyboardType="email-address"
+              autoComplete={mode === 'login' ? 'username' : 'email'}
               autoCapitalize="none"
-              onSubmitEditing={() => {
-                passwordInputRef.current?.focus();
-              }}
+              onSubmitEditing={onEmailSubmitEditing}
               returnKeyType="next"
+              submitBehavior="submit"
               editable={!isLoading}
               className="h-12 rounded-xl border-white/20 bg-black/30 pl-11 text-white placeholder:text-white/50"
             />
           </View>
-        ) : null}
 
-        <View className="relative">
-          <View className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2">
-            <Icon as={Lock} size={18} className="text-[#3395ff]" />
-          </View>
-          <Input
-            ref={passwordInputRef}
-            id="password"
-            placeholder="Mot de passe"
-            value={password}
-            onChangeText={setPassword}
-            secureTextEntry
-            returnKeyType={mode === 'register' ? 'next' : 'send'}
-            onSubmitEditing={onPasswordSubmitEditing}
-            editable={!isLoading}
-            className="h-12 rounded-xl border-white/20 bg-black/30 pl-11 text-white placeholder:text-white/50"
-          />
-        </View>
+          {mode === 'register' ? (
+            <View className="relative">
+              <View className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2">
+                <Icon as={User} size={18} className="text-[#3395ff]" />
+              </View>
+              <Input
+                ref={usernameInputRef}
+                id="username"
+                placeholder="Pseudo"
+                value={username}
+                onChangeText={setUsername}
+                autoComplete="username"
+                autoCapitalize="none"
+                onSubmitEditing={() => {
+                  passwordInputRef.current?.focus();
+                }}
+                returnKeyType="next"
+                editable={!isLoading}
+                className="h-12 rounded-xl border-white/20 bg-black/30 pl-11 text-white placeholder:text-white/50"
+              />
+            </View>
+          ) : null}
 
-        {mode === 'register' ? (
           <View className="relative">
             <View className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2">
               <Icon as={Lock} size={18} className="text-[#3395ff]" />
             </View>
             <Input
-              ref={confirmPasswordInputRef}
-              id="confirmPassword"
-              placeholder="Confirmer le mot de passe"
-              value={confirmPassword}
-              onChangeText={setConfirmPassword}
+              ref={passwordInputRef}
+              id="password"
+              placeholder="Mot de passe"
+              value={password}
+              onChangeText={setPassword}
               secureTextEntry
-              returnKeyType="send"
-              onSubmitEditing={onSubmit}
+              returnKeyType={mode === 'register' ? 'next' : 'send'}
+              onSubmitEditing={onPasswordSubmitEditing}
               editable={!isLoading}
               className="h-12 rounded-xl border-white/20 bg-black/30 pl-11 text-white placeholder:text-white/50"
             />
           </View>
-        ) : null}
 
-        <Button
-          className="mt-1 h-12 w-full flex-row items-center justify-center rounded-xl bg-[#ef1f14]"
-          onPress={onSubmit}
-          disabled={isLoading}>
-          <Text className="text-base font-bold uppercase text-white">
-            {isLoading
-              ? mode === 'login'
-                ? 'Connexion...'
-                : 'Inscription...'
-              : mode === 'login'
-                ? 'Se connecter'
-                : "S'inscrire"}
-          </Text>
-          <Icon as={RefreshCcw} size={18} className="text-white" />
-        </Button>
-      </View>
+          {mode === 'register' ? (
+            <View className="relative">
+              <View className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2">
+                <Icon as={Lock} size={18} className="text-[#3395ff]" />
+              </View>
+              <Input
+                ref={confirmPasswordInputRef}
+                id="confirmPassword"
+                placeholder="Confirmer le mot de passe"
+                value={confirmPassword}
+                onChangeText={setConfirmPassword}
+                secureTextEntry
+                returnKeyType="send"
+                onSubmitEditing={onSubmit}
+                editable={!isLoading}
+                className="h-12 rounded-xl border-white/20 bg-black/30 pl-11 text-white placeholder:text-white/50"
+              />
+            </View>
+          ) : null}
 
-      <View className={isRegister ? 'mt-3 flex-row items-center' : 'mt-4 flex-row items-center'}>
-        <Separator className="flex-1 bg-white/20" />
-        <Text className="px-4 text-2xl text-white/85">ou</Text>
-        <Separator className="flex-1 bg-white/20" />
-      </View>
+          <Button
+            className="mt-1 h-12 w-full flex-row items-center justify-center rounded-xl bg-[#ef1f14]"
+            onPress={onSubmit}
+            disabled={isLoading}>
+            <Text className="text-base font-bold uppercase text-white">
+              {isLoading
+                ? mode === 'login'
+                  ? 'Connexion...'
+                  : 'Inscription...'
+                : mode === 'login'
+                  ? 'Se connecter'
+                  : "S'inscrire"}
+            </Text>
+            <Icon as={RefreshCcw} size={18} className="text-white" />
+          </Button>
+        </View>
 
-      <View className={isRegister ? 'mt-2 gap-2' : 'mt-3 gap-2.5'}>
-        <Button
-          variant="outline"
-          className="h-12 rounded-xl border border-white/70 bg-black"
-          onPress={() => {
-            // TODO: Integrer l'auth Google
-          }}>
-          <Image
-            source={{ uri: GOOGLE_LOGO_URI }}
-            className="h-5 w-5"
-            resizeMode="contain"
-          />
-          <Text className="text-base font-semibold text-white">Continuer avec Google</Text>
-        </Button>
+        <View className={isRegister ? 'mt-3 flex-row items-center' : 'mt-4 flex-row items-center'}>
+          <Separator className="flex-1 bg-white/20" />
+          <Text className="px-4 text-2xl text-white/85">ou</Text>
+          <Separator className="flex-1 bg-white/20" />
+        </View>
 
-        <Button
-          variant="outline"
-          className="h-12 rounded-xl border-white/70 bg-black"
-          onPress={() => {
-            // TODO: Integrer l'auth Apple
-          }}>
-          <Icon as={Apple} size={18} className="text-white" />
-          <Text className="text-base font-semibold text-white">Continuer avec Apple</Text>
-        </Button>
-      </View>
+        <View className={isRegister ? 'mt-2 gap-2' : 'mt-3 gap-2.5'}>
+          <Button
+            variant="outline"
+            className="h-12 rounded-xl border border-white/70 bg-black"
+            onPress={onGooglePress}>
+            <Image
+              source={{ uri: GOOGLE_LOGO_URI }}
+              className="h-5 w-5"
+              resizeMode="contain"
+            />
+            <Text className="text-base font-semibold text-white">Continuer avec Google</Text>
+          </Button>
+
+          <Button
+            variant="outline"
+            className="h-12 rounded-xl border-white/70 bg-black"
+            onPress={onApplePress}>
+            <Icon as={Apple} size={18} className="text-white" />
+            <Text className="text-base font-semibold text-white">Continuer avec Apple</Text>
+          </Button>
+        </View>
 
         <Text className={isRegister ? 'mt-2 text-center text-[10px] leading-3 text-white/60' : 'mt-3 text-center text-xs leading-4 text-white/60'}>
           En creant un compte, tu acceptes les CGU et la Politique de Confidentialite.

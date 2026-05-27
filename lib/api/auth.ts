@@ -99,6 +99,70 @@ export async function login(
 }
 
 /**
+ * Connexion avec Google
+ */
+export async function loginWithGoogle(
+  idToken: string
+): Promise<{ ok: true; data: AuthTokens } | { ok: false; error: string }> {
+  try {
+    const res = await fetch(`${API_URL}/auth/google`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ idToken }),
+    });
+    const data = await res.json();
+
+    if (!res.ok) {
+      return { ok: false, error: data.message || 'Echec de la connexion Google.' };
+    }
+
+    return {
+      ok: true,
+      data: {
+        accessToken: data.accessToken,
+        refreshToken: data.refreshToken,
+        user: data.user,
+      },
+    };
+  } catch (e) {
+    return { ok: false, error: 'Erreur réseau.' };
+  }
+}
+
+/**
+ * Connexion avec Apple
+ */
+export async function loginWithApple(
+  identityToken: string,
+  email?: string,
+  fullName?: { givenName?: string | null; familyName?: string | null }
+): Promise<{ ok: true; data: AuthTokens } | { ok: false; error: string }> {
+  try {
+    const res = await fetch(`${API_URL}/auth/apple`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ identityToken, email, fullName }),
+    });
+    const data = await res.json();
+
+    if (!res.ok) {
+      return { ok: false, error: data.message || 'Echec de la connexion Apple.' };
+    }
+
+    return {
+      ok: true,
+      data: {
+        accessToken: data.accessToken,
+        refreshToken: data.refreshToken,
+        user: data.user,
+      },
+    };
+  } catch (e) {
+    return { ok: false, error: 'Erreur réseau.' };
+  }
+}
+
+/**
  * Inscription
  */
 export async function register(

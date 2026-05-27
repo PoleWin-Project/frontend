@@ -1,7 +1,7 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import * as React from 'react';
 import type { AuthUser } from '@/lib/api/auth';
-import { login as apiLogin, refreshTokens, register as apiRegister, fetchCurrentUser } from '@/lib/api/auth';
+import { login as apiLogin, refreshTokens, register as apiRegister, fetchCurrentUser, loginWithGoogle as apiLoginWithGoogle, loginWithApple as apiLoginWithApple } from '@/lib/api/auth';
 import { updateUserProfile as apiUpdateUserProfile, type UpdateProfileInput } from '@/lib/api/users';
 
 const ACCESS_TOKEN_KEY = '@polewin/accessToken';
@@ -24,6 +24,8 @@ type AuthContextValue = AuthState & {
     password: string;
     confirmPassword: string;
   }) => Promise<{ ok: boolean; error?: string }>;
+  loginWithGoogle: (idToken: string) => Promise<{ ok: boolean; error?: string }>;
+  loginWithApple: (identityToken: string, email?: string, fullName?: { givenName?: string | null; familyName?: string | null }) => Promise<{ ok: boolean; error?: string }>;
   logout: () => Promise<void>;
   clearError: () => void;
   refreshProfile: () => Promise<void>;
@@ -134,6 +136,50 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     []
   );
 
+  const loginWithGoogle = React.useCallback(async (idToken: string) => {
+    setState((s) => ({ ...s, isLoading: true, error: null }));
+    const result = await apiLoginWithGoogle(idToken);
+    if (!result.ok) {
+      setState((s) => ({ ...s, isLoading: false, error: result.error }));
+      return { ok: false, error: result.error };
+    }
+    await Promise.all([
+      AsyncStorage.setItem(ACCESS_TOKEN_KEY, result.data.accessToken),
+      AsyncStorage.setItem(REFRESH_TOKEN_KEY, result.data.refreshToken),
+      AsyncStorage.setItem(USER_KEY, JSON.stringify(result.data.user)),
+    ]);
+    setState({
+      user: result.data.user,
+      accessToken: result.data.accessToken,
+      isInitialized: true,
+      isLoading: false,
+      error: null,
+    });
+    return { ok: true };
+  }, []);
+
+  const loginWithApple = React.useCallback(async (identityToken: string, email?: string, fullName?: any) => {
+    setState((s) => ({ ...s, isLoading: true, error: null }));
+    const result = await apiLoginWithApple(identityToken, email, fullName);
+    if (!result.ok) {
+      setState((s) => ({ ...s, isLoading: false, error: result.error }));
+      return { ok: false, error: result.error };
+    }
+    await Promise.all([
+      AsyncStorage.setItem(ACCESS_TOKEN_KEY, result.data.accessToken),
+      AsyncStorage.setItem(REFRESH_TOKEN_KEY, result.data.refreshToken),
+      AsyncStorage.setItem(USER_KEY, JSON.stringify(result.data.user)),
+    ]);
+    setState({
+      user: result.data.user,
+      accessToken: result.data.accessToken,
+      isInitialized: true,
+      isLoading: false,
+      error: null,
+    });
+    return { ok: true };
+  }, []);
+
   const logout = React.useCallback(async () => {
     await Promise.all([
       AsyncStorage.removeItem(ACCESS_TOKEN_KEY),
@@ -205,6 +251,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     ...state,
     login,
     register,
+    loginWithGoogle,
+    loginWithApple,
     logout,
     clearError,
     refreshProfile,

@@ -7,6 +7,8 @@ import { useAuth } from '@/context/AuthContext';
 import * as React from 'react';
 import { Lock, Mail, RefreshCcw, User } from 'lucide-react-native';
 import { Pressable, TextInput, View } from 'react-native';
+import { GoogleSignin, statusCodes } from '@react-native-google-signin/google-signin';
+import * as AppleAuthentication from 'expo-apple-authentication';
 
 type SignUpFormProps = {
   onSuccess?: () => void;
@@ -14,7 +16,7 @@ type SignUpFormProps = {
 };
 
 export function SignUpForm({ onSuccess, onSignInPress }: SignUpFormProps) {
-  const { register, isLoading, error, clearError } = useAuth();
+  const { register, loginWithGoogle, loginWithApple, isLoading, error, clearError } = useAuth();
   const confirmPasswordRef = React.useRef<TextInput>(null);
   const usernameRef = React.useRef<TextInput>(null);
   const passwordRef = React.useRef<TextInput>(null);
@@ -76,6 +78,56 @@ export function SignUpForm({ onSuccess, onSignInPress }: SignUpFormProps) {
     }
     if (result.error) {
       setLocalError(result.error);
+    }
+  }
+
+  async function onGooglePress() {
+    setLocalError(null);
+    try {
+      await GoogleSignin.hasPlayServices();
+      const userInfo = await GoogleSignin.signIn();
+      if (userInfo.data?.idToken) {
+        const result = await loginWithGoogle(userInfo.data.idToken);
+        if (result.ok) {
+          onSuccess?.();
+        } else {
+          setLocalError(result.error ?? "Erreur Google Auth");
+        }
+      } else {
+        setLocalError("Jeton Google introuvable");
+      }
+    } catch (error: any) {
+      if (error.code === statusCodes.SIGN_IN_CANCELLED) {
+        // user cancelled
+      } else {
+        setLocalError(error.message || "Erreur Google");
+      }
+    }
+  }
+
+  async function onApplePress() {
+    setLocalError(null);
+    try {
+      const credential = await AppleAuthentication.signInAsync({
+        requestedScopes: [
+          AppleAuthentication.AppleAuthenticationScope.FULL_NAME,
+          AppleAuthentication.AppleAuthenticationScope.EMAIL,
+        ],
+      });
+      if (credential.identityToken) {
+        const result = await loginWithApple(credential.identityToken, credential.email || undefined, credential.fullName || undefined);
+        if (result.ok) {
+          onSuccess?.();
+        } else {
+          setLocalError(result.error ?? "Erreur Apple Auth");
+        }
+      }
+    } catch (e: any) {
+      if (e.code === 'ERR_REQUEST_CANCELED') {
+        // user cancelled
+      } else {
+        setLocalError(e.message || "Erreur Apple");
+      }
     }
   }
 
@@ -200,18 +252,14 @@ export function SignUpForm({ onSuccess, onSignInPress }: SignUpFormProps) {
         <Button
           variant="outline"
           className="h-14 rounded-xl border-white/70 bg-transparent"
-          onPress={() => {
-            // TODO: Integrer l'auth Google
-          }}>
+          onPress={onGooglePress}>
           <Text className="text-lg text-white">Continuer avec Google</Text>
         </Button>
 
         <Button
           variant="outline"
           className="h-14 rounded-xl border-white/70 bg-transparent"
-          onPress={() => {
-            // TODO: Integrer l'auth Apple
-          }}>
+          onPress={onApplePress}>
           <Text className="text-lg text-white">Continuer avec Apple</Text>
         </Button>
       </View>

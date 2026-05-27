@@ -5,6 +5,9 @@ import { Calendar, MapPin, Info } from 'lucide-react-native';
 import { fetchRaceSessions, RaceSession, fetchPredictions, Prediction, fetchMyPronostic, Pronostic, fetchDrivers, Driver, fetchMyPronosticsForSession, fetchMyPronosticsHistory } from '@/lib/api/meetings';
 import { PredictionCard } from '@/components/game/PredictionCard';
 import { PronosticHistoryCard } from '@/components/game/PronosticHistoryCard';
+import { DemoModeCard } from '@/components/game/DemoModeCard';
+import { DemoPredictionCard } from '@/components/game/DemoPredictionCard';
+import { useDemo } from '@/context/DemoContext';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { F1Loader } from '@/components/ui/F1Loader';
 import { ScreenHeader } from '@/components/ui/ScreenHeader';
@@ -12,6 +15,7 @@ import { useAuth } from '@/context/AuthContext';
 
 export default function PronosticsScreen() {
     const { user } = useAuth();
+    const demo = useDemo();
     const [loading, setLoading] = useState(true);
     const [refreshing, setRefreshing] = useState(false);
     const [upcomingSessions, setUpcomingSessions] = useState<RaceSession[]>([]);
@@ -21,13 +25,34 @@ export default function PronosticsScreen() {
     const [activeTab, setActiveTab] = useState('upcoming');
     const [history, setHistory] = useState<Pronostic[]>([]);
 
+    // Extrait le vrai nom de session depuis le format "{pays} - {session_name}"
+    // ou retombe sur le champ `type`. Permet d'ignorer un `type` corrompu en DB.
+    const realSessionName = (s: RaceSession): string => {
+        if (s.name && s.name.includes(' - ')) {
+            const parts = s.name.split(' - ');
+            return parts[parts.length - 1].trim();
+        }
+        return s.type;
+    };
+
     const loadData = async () => {
         setLoading(true);
         try {
             const sessions = await fetchRaceSessions(50, true);
+            const ALLOWED = ['Race', 'Qualifying', 'Sprint'];
+            // On dédoublonne par (vrai nom + dateStart) au cas où la DB aurait des rows redondants
+            const seen = new Set<string>();
             const nextSessions = sessions
-                .filter(s => ['Race', 'Qualifying', 'Sprint', 'Sprint Qualifying'].includes(s.type))
-                .slice(0, 3);
+                .filter(s => ALLOWED.includes(realSessionName(s)))
+                .filter(s => {
+                    const key = `${realSessionName(s)}|${s.dateStart}`;
+                    if (seen.has(key)) return false;
+                    seen.add(key);
+                    return true;
+                })
+                .slice(0, 3)
+                // Override le `type` affiché pour qu'il corresponde au vrai nom
+                .map(s => ({ ...s, type: realSessionName(s) }));
             setUpcomingSessions(nextSessions);
 
             const preds: Record<number, Prediction[]> = {};
@@ -97,12 +122,16 @@ export default function PronosticsScreen() {
                 </View>
 
                 <TabsContent value="upcoming" className="flex-1">
-                    <ScrollView 
+                    <ScrollView
                         refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor="#ef4444" />}
                         showsVerticalScrollIndicator={false}
                     >
+                        <View className="px-4 pt-4">
+                            <DemoModeCard />
+                            {demo.active && <DemoPredictionCard />}
+                        </View>
                         {nextGP ? (
-                            <View className="p-4">
+                            <View className="p-4 pt-0">
                         {/* Next GP Hero */}
                         <View className="bg-zinc-900 rounded-3xl overflow-hidden mb-6 border border-white/5 shadow-2xl">
                             <View className="p-6 h-48 justify-between bg-black/40">
@@ -146,24 +175,26 @@ export default function PronosticsScreen() {
                                     </View>
                                 </View>
 
-                                {predictionsMap[session.id]?.length > 0 ? (
-                                    predictionsMap[session.id].map(prediction => (
-                                        <PredictionCard 
+                                {(() => {
+                                    const allowed = ['POLE_POSITION', 'RACE_WINNER', 'SPRINT_WINNER'];
+                                    const visible = (predictionsMap[session.id] || []).filter(p => allowed.includes(p.type));
+                                    return visible.length > 0 ? visible.map(prediction => (
+                                        <PredictionCard
                                             key={prediction.id}
                                             prediction={prediction}
                                             drivers={driversMap[session.id] || []}
                                             initialPronostic={pronosticsMap[prediction.id] || null}
                                             onRefresh={loadData}
                                         />
-                                    ))
-                                ) : (
-                                    <View className="bg-card/50 border border-border/20 rounded-2xl p-6 items-center border-dashed">
-                                        <Info size={24} color="#9ca3af" className="mb-2" />
-                                        <Text className="text-muted-foreground text-center text-xs font-medium">
-                                            Aucun pronostic disponible pour cette session.
-                                        </Text>
-                                    </View>
-                                )}
+                                    )) : (
+                                        <View className="bg-card/50 border border-border/20 rounded-2xl p-6 items-center border-dashed">
+                                            <Info size={24} color="#9ca3af" className="mb-2" />
+                                            <Text className="text-muted-foreground text-center text-xs font-medium">
+                                                Aucun pronostic disponible pour cette session.
+                                            </Text>
+                                        </View>
+                                    );
+                                })()}
                             </View>
                         ))}
                     </View>

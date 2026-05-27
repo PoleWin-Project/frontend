@@ -17,6 +17,8 @@ import {
     respondToRequest, unfriend, FriendStatus,
 } from '@/lib/api/friends';
 import { fetchGlobalLeaderboard } from '@/lib/api/leaderboard';
+import { fetchUserBadges, fetchAllBadges, UserBadge, Badge } from '@/lib/api/badges';
+import { BadgeCatalog } from '@/components/ui/badge-card';
 
 const API_URL = process.env.EXPO_PUBLIC_API_URL || 'http://localhost:8000/api/v1';
 
@@ -84,6 +86,8 @@ export default function UserProfileScreen() {
     const [busy,         setBusy]         = useState(false);
     const [globalRank,   setGlobalRank]   = useState<number | null>(null);
     const [friendsCount, setFriendsCount] = useState<number | null>(null);
+    const [userBadges,   setUserBadges]   = useState<UserBadge[]>([]);
+    const [allBadges,    setAllBadges]    = useState<Badge[]>([]);
 
     const load = useCallback(async () => {
         if (!accessToken) return;
@@ -97,7 +101,7 @@ export default function UserProfileScreen() {
         setStatus(statusRes);
         setLoading(false);
 
-        // Charger la position globale + le nombre d'amis en arrière-plan
+        // Charger la position globale + le nombre d'amis + badges en arrière-plan
         fetchGlobalLeaderboard(100).then(leaderboard => {
             const entry = leaderboard.find(p => p.userId === userId);
             if (entry) setGlobalRank(entry.rank);
@@ -108,6 +112,9 @@ export default function UserProfileScreen() {
         }).then(r => r.json()).then(data => {
             if (typeof data?.count === 'number') setFriendsCount(data.count);
         }).catch(() => null);
+
+        fetchUserBadges(userId, accessToken).then(setUserBadges).catch(() => null);
+        fetchAllBadges().then(setAllBadges).catch(() => null);
     }, [accessToken, userId]);
 
     useEffect(() => { load(); }, [load]);
@@ -289,8 +296,14 @@ export default function UserProfileScreen() {
                     </View>
                 </Animated.View>
 
+                {/* Badges */}
+                <Animated.View entering={FadeInDown.delay(220).springify()} style={s.card}>
+                    <Text style={s.cardTitle}>BADGES</Text>
+                    <BadgeCatalog allBadges={allBadges} userBadges={userBadges} />
+                </Animated.View>
+
                 {/* Classement */}
-                <Animated.View entering={FadeInDown.delay(240).springify()} style={s.rankCard}>
+                <Animated.View entering={FadeInDown.delay(260).springify()} style={s.rankCard}>
                     {/* Header niveau */}
                     <LinearGradient
                         colors={[r.color + '22', 'transparent']}
