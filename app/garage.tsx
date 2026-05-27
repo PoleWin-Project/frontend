@@ -13,7 +13,7 @@ import { fetchPlaysToday, type PlaysToday } from '@/lib/api/games';
 export default function GarageScreen() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
-  const { accessToken } = useAuth();
+  const { accessToken, user } = useAuth();
   const [reactionPlays, setReactionPlays] = useState<PlaysToday | null>(null);
 
   useEffect(() => {
@@ -26,7 +26,7 @@ export default function GarageScreen() {
       id: 'reaction',
       title: 'Reaction Test',
       subtitle: 'Réveillez le pilote en vous',
-      reward: 'Jusqu\'à 10 pts',
+      reward: 'Jusqu\'à 50 pts',
       icon: Timer,
       color: '#E10600',
       status: 'Disponible'
@@ -117,7 +117,9 @@ export default function GarageScreen() {
                 </View>
                 <Text className="text-white/30 text-[10px] font-black uppercase">Points Disponibles</Text>
               </View>
-              <Text className="text-white text-3xl font-black mb-1">Illimités</Text>
+              <Text className="text-white text-3xl font-black mb-1">
+                {user?.points ?? '—'} <Text className="text-white/30 text-lg font-bold">pts</Text>
+              </Text>
               <Text className="text-white/40 text-[10px]">Jouez pour regonfler votre solde instantanément.</Text>
             </BlurView>
           </View>
@@ -166,9 +168,15 @@ export default function GarageScreen() {
 
                   <View style={{ width: 44, height: 44, alignItems: 'center', justifyContent: 'center' }}>
                     {game.status === 'Disponible' ? (
-                      <View className="bg-primary aspect-square w-full rounded-full items-center justify-center shadow-xl shadow-primary/40 mr-3">
-                        <Icon as={ArrowRight} size={18} color="white" />
-                      </View>
+                      game.id === 'reaction' && reactionPlaysLeft === 0 ? (
+                        <View style={{ width: 44, height: 44, borderRadius: 22, backgroundColor: 'rgba(255,255,255,0.06)', borderWidth: 1, borderColor: 'rgba(255,255,255,0.1)', alignItems: 'center', justifyContent: 'center' }}>
+                          <Icon as={Timer} size={18} color="rgba(255,255,255,0.2)" />
+                        </View>
+                      ) : (
+                        <View className="bg-primary aspect-square w-full rounded-full items-center justify-center shadow-xl shadow-primary/40 mr-3">
+                          <Icon as={ArrowRight} size={18} color="white" />
+                        </View>
+                      )
                     ) : (
                       <View className="opacity-20">
                         <Icon as={Zap} size={16} color="white" />

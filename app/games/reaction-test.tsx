@@ -25,18 +25,34 @@ const RIPPLE_DUR = 1600;
 type GameState = 'idle' | 'holding' | 'flash' | 'false-start' | 'result';
 
 function getPoints(ms: number): number {
-  // Décroissance exponentielle : 10 × e^(-ms/400)
-  // 100ms→8, 200ms→6, 350ms→4, 500ms→3, 700ms→2, 1000ms→1
-  return Math.max(1, Math.round(10 * Math.exp(-ms / 400)));
+  const keyframes: [number, number][] = [
+    [0,   50],
+    [50,  35],
+    [100, 20],
+    [200, 10],
+    [300,  5],
+    [500,  2],
+  ];
+  if (ms <= 0)   return 50;
+  if (ms >= 500) return 2;
+  for (let i = 0; i < keyframes.length - 1; i++) {
+    const [t0, v0] = keyframes[i];
+    const [t1, v1] = keyframes[i + 1];
+    if (ms >= t0 && ms < t1) {
+      const t = (ms - t0) / (t1 - t0);
+      return Math.round(v0 + t * (v1 - v0));
+    }
+  }
+  return 2;
 }
 
 function getRating(ms: number): { label: string; color: string } {
-  if (ms < 150) return { label: 'Pilote F1', color: '#FFD700' };
-  if (ms < 250) return { label: 'Excellent', color: '#00D1FF' };
-  if (ms < 350) return { label: 'Bon', color: '#4ADE80' };
-  if (ms < 500) return { label: 'Moyen', color: '#FACC15' };
-  if (ms < 700) return { label: 'Lent', color: '#FB923C' };
-  return { label: 'À revoir', color: '#EF4444' };
+  if (ms < 150) return { label: 'Pilote F1',       color: '#FFD700' };
+  if (ms < 250) return { label: 'Pole Position',   color: '#00D1FF' };
+  if (ms < 350) return { label: 'Dans les points', color: '#4ADE80' };
+  if (ms < 500) return { label: 'Milieu de grille',color: '#FACC15' };
+  if (ms < 700) return { label: 'Lanterne rouge',  color: '#FB923C' };
+  return         { label: 'Drapeau rouge',          color: '#EF4444' };
 }
 
 const RULES = [
@@ -47,11 +63,12 @@ const RULES = [
 ];
 
 const SCORE_ROWS = [
-  { range: '< 100 ms',   pts: '8–10 pts', color: '#FFD700' },
-  { range: '100–250 ms', pts: '6–8 pts',  color: '#00D1FF' },
-  { range: '250–450 ms', pts: '3–5 pts',  color: '#4ADE80' },
-  { range: '450–700 ms', pts: '2–3 pts',  color: '#FACC15' },
-  { range: '> 700 ms',   pts: '1 pt',     color: '#FB923C' },
+  { range: '< 50 ms',    pts: '50 pts', color: '#FFD700' },
+  { range: '50–100 ms',  pts: '35 pts', color: '#00D1FF' },
+  { range: '100–200 ms', pts: '20 pts', color: '#4ADE80' },
+  { range: '200–300 ms', pts: '10 pts', color: '#FACC15' },
+  { range: '300–500 ms', pts: '5 pts',  color: '#FB923C' },
+  { range: '> 500 ms',   pts: '2 pts',  color: '#EF4444' },
 ];
 
 export default function ReactionTestScreen() {
@@ -74,6 +91,7 @@ export default function ReactionTestScreen() {
   const gameTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const rulesVisibleRef = useRef(false);
   const gameEnabledRef = useRef(false); // true uniquement après "J'ai compris"
+  const isLimitedRef   = useRef(false); // miroir stable de isLimited pour PanResponder
   const accessTokenRef = useRef(accessToken);
   const refreshProfileRef = useRef(refreshProfile);
   useEffect(() => { accessTokenRef.current = accessToken; }, [accessToken]);
@@ -81,6 +99,7 @@ export default function ReactionTestScreen() {
 
   // ─── Animations ──────────────────────────────────────────────────────────
   const bgAnim = useRef(new Animated.Value(0)).current; // 0=dark 1=green 2=red
+  const modalCardAnim = useRef(new Animated.Value(0)).current;
 
   const rippleAnims = useRef(
     Array.from({ length: NUM_RIPPLES }, () => ({
@@ -240,10 +259,10 @@ export default function ReactionTestScreen() {
   const pan = useRef(
     PanResponder.create({
       onStartShouldSetPanResponder: () =>
-        gameEnabledRef.current && gameStateRef.current === 'idle' && !isLimited,
+        gameEnabledRef.current && gameStateRef.current === 'idle' && !isLimitedRef.current,
 
       onPanResponderGrant: (e) => {
-        if (!gameEnabledRef.current || gameStateRef.current !== 'idle' || isLimited) return;
+        if (!gameEnabledRef.current || gameStateRef.current !== 'idle' || isLimitedRef.current) return;
         const { pageX, pageY } = e.nativeEvent;
         setTouchPos({ x: pageX, y: pageY });
         setStateSafe('holding');
@@ -295,9 +314,9 @@ export default function ReactionTestScreen() {
               await rewardUser(token, pts, 'reaction');
               await refreshProfileRef.current();
               setRewarded(true);
-              // Décrémenter localement le compteur
-              setPlays(p => p ? { ...p, played: p.played + 1 } : p);
             } catch { /* silent */ }
+            // Toujours re-fetcher le vrai compteur depuis le backend
+            fetchPlaysToday(token, 'reaction').then(setPlays);
           }
         }
       },
@@ -319,9 +338,28 @@ export default function ReactionTestScreen() {
   }, []);
 
   useEffect(() => {
+    if (rulesVisible) {
+      modalCardAnim.setValue(0);
+      Animated.spring(modalCardAnim, {
+        toValue: 1,
+        damping: 18,
+        stiffness: 180,
+        useNativeDriver: true,
+      }).start();
+    }
+  }, [rulesVisible]);
+
+  useEffect(() => {
     if (!accessToken) return;
     fetchPlaysToday(accessToken, 'reaction').then(setPlays);
   }, [accessToken]);
+
+  useEffect(() => {
+    const left = plays
+      ? plays.limit === null ? null : Math.max(0, plays.limit - plays.played)
+      : null;
+    isLimitedRef.current = left !== null && left <= 0;
+  }, [plays]);
 
   useEffect(() => {
     return () => { clearTimer(); stopRipples(); stopPulse(); };
@@ -419,16 +457,16 @@ export default function ReactionTestScreen() {
       )}
 
       {/* Header */}
-      <View style={{ paddingTop: insets.top }} className="px-6 py-4 flex-row items-center justify-between">
+      <View style={{ paddingTop: insets.top }} className="flex-row justify-between items-center px-6 py-4">
         <TouchableOpacity
           onPress={() => { clearTimer(); stopRipples(); stopPulse(); router.back(); }}
-          className="w-10 h-10 rounded-full bg-white/10 border border-white/20 items-center justify-center"
+          className="justify-center items-center bg-white/10 border border-white/20 rounded-full w-10 h-10"
         >
           <Icon as={ChevronLeft} size={20} className="text-white" />
         </TouchableOpacity>
         <View className="items-center">
-          <Text className="text-primary font-black text-[10px] uppercase tracking-[3px]">Reaction Test</Text>
-          <Text className="text-white font-black text-xs uppercase italic">Le Garage</Text>
+          <Text className="font-black text-[10px] text-primary uppercase tracking-[3px]">Reaction Test</Text>
+          <Text className="font-black text-white text-xs italic uppercase">Le Garage</Text>
         </View>
         <View className="w-10 h-10" />
       </View>
@@ -442,7 +480,7 @@ export default function ReactionTestScreen() {
               <Icon as={Zap} size={40} color="#E10600" />
             </View>
             <View style={{ alignItems: 'center', gap: 10 }}>
-              <Text className="text-white font-black text-4xl italic uppercase">Prêt ?</Text>
+              <Text className="font-black text-white text-4xl italic uppercase">Prêt ?</Text>
               <Text className="text-white/50 text-sm text-center" style={{ lineHeight: 22 }}>
                 Appuie et maintiens le doigt{'\n'}n'importe où sur l'écran.
               </Text>
@@ -453,7 +491,7 @@ export default function ReactionTestScreen() {
                 {[...Array(plays!.limit!)].map((_, i) => (
                   <View key={i} style={{ width: 8, height: 8, borderRadius: 4, backgroundColor: i < playsLeft ? '#E10600' : 'rgba(255,255,255,0.2)' }} />
                 ))}
-                <Text className="text-white/50 text-xs font-bold" style={{ marginLeft: 4 }}>
+                <Text className="font-bold text-white/50 text-xs" style={{ marginLeft: 4 }}>
                   {playsLeft} partie{playsLeft > 1 ? 's' : ''} restante{playsLeft > 1 ? 's' : ''}
                 </Text>
               </View>
@@ -467,7 +505,7 @@ export default function ReactionTestScreen() {
               <Icon as={Timer} size={40} color="rgba(255,255,255,0.3)" />
             </View>
             <View style={{ alignItems: 'center', gap: 10 }}>
-              <Text className="text-white font-black text-3xl italic uppercase">Reviens demain</Text>
+              <Text className="font-black text-white text-3xl italic uppercase">Reviens demain</Text>
               <Text className="text-white/40 text-sm text-center" style={{ lineHeight: 22 }}>
                 Tu as utilisé tes 3 parties{'\n'}d'aujourd'hui. À demain !
               </Text>
@@ -482,15 +520,15 @@ export default function ReactionTestScreen() {
 
         {gameState === 'holding' && (
           <View style={{ alignItems: 'center', gap: 12 }} pointerEvents="none">
-            <Text className="text-white font-black text-4xl italic uppercase">Maintiens...</Text>
-            <Text className="text-white/40 font-bold text-xs uppercase" style={{ letterSpacing: 3 }}>Attends le vert</Text>
+            <Text className="font-black text-white text-4xl italic uppercase">Maintiens...</Text>
+            <Text className="font-bold text-white/40 text-xs uppercase" style={{ letterSpacing: 3 }}>Attends le vert</Text>
           </View>
         )}
 
         {gameState === 'flash' && (
           <View style={{ alignItems: 'center', gap: 12 }} pointerEvents="none">
-            <Text className="text-white font-black text-6xl italic uppercase">RELÂCHE !</Text>
-            <Text className="text-white/80 font-bold text-sm uppercase" style={{ letterSpacing: 5 }}>Maintenant !</Text>
+            <Text className="font-black text-white text-6xl italic uppercase">RELÂCHE !</Text>
+            <Text className="font-bold text-white/80 text-sm uppercase" style={{ letterSpacing: 5 }}>Maintenant !</Text>
           </View>
         )}
 
@@ -500,7 +538,7 @@ export default function ReactionTestScreen() {
               <Icon as={AlertTriangle} size={40} color="#EF4444" />
             </View>
             <View style={{ alignItems: 'center', gap: 8 }}>
-              <Text className="text-white font-black text-3xl italic uppercase">Faux départ !</Text>
+              <Text className="font-black text-white text-3xl italic uppercase">Faux départ !</Text>
               <Text className="text-white/50 text-sm text-center" style={{ lineHeight: 22 }}>
                 Tu as relâché avant le vert.{'\n'}Attends le flash !
               </Text>
@@ -510,7 +548,7 @@ export default function ReactionTestScreen() {
               style={{ flexDirection: 'row', alignItems: 'center', gap: 10, backgroundColor: 'rgba(255,255,255,0.08)', borderWidth: 1, borderColor: 'rgba(255,255,255,0.15)', paddingHorizontal: 36, paddingVertical: 14, borderRadius: 16 }}
             >
               <Icon as={RotateCcw} size={16} color="white" />
-              <Text className="text-white font-black text-sm uppercase" style={{ letterSpacing: 1 }}>Réessayer</Text>
+              <Text className="font-black text-white text-sm uppercase" style={{ letterSpacing: 1 }}>Réessayer</Text>
             </TouchableOpacity>
           </View>
         )}
@@ -522,7 +560,7 @@ export default function ReactionTestScreen() {
               <Text className="font-black text-7xl italic" style={{ color: rating.color, lineHeight: 80 }}>
                 {reactionTime}
               </Text>
-              <Text className="text-white/50 font-bold text-sm uppercase" style={{ letterSpacing: 6 }}>
+              <Text className="font-bold text-white/50 text-sm uppercase" style={{ letterSpacing: 6 }}>
                 millisecondes
               </Text>
             </View>
@@ -536,11 +574,11 @@ export default function ReactionTestScreen() {
             <View style={{ width: '100%', borderRadius: 24, backgroundColor: 'rgba(255,255,255,0.08)', borderWidth: 1, borderColor: 'rgba(255,255,255,0.18)', padding: 24, alignItems: 'center', gap: 8 }}>
               <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 4 }}>
                 <Icon as={Trophy} size={18} color="#E10600" />
-                <Text className="text-white/60 font-black text-[10px] uppercase" style={{ letterSpacing: 3 }}>Points gagnés</Text>
+                <Text className="font-black text-[10px] text-white/60 uppercase" style={{ letterSpacing: 3 }}>Points gagnés</Text>
               </View>
-              <Text className="text-white font-black text-5xl">+{earnedPoints}</Text>
+              <Text className="font-black text-white text-5xl">+{earnedPoints}</Text>
               {rewarded && (
-                <Text className="text-green-400 font-bold text-[10px] uppercase" style={{ letterSpacing: 1 }}>Crédités sur ton compte</Text>
+                <Text className="font-bold text-[10px] text-green-400 uppercase" style={{ letterSpacing: 1 }}>Crédités sur ton compte</Text>
               )}
             </View>
 
@@ -551,13 +589,13 @@ export default function ReactionTestScreen() {
                 style={{ flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, backgroundColor: 'rgba(255,255,255,0.08)', borderWidth: 1, borderColor: 'rgba(255,255,255,0.2)', paddingVertical: 14, borderRadius: 16 }}
               >
                 <Icon as={RotateCcw} size={16} color="white" />
-                <Text className="text-white font-black text-sm uppercase">Rejouer</Text>
+                <Text className="font-black text-white text-sm uppercase">Rejouer</Text>
               </TouchableOpacity>
               <TouchableOpacity
                 onPress={() => router.back()}
                 style={{ flex: 1, backgroundColor: '#E10600', paddingVertical: 14, borderRadius: 16, alignItems: 'center', justifyContent: 'center' }}
               >
-                <Text className="text-white font-black text-sm uppercase">Quitter</Text>
+                <Text className="font-black text-white text-sm uppercase">Quitter</Text>
               </TouchableOpacity>
             </View>
           </View>
@@ -577,7 +615,7 @@ export default function ReactionTestScreen() {
       {/* Rules modal */}
       <Modal visible={rulesVisible} transparent animationType="fade" statusBarTranslucent>
         <View style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.88)', alignItems: 'center', justifyContent: 'center', paddingHorizontal: 24 }}>
-          <View style={{ width: '100%', borderRadius: 28, backgroundColor: '#0c0c0f', borderWidth: 1, borderColor: 'rgba(255,255,255,0.1)', overflow: 'hidden' }}>
+          <Animated.View style={{ width: '100%', borderRadius: 28, backgroundColor: '#0c0c0f', borderWidth: 1, borderColor: 'rgba(255,255,255,0.1)', overflow: 'hidden', opacity: modalCardAnim, transform: [{ translateY: modalCardAnim.interpolate({ inputRange: [0, 1], outputRange: [60, 0] }) }] }}>
 
             <View style={{ backgroundColor: 'rgba(225,6,0,0.08)', borderBottomWidth: 1, borderBottomColor: 'rgba(225,6,0,0.18)', paddingHorizontal: 24, paddingVertical: 20, flexDirection: 'row', alignItems: 'center', gap: 14 }}>
               <View style={{ backgroundColor: 'rgba(225,6,0,0.18)', padding: 10, borderRadius: 14 }}>
@@ -619,7 +657,7 @@ export default function ReactionTestScreen() {
               <Text style={{ color: 'white', fontWeight: '900', fontSize: 14, textTransform: 'uppercase', letterSpacing: 2 }}>J'ai compris</Text>
             </TouchableOpacity>
 
-          </View>
+          </Animated.View>
         </View>
       </Modal>
     </Animated.View>
