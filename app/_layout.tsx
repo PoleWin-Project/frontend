@@ -32,9 +32,10 @@ function AuthGuard({ children }: { children: React.ReactNode }) {
     if (!isInitialized) return;
 
     const inAuthGroup = segments[0] === '(auth)';
-    const inOnboarding = segments[0] === 'onboarding';
+    const protectedRoutes = ['messages', 'user', 'games', 'garage', 'onboarding'];
+    const inProtectedRoute = segments.length > 0 && protectedRoutes.includes(segments[0]);
 
-    if (!user && !inAuthGroup && !inOnboarding) {
+    if (!user && inProtectedRoute) {
       router.replace('/(auth)/sign-in');
     } else if (user && inAuthGroup) {
       // Vérifier si le profil est complet (onboarding terminé)

@@ -4,6 +4,7 @@ import { Input } from '@/components/ui/input';
 import { Separator } from '@/components/ui/separator';
 import { Text } from '@/components/ui/text';
 import { useAuth } from '@/context/AuthContext';
+import { useRouter } from 'expo-router';
 import * as React from 'react';
 import { GoogleSignin, statusCodes } from '@react-native-google-signin/google-signin';
 import * as AppleAuthentication from 'expo-apple-authentication';
@@ -69,6 +70,7 @@ GoogleSignin.configure({
 });
 
 export function SignInForm() {
+  const router = useRouter();
   const { login, register, loginWithGoogle, loginWithApple, isLoading, error, clearError } = useAuth();
   const { height: screenHeight } = useWindowDimensions();
   const usernameInputRef = React.useRef<TextInput>(null);
@@ -511,7 +513,11 @@ export function SignInForm() {
           </Button>
         </View>
 
-        <Text className={isRegister ? 'mt-2 text-center text-[10px] leading-3 text-white/60' : 'mt-3 text-center text-xs leading-4 text-white/60'}>
+        <Pressable className="mt-4" onPress={() => router.replace('/(tabs)')}>
+          <Text className="text-center text-sm font-semibold text-white/50 underline">Continuer sans compte</Text>
+        </Pressable>
+
+        <Text className={isRegister ? 'mt-4 text-center text-[10px] leading-3 text-white/60' : 'mt-6 text-center text-xs leading-4 text-white/60'}>
           En creant un compte, tu acceptes les CGU et la Politique de Confidentialite.
         </Text>
       </ScrollView>

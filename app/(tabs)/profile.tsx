@@ -21,6 +21,7 @@ import { fetchFriends } from '@/lib/api/friends';
 import { ScreenHeader } from '@/components/ui/ScreenHeader';
 import { fetchMyBadges, fetchAllBadges, type UserBadge, type Badge } from '@/lib/api/badges';
 import { BadgeCatalog, BadgeTileHero } from '@/components/ui/badge-card';
+import { GuestPrompt } from '@/components/ui/GuestPrompt';
 
 // ─── Couleur avatar déterministe ──────────────────────────────────────────
 const AVATAR_GRADIENTS: [string, string][] = [
@@ -143,7 +144,9 @@ export default function ProfileScreen() {
         setIsSaving(false);
     };
 
-    if (!user) return null;
+    if (!user) {
+        return <GuestPrompt title="Mon Profil" description="Crée ton profil pilote, suis tes statistiques et débloque des badges exclusifs !" />;
+    }
 
     const points = user.points ?? 0;
     const rank = getRankLabel(points);
