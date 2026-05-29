@@ -10,7 +10,7 @@ import { LeaderboardSheet } from '@/components/live/LeaderboardSheet';
 import { fetchDrivers, Driver } from '@/lib/api/meetings';
 import { useDemo, DEMO_RACE_DURATION_SEC } from '@/context/DemoContext';
 
-const API_URL = process.env.EXPO_PUBLIC_API_URL || 'http://localhost:8000/api/v1';
+import { API_URL } from '@/lib/config';
 const { height: SCREEN_HEIGHT, width: SCREEN_WIDTH } = Dimensions.get('window');
 
 interface Position {

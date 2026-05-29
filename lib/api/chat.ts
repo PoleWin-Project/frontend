@@ -1,4 +1,4 @@
-const API_URL = process.env.EXPO_PUBLIC_API_URL || 'http://localhost:8000/api/v1';
+import { API_URL } from '@/lib/config';
 
 export interface ChatChannel {
     id: number;

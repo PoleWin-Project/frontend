@@ -10,7 +10,7 @@ import { useAuth } from '@/context/AuthContext';
 import { useSocket } from '@/context/SocketContext';
 import { fetchMessages, sendDm, DmMessage } from '@/lib/api/dms';
 
-const API_URL = process.env.EXPO_PUBLIC_API_URL || 'http://localhost:8000/api/v1';
+import { API_URL } from '@/lib/config';
 
 export default function ConversationScreen() {
     const { userId: userIdParam } = useLocalSearchParams();

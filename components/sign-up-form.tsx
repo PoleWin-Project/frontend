@@ -7,8 +7,36 @@ import { useAuth } from '@/context/AuthContext';
 import * as React from 'react';
 import { Lock, Mail, RefreshCcw, User } from 'lucide-react-native';
 import { Pressable, TextInput, View } from 'react-native';
-import { GoogleSignin, statusCodes } from '@react-native-google-signin/google-signin';
-import * as AppleAuthentication from 'expo-apple-authentication';
+import Constants, { ExecutionEnvironment } from 'expo-constants';
+
+// Modules d'auth native (Google / Apple) absents d'Expo Go : chargement optionnel.
+const isExpoGo = Constants.executionEnvironment === ExecutionEnvironment.StoreClient;
+
+let GoogleSignin: any = null;
+let statusCodes: any = null;
+let AppleAuthentication: any = null;
+
+if (!isExpoGo) {
+  try {
+    const googleSigninModule = require('@react-native-google-signin/google-signin');
+    GoogleSignin = googleSigninModule.GoogleSignin;
+    statusCodes = googleSigninModule.statusCodes;
+    GoogleSignin.configure({
+      webClientId: process.env.EXPO_PUBLIC_GOOGLE_CLIENT_ID_WEB,
+      iosClientId: process.env.EXPO_PUBLIC_GOOGLE_CLIENT_ID_IOS,
+    });
+  } catch (e) {
+    console.warn('[auth] Google Sign-In natif indisponible:', e);
+  }
+
+  try {
+    AppleAuthentication = require('expo-apple-authentication');
+  } catch (e) {
+    console.warn('[auth] Apple Authentication natif indisponible:', e);
+  }
+}
+
+const socialAuthAvailable = !isExpoGo && GoogleSignin != null;
 
 type SignUpFormProps = {
   onSuccess?: () => void;
@@ -83,6 +111,10 @@ export function SignUpForm({ onSuccess, onSignInPress }: SignUpFormProps) {
 
   async function onGooglePress() {
     setLocalError(null);
+    if (!GoogleSignin) {
+      setLocalError('Connexion Google indisponible dans Expo Go. Utilise un development build.');
+      return;
+    }
     try {
       await GoogleSignin.hasPlayServices();
       const userInfo = await GoogleSignin.signIn();
@@ -97,7 +129,7 @@ export function SignUpForm({ onSuccess, onSignInPress }: SignUpFormProps) {
         setLocalError("Jeton Google introuvable");
       }
     } catch (error: any) {
-      if (error.code === statusCodes.SIGN_IN_CANCELLED) {
+      if (error.code === statusCodes?.SIGN_IN_CANCELLED) {
         // user cancelled
       } else {
         setLocalError(error.message || "Erreur Google");
@@ -107,6 +139,10 @@ export function SignUpForm({ onSuccess, onSignInPress }: SignUpFormProps) {
 
   async function onApplePress() {
     setLocalError(null);
+    if (!AppleAuthentication) {
+      setLocalError('Connexion Apple indisponible dans Expo Go. Utilise un development build.');
+      return;
+    }
     try {
       const credential = await AppleAuthentication.signInAsync({
         requestedScopes: [
@@ -242,27 +278,37 @@ export function SignUpForm({ onSuccess, onSignInPress }: SignUpFormProps) {
         </Button>
       </View>
 
-      <View className="mt-5 flex-row items-center">
-        <Separator className="flex-1 bg-white/20" />
-        <Text className="px-4 text-2xl text-white/85">ou</Text>
-        <Separator className="flex-1 bg-white/20" />
-      </View>
+      {socialAuthAvailable ? (
+        <>
+          <View className="mt-5 flex-row items-center">
+            <Separator className="flex-1 bg-white/20" />
+            <Text className="px-4 text-2xl text-white/85">ou</Text>
+            <Separator className="flex-1 bg-white/20" />
+          </View>
 
-      <View className="mt-4 gap-3">
-        <Button
-          variant="outline"
-          className="h-14 rounded-xl border-white/70 bg-transparent"
-          onPress={onGooglePress}>
-          <Text className="text-lg text-white">Continuer avec Google</Text>
-        </Button>
+          <View className="mt-4 gap-3">
+            <Button
+              variant="outline"
+              className="h-14 rounded-xl border-white/70 bg-transparent"
+              onPress={onGooglePress}>
+              <Text className="text-lg text-white">Continuer avec Google</Text>
+            </Button>
 
-        <Button
-          variant="outline"
-          className="h-14 rounded-xl border-white/70 bg-transparent"
-          onPress={onApplePress}>
-          <Text className="text-lg text-white">Continuer avec Apple</Text>
-        </Button>
-      </View>
+            <Button
+              variant="outline"
+              className="h-14 rounded-xl border-white/70 bg-transparent"
+              onPress={onApplePress}>
+              <Text className="text-lg text-white">Continuer avec Apple</Text>
+            </Button>
+          </View>
+        </>
+      ) : (
+        <View className="mt-5">
+          <Text className="text-center text-xs leading-4 text-white/50">
+            Connexion Google / Apple indisponible dans Expo Go. Utilise un development build pour l&apos;activer.
+          </Text>
+        </View>
+      )}
 
       <Text className="mt-5 text-center text-sm leading-5 text-white/60">
         En creant un compte, tu acceptes les CGU et la Politique de Confidentialite.

@@ -1,6 +1,6 @@
 import React, { createContext, useCallback, useContext, useEffect, useState } from 'react';
 
-const API_URL = process.env.EXPO_PUBLIC_API_URL || 'http://localhost:8000/api/v1';
+import { API_URL } from '@/lib/config';
 
 // ─── Configuration de la démo Monaco 2024 ───────────────────────────────
 export const DEMO_SESSION_KEY = 9523;            // OpenF1 Monaco GP 2024 Race

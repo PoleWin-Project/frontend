@@ -20,7 +20,7 @@ import { fetchGlobalLeaderboard } from '@/lib/api/leaderboard';
 import { fetchUserBadges, fetchAllBadges, UserBadge, Badge } from '@/lib/api/badges';
 import { BadgeCatalog } from '@/components/ui/badge-card';
 
-const API_URL = process.env.EXPO_PUBLIC_API_URL || 'http://localhost:8000/api/v1';
+import { API_URL } from '@/lib/config';
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 const AVATAR_GRADIENTS: [string, string][] = [

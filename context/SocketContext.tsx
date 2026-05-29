@@ -1,10 +1,6 @@
 import React, { createContext, useCallback, useContext, useEffect, useRef, useState } from 'react';
 import { useAuth } from './AuthContext';
-
-// Build ws:// URL from the API URL
-const WS_BASE = (process.env.EXPO_PUBLIC_API_URL || 'http://localhost:8000/api/v1')
-    .replace('/api/v1', '')
-    .replace(/^http/, 'ws');
+import { WS_BASE } from '@/lib/config';
 
 type EventHandler = (data: any) => void;
 

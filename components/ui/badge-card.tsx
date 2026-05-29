@@ -7,6 +7,7 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { Text } from '@/components/ui/text';
 import { Shield, Lock, CheckCircle, X } from 'lucide-react-native';
 import type { Badge, UserBadge, BadgeRarity } from '@/lib/api/badges';
+import { API_ROOT as BASE_URL } from '@/lib/config';
 
 // ─── Rarity config ────────────────────────────────────────────────────────────
 const RARITY: Record<BadgeRarity, { label: string; color: string; glow: string }> = {
@@ -21,9 +22,6 @@ const RARITY_ORDER: BadgeRarity[] = ['legendary', 'epic', 'rare', 'uncommon', 'c
 function rarityConfig(rarity: BadgeRarity | null | undefined) {
     return rarity ? (RARITY[rarity] ?? RARITY.common) : RARITY.common;
 }
-
-const BASE_URL = (process.env.EXPO_PUBLIC_API_URL || 'http://localhost:8000/api/v1')
-    .replace(/\/api\/v1$/, '');
 
 function badgeImageUri(imageUrl: string | null) {
     if (!imageUrl) return null;

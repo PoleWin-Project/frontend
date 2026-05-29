@@ -5,8 +5,7 @@ import { Separator } from '@/components/ui/separator';
 import { Text } from '@/components/ui/text';
 import { useAuth } from '@/context/AuthContext';
 import * as React from 'react';
-import { GoogleSignin, statusCodes } from '@react-native-google-signin/google-signin';
-import * as AppleAuthentication from 'expo-apple-authentication';
+import Constants, { ExecutionEnvironment } from 'expo-constants';
 import {
   Animated,
   Easing,
@@ -63,10 +62,37 @@ function getRegisterErrorMessage(email: string, username: string, password: stri
   return null;
 }
 
-GoogleSignin.configure({
-  webClientId: process.env.EXPO_PUBLIC_GOOGLE_CLIENT_ID_WEB,
-  iosClientId: process.env.EXPO_PUBLIC_GOOGLE_CLIENT_ID_IOS,
-});
+// Les modules d'auth native (Google / Apple) ne sont PAS inclus dans Expo Go.
+// On les charge de maniere optionnelle pour que l'app demarre quand meme dans Expo Go ;
+// l'auth sociale ne fonctionne que dans un development build / une build de prod.
+const isExpoGo = Constants.executionEnvironment === ExecutionEnvironment.StoreClient;
+
+let GoogleSignin: any = null;
+let statusCodes: any = null;
+let AppleAuthentication: any = null;
+
+if (!isExpoGo) {
+  try {
+    const googleSigninModule = require('@react-native-google-signin/google-signin');
+    GoogleSignin = googleSigninModule.GoogleSignin;
+    statusCodes = googleSigninModule.statusCodes;
+    GoogleSignin.configure({
+      webClientId: process.env.EXPO_PUBLIC_GOOGLE_CLIENT_ID_WEB,
+      iosClientId: process.env.EXPO_PUBLIC_GOOGLE_CLIENT_ID_IOS,
+    });
+  } catch (e) {
+    console.warn('[auth] Google Sign-In natif indisponible:', e);
+  }
+
+  try {
+    AppleAuthentication = require('expo-apple-authentication');
+  } catch (e) {
+    console.warn('[auth] Apple Authentication natif indisponible:', e);
+  }
+}
+
+// Auth sociale dispo uniquement hors Expo Go (dev build / prod).
+const socialAuthAvailable = !isExpoGo && GoogleSignin != null;
 
 export function SignInForm() {
   const { login, register, loginWithGoogle, loginWithApple, isLoading, error, clearError } = useAuth();
@@ -253,6 +279,10 @@ export function SignInForm() {
 
   async function onGooglePress() {
     setLocalError(null);
+    if (!GoogleSignin) {
+      setLocalError('Connexion Google indisponible dans Expo Go. Utilise un development build.');
+      return;
+    }
     try {
       await GoogleSignin.hasPlayServices();
       const userInfo = await GoogleSignin.signIn();
@@ -263,7 +293,7 @@ export function SignInForm() {
         setLocalError("Jeton Google introuvable");
       }
     } catch (error: any) {
-      if (error.code === statusCodes.SIGN_IN_CANCELLED) {
+      if (error.code === statusCodes?.SIGN_IN_CANCELLED) {
         // user cancelled
       } else {
         setLocalError(error.message || "Erreur Google");
@@ -273,6 +303,10 @@ export function SignInForm() {
 
   async function onApplePress() {
     setLocalError(null);
+    if (!AppleAuthentication) {
+      setLocalError('Connexion Apple indisponible dans Expo Go. Utilise un development build.');
+      return;
+    }
     try {
       const credential = await AppleAuthentication.signInAsync({
         requestedScopes: [
@@ -483,33 +517,43 @@ export function SignInForm() {
           </Button>
         </View>
 
-        <View className={isRegister ? 'mt-3 flex-row items-center' : 'mt-4 flex-row items-center'}>
-          <Separator className="flex-1 bg-white/20" />
-          <Text className="px-4 text-2xl text-white/85">ou</Text>
-          <Separator className="flex-1 bg-white/20" />
-        </View>
+        {socialAuthAvailable ? (
+          <>
+            <View className={isRegister ? 'mt-3 flex-row items-center' : 'mt-4 flex-row items-center'}>
+              <Separator className="flex-1 bg-white/20" />
+              <Text className="px-4 text-2xl text-white/85">ou</Text>
+              <Separator className="flex-1 bg-white/20" />
+            </View>
 
-        <View className={isRegister ? 'mt-2 gap-2' : 'mt-3 gap-2.5'}>
-          <Button
-            variant="outline"
-            className="h-12 rounded-xl border border-white/70 bg-black"
-            onPress={onGooglePress}>
-            <Image
-              source={{ uri: GOOGLE_LOGO_URI }}
-              className="h-5 w-5"
-              resizeMode="contain"
-            />
-            <Text className="text-base font-semibold text-white">Continuer avec Google</Text>
-          </Button>
+            <View className={isRegister ? 'mt-2 gap-2' : 'mt-3 gap-2.5'}>
+              <Button
+                variant="outline"
+                className="h-12 rounded-xl border border-white/70 bg-black"
+                onPress={onGooglePress}>
+                <Image
+                  source={{ uri: GOOGLE_LOGO_URI }}
+                  className="h-5 w-5"
+                  resizeMode="contain"
+                />
+                <Text className="text-base font-semibold text-white">Continuer avec Google</Text>
+              </Button>
 
-          <Button
-            variant="outline"
-            className="h-12 rounded-xl border-white/70 bg-black"
-            onPress={onApplePress}>
-            <Icon as={Apple} size={18} className="text-white" />
-            <Text className="text-base font-semibold text-white">Continuer avec Apple</Text>
-          </Button>
-        </View>
+              <Button
+                variant="outline"
+                className="h-12 rounded-xl border-white/70 bg-black"
+                onPress={onApplePress}>
+                <Icon as={Apple} size={18} className="text-white" />
+                <Text className="text-base font-semibold text-white">Continuer avec Apple</Text>
+              </Button>
+            </View>
+          </>
+        ) : (
+          <View className={isRegister ? 'mt-3' : 'mt-4'}>
+            <Text className="text-center text-xs leading-4 text-white/50">
+              Connexion Google / Apple indisponible dans Expo Go. Utilise un development build pour l&apos;activer.
+            </Text>
+          </View>
+        )}
 
         <Text className={isRegister ? 'mt-2 text-center text-[10px] leading-3 text-white/60' : 'mt-3 text-center text-xs leading-4 text-white/60'}>
           En creant un compte, tu acceptes les CGU et la Politique de Confidentialite.
