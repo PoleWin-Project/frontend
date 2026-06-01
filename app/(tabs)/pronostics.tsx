@@ -16,10 +16,6 @@ import { GuestPrompt } from '@/components/ui/GuestPrompt';
 
 export default function PronosticsScreen() {
     const { user } = useAuth();
-    
-    if (!user) {
-        return <GuestPrompt title="Pronostics" description="Connecte-toi pour parier sur les prochaines courses et défier tes amis !" />;
-    }
 
     const demo = useDemo();
     const [loading, setLoading] = useState(true);
@@ -42,6 +38,11 @@ export default function PronosticsScreen() {
     };
 
     const loadData = async () => {
+        if (!user) {
+            setLoading(false);
+            setRefreshing(false);
+            return;
+        }
         setLoading(true);
         try {
             const sessions = await fetchRaceSessions(50, true);
@@ -101,6 +102,10 @@ export default function PronosticsScreen() {
         loadData();
     };
 
+    if (!user) {
+        return <GuestPrompt title="Pronostics" description="Connecte-toi pour parier sur les prochaines courses et défier tes amis !" />;
+    }
+
     if (loading && !refreshing) {
         return (
             <View className="flex-1 bg-background items-center justify-center">
@@ -138,109 +143,109 @@ export default function PronosticsScreen() {
                         </View>
                         {nextGP ? (
                             <View className="p-4 pt-0">
-                        {/* Next GP Hero */}
-                        <View className="bg-zinc-900 rounded-3xl overflow-hidden mb-6 border border-white/5 shadow-2xl">
-                            <View className="p-6 h-48 justify-between bg-black/40">
-                                <View className="flex-row justify-between items-start">
-                                    <View className="bg-primary px-3 py-1 rounded-sm">
-                                        <Text className="text-[10px] font-black uppercase text-white">Prochain Event</Text>
-                                    </View>
-                                    <View className="items-end">
-                                        <Text className="text-white/60 text-xs font-bold uppercase tracking-widest">Saison 2026</Text>
-                                    </View>
-                                </View>
-                                <View>
-                                    <Text className="text-3xl font-black text-white uppercase italic leading-none mb-1">
-                                        {nextGP.name.split(' - ')[0]}
-                                    </Text>
-                                    <View className="flex-row items-center">
-                                        <MapPin size={14} color="#ef4444" />
-                                        <Text className="text-white/80 text-sm font-medium ml-1">
-                                            {nextGP.location || nextGP.name.split(' - ')[0]}
-                                        </Text>
-                                    </View>
-                                </View>
-                            </View>
-                        </View>
-
-                        {/* Sessions & Predictions */}
-                        <Text className="text-xs font-black text-muted-foreground uppercase tracking-[4px] mb-4 px-2">Sessions à venir</Text>
-                        
-                        {upcomingSessions.map(session => (
-                            <View key={session.id} className="mb-8">
-                                <View className="flex-row items-center mb-4 px-2">
-                                    <View className="w-8 h-8 rounded-full bg-primary/10 items-center justify-center mr-3 border border-primary/20">
-                                        <Calendar size={16} color="#ef4444" />
-                                    </View>
-                                    <View>
-                                        <Text className="text-base font-black text-foreground uppercase italic">{session.type}</Text>
-                                        <Text className="text-[10px] text-muted-foreground font-bold uppercase">
-                                            {session.location ? `${session.location} • ` : ''}
-                                            {new Date(session.dateStart).toLocaleDateString('fr-FR', { weekday: 'long', day: 'numeric', month: 'long' })}
-                                        </Text>
-                                    </View>
-                                </View>
-
-                                {(() => {
-                                    const allowed = ['POLE_POSITION', 'RACE_WINNER', 'SPRINT_WINNER'];
-                                    const visible = (predictionsMap[session.id] || []).filter(p => allowed.includes(p.type));
-                                    return visible.length > 0 ? visible.map(prediction => (
-                                        <PredictionCard
-                                            key={prediction.id}
-                                            prediction={prediction}
-                                            drivers={driversMap[session.id] || []}
-                                            initialPronostic={pronosticsMap[prediction.id] || null}
-                                            onRefresh={loadData}
-                                        />
-                                    )) : (
-                                        <View className="bg-card/50 border border-border/20 rounded-2xl p-6 items-center border-dashed">
-                                            <Info size={24} color="#9ca3af" className="mb-2" />
-                                            <Text className="text-muted-foreground text-center text-xs font-medium">
-                                                Aucun pronostic disponible pour cette session.
-                                            </Text>
+                                {/* Next GP Hero */}
+                                <View className="bg-zinc-900 rounded-3xl overflow-hidden mb-6 border border-white/5 shadow-2xl">
+                                    <View className="p-6 h-48 justify-between bg-black/40">
+                                        <View className="flex-row justify-between items-start">
+                                            <View className="bg-primary px-3 py-1 rounded-sm">
+                                                <Text className="text-[10px] font-black uppercase text-white">Prochain Event</Text>
+                                            </View>
+                                            <View className="items-end">
+                                                <Text className="text-white/60 text-xs font-bold uppercase tracking-widest">Saison 2026</Text>
+                                            </View>
                                         </View>
-                                    );
-                                })()}
+                                        <View>
+                                            <Text className="text-3xl font-black text-white uppercase italic leading-none mb-1">
+                                                {nextGP.name.split(' - ')[0]}
+                                            </Text>
+                                            <View className="flex-row items-center">
+                                                <MapPin size={14} color="#ef4444" />
+                                                <Text className="text-white/80 text-sm font-medium ml-1">
+                                                    {nextGP.location || nextGP.name.split(' - ')[0]}
+                                                </Text>
+                                            </View>
+                                        </View>
+                                    </View>
+                                </View>
+
+                                {/* Sessions & Predictions */}
+                                <Text className="text-xs font-black text-muted-foreground uppercase tracking-[4px] mb-4 px-2">Sessions à venir</Text>
+
+                                {upcomingSessions.map(session => (
+                                    <View key={session.id} className="mb-8">
+                                        <View className="flex-row items-center mb-4 px-2">
+                                            <View className="w-8 h-8 rounded-full bg-primary/10 items-center justify-center mr-3 border border-primary/20">
+                                                <Calendar size={16} color="#ef4444" />
+                                            </View>
+                                            <View>
+                                                <Text className="text-base font-black text-foreground uppercase italic">{session.type}</Text>
+                                                <Text className="text-[10px] text-muted-foreground font-bold uppercase">
+                                                    {session.location ? `${session.location} • ` : ''}
+                                                    {new Date(session.dateStart).toLocaleDateString('fr-FR', { weekday: 'long', day: 'numeric', month: 'long' })}
+                                                </Text>
+                                            </View>
+                                        </View>
+
+                                        {(() => {
+                                            const allowed = ['POLE_POSITION', 'RACE_WINNER', 'SPRINT_WINNER'];
+                                            const visible = (predictionsMap[session.id] || []).filter(p => allowed.includes(p.type));
+                                            return visible.length > 0 ? visible.map(prediction => (
+                                                <PredictionCard
+                                                    key={prediction.id}
+                                                    prediction={prediction}
+                                                    drivers={driversMap[session.id] || []}
+                                                    initialPronostic={pronosticsMap[prediction.id] || null}
+                                                    onRefresh={loadData}
+                                                />
+                                            )) : (
+                                                <View className="bg-card/50 border border-border/20 rounded-2xl p-6 items-center border-dashed">
+                                                    <Info size={24} color="#9ca3af" className="mb-2" />
+                                                    <Text className="text-muted-foreground text-center text-xs font-medium">
+                                                        Aucun pronostic disponible pour cette session.
+                                                    </Text>
+                                                </View>
+                                            );
+                                        })()}
+                                    </View>
+                                ))}
                             </View>
-                        ))}
-                    </View>
-                ) : (
-                    <View className="flex-1 items-center justify-center p-12 mt-20">
-                        <View className="w-16 h-16 bg-muted rounded-full items-center justify-center mb-4">
-                            <Info size={32} color="#9ca3af" />
-                        </View>
-                        <Text className="text-lg font-bold text-foreground mb-2 text-center">Pas d'événement détecté</Text>
-                        <Text className="text-muted-foreground text-center text-sm">
-                            Le calendrier F1 est en cours de mise à jour. Revenez bientôt !
-                        </Text>
-                    </View>
-                )}
-            </ScrollView>
-        </TabsContent>
-        <TabsContent value="history" className="flex-1">
-            <ScrollView 
-                refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor="#ef4444" />}
-                showsVerticalScrollIndicator={false}
-                contentContainerStyle={{ padding: 16, paddingBottom: 40 }}
-            >
-                {history.length > 0 ? (
-                    history.map(prono => (
-                        <PronosticHistoryCard key={prono.id} pronostic={prono} />
-                    ))
-                ) : (
-                    <View className="flex-1 items-center justify-center p-12 mt-20">
-                        <View className="w-16 h-16 bg-muted rounded-full items-center justify-center mb-4">
-                            <Info size={32} color="#9ca3af" />
-                        </View>
-                        <Text className="text-lg font-bold text-foreground mb-2 text-center">Aucun pronostic</Text>
-                        <Text className="text-muted-foreground text-center text-sm">
-                            Vous n'avez pas encore fait de pronostics.
-                        </Text>
-                    </View>
-                )}
-            </ScrollView>
-        </TabsContent>
-    </Tabs>
-</View>
+                        ) : (
+                            <View className="flex-1 items-center justify-center p-12 mt-20">
+                                <View className="w-16 h-16 bg-muted rounded-full items-center justify-center mb-4">
+                                    <Info size={32} color="#9ca3af" />
+                                </View>
+                                <Text className="text-lg font-bold text-foreground mb-2 text-center">Pas d'événement détecté</Text>
+                                <Text className="text-muted-foreground text-center text-sm">
+                                    Le calendrier F1 est en cours de mise à jour. Revenez bientôt !
+                                </Text>
+                            </View>
+                        )}
+                    </ScrollView>
+                </TabsContent>
+                <TabsContent value="history" className="flex-1">
+                    <ScrollView
+                        refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor="#ef4444" />}
+                        showsVerticalScrollIndicator={false}
+                        contentContainerStyle={{ padding: 16, paddingBottom: 40 }}
+                    >
+                        {history.length > 0 ? (
+                            history.map(prono => (
+                                <PronosticHistoryCard key={prono.id} pronostic={prono} />
+                            ))
+                        ) : (
+                            <View className="flex-1 items-center justify-center p-12 mt-20">
+                                <View className="w-16 h-16 bg-muted rounded-full items-center justify-center mb-4">
+                                    <Info size={32} color="#9ca3af" />
+                                </View>
+                                <Text className="text-lg font-bold text-foreground mb-2 text-center">Aucun pronostic</Text>
+                                <Text className="text-muted-foreground text-center text-sm">
+                                    Vous n'avez pas encore fait de pronostics.
+                                </Text>
+                            </View>
+                        )}
+                    </ScrollView>
+                </TabsContent>
+            </Tabs>
+        </View>
     );
 }
