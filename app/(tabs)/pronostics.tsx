@@ -12,9 +12,15 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { F1Loader } from '@/components/ui/F1Loader';
 import { ScreenHeader } from '@/components/ui/ScreenHeader';
 import { useAuth } from '@/context/AuthContext';
+import { GuestPrompt } from '@/components/ui/GuestPrompt';
 
 export default function PronosticsScreen() {
     const { user } = useAuth();
+    
+    if (!user) {
+        return <GuestPrompt title="Pronostics" description="Connecte-toi pour parier sur les prochaines courses et défier tes amis !" />;
+    }
+
     const demo = useDemo();
     const [loading, setLoading] = useState(true);
     const [refreshing, setRefreshing] = useState(false);
