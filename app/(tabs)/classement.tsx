@@ -3,6 +3,7 @@ import {
     View, FlatList, TextInput, TouchableOpacity,
     ActivityIndicator, StyleSheet,
 } from 'react-native';
+import { useFocusEffect } from 'expo-router';
 import Animated, { FadeInDown, FadeInUp } from 'react-native-reanimated';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Text } from '@/components/ui/text';
@@ -85,7 +86,11 @@ export default function PlayerLeaderboardScreen() {
     const [focused, setFocused]      = useState(false);
     const [visibleCount, setVisible] = useState(PAGE_SIZE);
 
-    useEffect(() => { loadData(); }, []);
+    useFocusEffect(
+        useCallback(() => {
+            loadData();
+        }, [])
+    );
 
     async function loadData() {
         setLoading(true);

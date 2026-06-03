@@ -15,7 +15,7 @@ import { useAuth } from '@/context/AuthContext';
 import { GuestPrompt } from '@/components/ui/GuestPrompt';
 
 export default function PronosticsScreen() {
-    const { user } = useAuth();
+    const { user, refreshProfile } = useAuth();
 
     const demo = useDemo();
     const [loading, setLoading] = useState(true);
@@ -85,6 +85,7 @@ export default function PronosticsScreen() {
 
             const hist = await fetchMyPronosticsHistory();
             setHistory(hist);
+            await refreshProfile().catch(() => {});
         } catch (error) {
             console.error('Failed to load game data:', error);
         } finally {
