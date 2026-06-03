@@ -12,6 +12,7 @@ import { Text } from '@/components/ui/text';
 import { MessageCircle, Send } from 'lucide-react-native';
 import { useAuth } from '@/context/AuthContext';
 import { fetchSessionChatChannel, fetchMessages, sendMessage, ChatMessage, ChatChannel } from '@/lib/api/chat';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 const POLL_INTERVAL_MS = 3000;
 
@@ -21,6 +22,7 @@ interface LiveChatProps {
 
 export function LiveChat({ sessionKey }: LiveChatProps) {
     const { user, accessToken } = useAuth();
+    const insets = useSafeAreaInsets();
 
     const [channel, setChannel] = useState<ChatChannel | null>(null);
     const [messages, setMessages] = useState<ChatMessage[]>([]);
@@ -140,7 +142,7 @@ export function LiveChat({ sessionKey }: LiveChatProps) {
 
     return (
         <KeyboardAvoidingView
-            behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+            behavior="padding"
             keyboardVerticalOffset={Platform.OS === 'ios' ? 80 : 0}
             style={{ flex: 1 }}
         >
@@ -193,7 +195,10 @@ export function LiveChat({ sessionKey }: LiveChatProps) {
                     )}
                 </View>
 
-                <View className="px-3 py-2 border-t border-white/5 bg-white/[0.02]">
+                <View 
+                    className="px-3 py-2 border-t border-white/5 bg-white/[0.02]"
+                    style={{ paddingBottom: Math.max(insets.bottom, 8) }}
+                >
                     {!user ? (
                         <View className="bg-white/5 rounded-2xl px-4 py-2.5 items-center">
                             <Text className="text-white/40 text-xs font-bold uppercase">

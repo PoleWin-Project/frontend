@@ -11,6 +11,7 @@ import { useSocket } from '@/context/SocketContext';
 import { fetchMessages, sendDm, DmMessage } from '@/lib/api/dms';
 
 import { API_URL } from '@/lib/config';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 export default function ConversationScreen() {
     const { userId: userIdParam } = useLocalSearchParams();
@@ -18,6 +19,7 @@ export default function ConversationScreen() {
     const router   = useRouter();
     const { accessToken, user } = useAuth();
     const { on } = useSocket();
+    const insets = useSafeAreaInsets();
 
     const [messages, setMessages]   = useState<DmMessage[]>([]);
     const [input, setInput]         = useState('');
@@ -121,7 +123,7 @@ export default function ConversationScreen() {
     return (
         <KeyboardAvoidingView
             className="flex-1 bg-background"
-            behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+            behavior="padding"
             keyboardVerticalOffset={0}
         >
             {/* Header */}
@@ -162,7 +164,10 @@ export default function ConversationScreen() {
             )}
 
             {/* Input */}
-            <View className="px-3 py-3 flex-row items-center gap-2 border-t border-white/5">
+            <View 
+                className="px-3 py-3 flex-row items-center gap-2 border-t border-white/5"
+                style={{ paddingBottom: Math.max(insets.bottom, 12) }}
+            >
                 <TextInput
                     value={input}
                     onChangeText={setInput}
