@@ -7,8 +7,8 @@ import { Gamepad2, Trophy, Users, Flag } from 'lucide-react-native';
 const QUICK_ACTIONS = [
     { id: 'pronostics', label: 'Pronostics', icon: Gamepad2, color: '#ef4444', route: '/pronostics' },
     { id: 'standings', label: 'Classement', icon: Trophy, color: '#f59e0b', route: '/classement' },
-    { id: 'teams', label: 'Écuries', icon: Users, color: '#3b82f6', route: '/classement' },
-    { id: 'drivers', label: 'Pilotes', icon: Flag, color: '#10b981', route: '/classement' },
+    { id: 'teams', label: 'Écuries', icon: Users, color: '#3b82f6', route: '/championnat' },
+    { id: 'drivers', label: 'Pilotes', icon: Flag, color: '#10b981', route: '/championnat' },
 ];
 
 export function QuickStats() {

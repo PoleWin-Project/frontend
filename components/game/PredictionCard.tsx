@@ -3,8 +3,8 @@ import { View, TouchableOpacity, Modal, ScrollView, TextInput, ActivityIndicator
 import { Text } from '@/components/ui/text';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Trophy, Clock, CheckCircle2, Lock, User, Coins } from 'lucide-react-native';
-import { Prediction, Pronostic, Driver, placePronostic, updatePronostic } from '@/lib/api/meetings';
+import { Trophy, Clock, CheckCircle2, Lock, User, Coins, Trash2 } from 'lucide-react-native';
+import { Prediction, Pronostic, Driver, placePronostic, updatePronostic, deletePronostic } from '@/lib/api/meetings';
 import { useAuth } from '@/context/AuthContext';
 
 interface PredictionCardProps {
@@ -50,6 +50,20 @@ export function PredictionCard({ prediction, initialPronostic, drivers, onRefres
             setPickerVisible(false);
             onRefresh();
             refreshProfile(); // Call refreshProfile after onRefresh
+        } catch (error) {
+            console.error(error);
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    const handleDeleteBet = async () => {
+        setLoading(true);
+        try {
+            await deletePronostic(prediction.id);
+            setPickerVisible(false);
+            onRefresh();
+            refreshProfile();
         } catch (error) {
             console.error(error);
         } finally {
@@ -116,13 +130,23 @@ export function PredictionCard({ prediction, initialPronostic, drivers, onRefres
                             </View>
                         </View>
                         {!isLocked && (
-                            <Button 
-                                variant="outline" 
-                                onPress={() => setPickerVisible(true)}
-                                className="w-full mt-3 h-8 border-primary/20 bg-transparent"
-                            >
-                                <Text className="text-primary text-xs font-bold uppercase">Modifier mon pari</Text>
-                            </Button>
+                            <View className="flex-row gap-2 mt-3">
+                                <Button 
+                                    variant="outline" 
+                                    onPress={() => setPickerVisible(true)}
+                                    className="flex-1 h-8 border-primary/20 bg-transparent"
+                                >
+                                    <Text className="text-primary text-xs font-bold uppercase">Modifier mon pari</Text>
+                                </Button>
+                                <Button 
+                                    variant="outline" 
+                                    onPress={handleDeleteBet}
+                                    disabled={loading}
+                                    className="px-4 h-8 border-red-500/20 bg-red-500/10"
+                                >
+                                    {loading ? <ActivityIndicator size="small" color="#ef4444" /> : <Trash2 size={16} color="#ef4444" />}
+                                </Button>
+                            </View>
                         )}
                     </View>
                 ) : (

@@ -275,6 +275,22 @@ export async function updatePronostic(predictionId: number, pointsStaked: number
     }
 }
 
+export async function deletePronostic(predictionId: number): Promise<any> {
+    const url = `${API_URL}/predictions/${predictionId}/pronostic`;
+    const headers = await getHeaders();
+
+    try {
+        const response = await fetch(url, {
+            method: 'DELETE',
+            headers,
+        });
+        return await response.json();
+    } catch (error) {
+        console.error(`Failed to delete pronostic for prediction ${predictionId}:`, error);
+        throw error;
+    }
+}
+
 export async function fetchMyPronosticsHistory(limit = 50, offset = 0): Promise<Pronostic[]> {
     const url = `${API_URL}/predictions/users/me/pronostics?limit=${limit}&offset=${offset}`;
     const headers = await getHeaders();
