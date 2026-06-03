@@ -1,11 +1,11 @@
 import { Button } from '@/components/ui/button';
 import { Icon } from '@/components/ui/icon';
 import { Text } from '@/components/ui/text';
-import { Link, Stack, useRouter } from 'expo-router';
+import { Link, Stack, useRouter, useFocusEffect } from 'expo-router';
 import { MoonStar, Star, Sun, ChevronRight, Info, Trophy, User, MessageCircle } from 'lucide-react-native';
 import { useColorScheme } from 'nativewind';
 import * as React from 'react';
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useCallback } from 'react';
 import { Image, type ImageStyle, View, ScrollView, ImageBackground, TouchableOpacity } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { fetchF1News, NewsArticle } from '@/lib/api/news';
@@ -14,8 +14,10 @@ import { NextSessionWidget } from '@/components/calendar/NextSessionWidget';
 import { QuickStats } from '@/components/home/QuickStats';
 import { F1Loader } from '@/components/ui/F1Loader';
 import { useAuth } from '@/context/AuthContext';
+import { useSocket } from '@/context/SocketContext';
 import { PitStopWidget } from '@/components/home/PitStopWidget';
 import { fetchUnreadCount } from '@/lib/api/dms';
+import { fetchIncomingRequests } from '@/lib/api/friends';
 
 const LOGO = {
   light: require('@/assets/images/react-native-reusables-light.png'),
@@ -29,12 +31,14 @@ const IMAGE_STYLE: ImageStyle = {
 
 export default function Screen() {
   const { user, accessToken } = useAuth();
+  const { on } = useSocket();
   const { colorScheme } = useColorScheme();
   const router = useRouter();
   const [latestNews, setLatestNews] = useState<NewsArticle[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [unreadCount, setUnreadCount] = useState(0);
+  const [incomingCount, setIncomingCount] = useState(0);
 
   useEffect(() => {
     async function loadNews() {
@@ -52,14 +56,33 @@ export default function Screen() {
     loadNews();
   }, []);
 
-  useEffect(() => {
+  const loadBadges = useCallback(() => {
     if (!accessToken) return;
     fetchUnreadCount(accessToken).then(setUnreadCount);
-    const interval = setInterval(() => {
-      fetchUnreadCount(accessToken).then(setUnreadCount);
-    }, 15000);
-    return () => clearInterval(interval);
+    fetchIncomingRequests(accessToken).then(reqs => setIncomingCount(reqs.length));
   }, [accessToken]);
+
+  useFocusEffect(
+    useCallback(() => {
+      loadBadges();
+    }, [loadBadges])
+  );
+
+  useEffect(() => {
+    if (!accessToken) return;
+    const interval = setInterval(loadBadges, 30000);
+    
+    const unsubDm = on('dm:received', () => loadBadges());
+    const unsubFriend = on('friend:status_changed', () => loadBadges());
+    
+    return () => {
+      clearInterval(interval);
+      unsubDm();
+      unsubFriend();
+    };
+  }, [accessToken, on, loadBadges]);
+
+  const totalBadgeCount = unreadCount + incomingCount;
 
   return (
     <>
@@ -82,9 +105,9 @@ export default function Screen() {
               className="w-10 h-10 bg-black/40 border border-white/20 rounded-full items-center justify-center"
             >
               <MessageCircle size={20} color="white" />
-              {unreadCount > 0 && (
+              {totalBadgeCount > 0 && (
                 <View className="absolute -top-1 -right-1 min-w-[16px] h-4 bg-primary rounded-full items-center justify-center px-1">
-                  <Text className="text-white text-[9px] font-black">{unreadCount > 99 ? '99' : unreadCount}</Text>
+                  <Text className="text-white text-[9px] font-black">{totalBadgeCount > 99 ? '99' : totalBadgeCount}</Text>
                 </View>
               )}
             </TouchableOpacity>

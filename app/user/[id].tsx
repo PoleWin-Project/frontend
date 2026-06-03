@@ -12,6 +12,7 @@ import {
     MessageCircle, UserX, Clock, Flag, Zap, Star, Users, Calendar,
 } from 'lucide-react-native';
 import { useAuth } from '@/context/AuthContext';
+import { useSocket } from '@/context/SocketContext';
 import {
     fetchFriendStatus, sendFriendRequest, cancelRequest,
     respondToRequest, unfriend, FriendStatus,
@@ -79,6 +80,7 @@ export default function UserProfileScreen() {
     const userId    = Number(id);
     const router    = useRouter();
     const { accessToken, user: me } = useAuth();
+    const { on } = useSocket();
 
     const [profile,      setProfile]      = useState<PublicProfile | null>(null);
     const [status,       setStatus]       = useState<FriendStatus>({ status: 'none' });
@@ -118,6 +120,15 @@ export default function UserProfileScreen() {
     }, [accessToken, userId]);
 
     useEffect(() => { load(); }, [load]);
+
+    useEffect(() => {
+        const unsub = on('friend:status_changed', (data) => {
+            if (data?.userId === userId || data?.userId === me?.id || !data?.userId) {
+                load();
+            }
+        });
+        return () => unsub();
+    }, [on, load, userId, me?.id]);
 
     const send    = async () => { setBusy(true); const r = await sendFriendRequest(userId, accessToken!); if (r.ok) setStatus({ status: 'pending', isSender: true, requestId: r.data?.request?.id }); setBusy(false); };
     const cancel  = async () => { if (!status.requestId) return; setBusy(true); await cancelRequest(status.requestId, accessToken!); setStatus({ status: 'none' }); setBusy(false); };

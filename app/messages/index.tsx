@@ -1,15 +1,17 @@
 import React, { useEffect, useState, useCallback } from 'react';
 import { View, FlatList, TouchableOpacity, ActivityIndicator, RefreshControl } from 'react-native';
-import { useRouter } from 'expo-router';
+import { useRouter, useFocusEffect } from 'expo-router';
 import { Text } from '@/components/ui/text';
 import { ChevronLeft, MessageCircle, Users, Search } from 'lucide-react-native';
 import { useAuth } from '@/context/AuthContext';
+import { useSocket } from '@/context/SocketContext';
 import { fetchConversations, Conversation } from '@/lib/api/dms';
 import { fetchIncomingRequests, FriendRequest, respondToRequest } from '@/lib/api/friends';
 
 export default function MessagesScreen() {
     const router = useRouter();
     const { accessToken, user } = useAuth();
+    const { on } = useSocket();
 
     const [conversations, setConversations]   = useState<Conversation[]>([]);
     const [incoming, setIncoming]             = useState<FriendRequest[]>([]);
@@ -29,7 +31,17 @@ export default function MessagesScreen() {
         setRefreshing(false);
     }, [accessToken]);
 
-    useEffect(() => { load(); }, [load]);
+    useFocusEffect(
+        useCallback(() => {
+            load();
+        }, [load])
+    );
+
+    useEffect(() => {
+        const unsubDm = on('dm:received', () => load());
+        const unsubFriend = on('friend:status_changed', () => load());
+        return () => { unsubDm(); unsubFriend(); };
+    }, [on, load]);
 
     const handleRespond = async (req: FriendRequest, action: 'accept' | 'decline') => {
         if (!accessToken) return;
