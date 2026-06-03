@@ -127,7 +127,7 @@ export default function ChampionshipScreen() {
                                      </View>
                                 </View>
                                 <TouchableOpacity className="bg-primary mt-8 py-4 rounded-2xl items-center shadow-lg shadow-primary/20" onPress={() => { setSelectedDriver(null); setSelectedTeam(null); }}>
-                                    <Text className="text-white font-black uppercase tracking-widest italic">Fermer la télémétrie</Text>
+                                    <Text className="text-white font-black uppercase tracking-widest italic" numberOfLines={1} adjustsFontSizeToFit>Fermer la télémétrie</Text>
                                 </TouchableOpacity>
                                 <View className="h-20" />
                             </ScrollView>

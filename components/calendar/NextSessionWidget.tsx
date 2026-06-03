@@ -296,7 +296,7 @@ export function NextSessionWidget() {
                                 className="bg-primary py-4 rounded-xl items-center justify-center flex-row gap-2 shadow-lg shadow-primary/30"
                             >
                                 <Gamepad2 size={18} color="white" />
-                                <Text className="text-white font-black uppercase tracking-widest italic">
+                                <Text className="text-white font-black uppercase tracking-widest italic" numberOfLines={1} adjustsFontSizeToFit>
                                     Faire vos pronostics
                                 </Text>
                             </TouchableOpacity>
