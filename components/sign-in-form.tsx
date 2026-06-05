@@ -482,6 +482,14 @@ export function SignInForm() {
             />
           </View>
 
+          {mode === 'login' && (
+            <View className="flex-row justify-end mt-1 mb-2 pr-1">
+              <Pressable onPress={() => router.push('/forgot-password' as any)}>
+                <Text className="text-[11px] text-white/50 font-semibold underline">Mot de passe oublié ?</Text>
+              </Pressable>
+            </View>
+          )}
+
           {mode === 'register' ? (
             <View className="relative">
               <View className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2">

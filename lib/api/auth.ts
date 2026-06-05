@@ -253,3 +253,37 @@ export async function fetchCurrentUser(accessToken: string): Promise<{ ok: true;
     return { ok: false, error: msg };
   }
 }
+
+export async function forgotPassword(email: string): Promise<{ ok: true; message: string } | { ok: false; error: string }> {
+  try {
+    const res = await fetch(`${API_URL}/auth/forgot-password`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email }),
+    });
+    const data = await res.json();
+    if (!res.ok) {
+      return { ok: false, error: data.message || 'Impossible de faire la demande' };
+    }
+    return { ok: true, message: data.message || 'Email envoyé' };
+  } catch (e: unknown) {
+    return { ok: false, error: 'Erreur réseau' };
+  }
+}
+
+export async function resetPassword(token: string, newPassword: string, confirmNewPassword: string): Promise<{ ok: true; message: string } | { ok: false; error: string }> {
+  try {
+    const res = await fetch(`${API_URL}/auth/reset-password`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ token, newPassword, confirmNewPassword }),
+    });
+    const data = await res.json();
+    if (!res.ok) {
+      return { ok: false, error: data.message || 'Impossible de réinitialiser le mot de passe' };
+    }
+    return { ok: true, message: data.message || 'Mot de passe réinitialisé' };
+  } catch (e: unknown) {
+    return { ok: false, error: 'Erreur réseau' };
+  }
+}
