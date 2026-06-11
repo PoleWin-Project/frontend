@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import {
     View, FlatList, TextInput, TouchableOpacity,
-    ActivityIndicator, StyleSheet,
+    ActivityIndicator, StyleSheet, RefreshControl,
 } from 'react-native';
 import { useFocusEffect } from 'expo-router';
 import Animated, { FadeInDown, FadeInUp } from 'react-native-reanimated';
@@ -85,6 +85,7 @@ export default function PlayerLeaderboardScreen() {
     const [search, setSearch]        = useState('');
     const [focused, setFocused]      = useState(false);
     const [visibleCount, setVisible] = useState(PAGE_SIZE);
+    const [refreshing, setRefreshing] = useState(false);
 
     useFocusEffect(
         useCallback(() => {
@@ -92,8 +93,9 @@ export default function PlayerLeaderboardScreen() {
         }, [])
     );
 
-    async function loadData() {
-        setLoading(true);
+    // silent = pull-to-refresh : pas d'overlay de chargement plein écran
+    async function loadData(silent = false) {
+        if (!silent) setLoading(true);
         try {
             const [players, rank] = await Promise.all([
                 fetchGlobalLeaderboard(100),
@@ -106,6 +108,12 @@ export default function PlayerLeaderboardScreen() {
         } finally {
             setLoading(false);
         }
+    }
+
+    async function onRefresh() {
+        setRefreshing(true);
+        await loadData(true);
+        setRefreshing(false);
     }
 
     // ── Derived data ──────────────────────────────────────────────────────────
@@ -233,6 +241,7 @@ export default function PlayerLeaderboardScreen() {
                     { paddingBottom: myRank ? 130 : 100 },
                 ]}
                 showsVerticalScrollIndicator={false}
+                refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor="#E10600" />}
             />
 
             {/* ── Loading overlay ── */}

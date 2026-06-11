@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import {
-    View, ScrollView, Pressable, ActivityIndicator, Alert, StyleSheet,
+    View, ScrollView, Pressable, ActivityIndicator, Alert, StyleSheet, RefreshControl,
 } from 'react-native';
 import { Text } from '@/components/ui/text';
 import { Button } from '@/components/ui/button';
@@ -79,6 +79,7 @@ export default function ProfileScreen() {
     const [allBadges, setAllBadges] = useState<Badge[]>([]);
     const [userBadges, setUserBadges] = useState<UserBadge[]>([]);
     const [badgesOpen, setBadgesOpen] = useState(false);
+    const [refreshing, setRefreshing] = useState(false);
 
     useEffect(() => {
         if (accessToken) {
@@ -117,6 +118,12 @@ export default function ProfileScreen() {
         if (tRes.ok) setTeams(tRes.teams);
         if (dRes.ok) setDrivers(dRes.drivers);
         setLoadingLists(false);
+    }
+
+    async function onRefresh() {
+        setRefreshing(true);
+        await Promise.all([loadStats(), loadFriendCount(), loadBadges()]).catch(() => {});
+        setRefreshing(false);
     }
 
     const handleLogout = () => Alert.alert(
@@ -166,6 +173,7 @@ export default function ProfileScreen() {
                 style={styles.scroll}
                 contentContainerStyle={[styles.scrollContent, { paddingBottom: insets.bottom + 40 }]}
                 showsVerticalScrollIndicator={false}
+                refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor="#E10600" />}
             >
                 {/* ── Hero card ── */}
                 <Animated.View entering={FadeInDown.delay(60).springify()} style={styles.heroCard}>

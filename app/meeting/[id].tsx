@@ -1,5 +1,5 @@
 import { useLocalSearchParams, useRouter, Stack } from 'expo-router';
-import { View, Image, ActivityIndicator, ScrollView, TouchableOpacity } from 'react-native';
+import { View, Image, ActivityIndicator, ScrollView, TouchableOpacity, RefreshControl } from 'react-native';
 import { Text } from '@/components/ui/text';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { useEffect, useState } from 'react';
@@ -14,22 +14,30 @@ export default function MeetingDetailScreen() {
     const [sessions, setSessions] = useState<SessionItem[]>([]);
     const [loading, setLoading] = useState(true);
     const [activeTab, setActiveTab] = useState('sessions');
+    const [refreshing, setRefreshing] = useState(false);
+
+    async function loadData() {
+        try {
+            if (params.id && params.year) {
+                const data = await fetchSessions(Number(params.id), Number(params.year));
+                setSessions(data.sort((a, b) => new Date(a.date_start).getTime() - new Date(b.date_start).getTime()));
+            }
+        } catch (error) {
+            console.error(error);
+        } finally {
+            setLoading(false);
+        }
+    }
 
     useEffect(() => {
-        async function loadData() {
-            try {
-                if (params.id && params.year) {
-                    const data = await fetchSessions(Number(params.id), Number(params.year));
-                    setSessions(data.sort((a, b) => new Date(a.date_start).getTime() - new Date(b.date_start).getTime()));
-                }
-            } catch (error) {
-                console.error(error);
-            } finally {
-                setLoading(false);
-            }
-        }
         loadData();
     }, [params.id, params.year]);
+
+    async function onRefresh() {
+        setRefreshing(true);
+        await loadData();
+        setRefreshing(false);
+    }
 
     const formatTime = (isoString: string) => {
         const date = new Date(isoString);
@@ -86,7 +94,11 @@ export default function MeetingDetailScreen() {
                 </View>
 
                 <TabsContent value="sessions" className="flex-1 bg-muted/20">
-                    <ScrollView showsVerticalScrollIndicator={false} className="flex-1 p-4">
+                    <ScrollView
+                        showsVerticalScrollIndicator={false}
+                        className="flex-1 p-4"
+                        refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor="#ef4444" />}
+                    >
                         {loading ? (
                             <ActivityIndicator size="large" className="text-primary mt-10" />
                         ) : sessions.length > 0 ? (

@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { View, FlatList, ActivityIndicator, Image, Pressable, Modal, TouchableOpacity, ScrollView } from 'react-native';
+import { View, FlatList, ActivityIndicator, Image, Pressable, Modal, TouchableOpacity, ScrollView, RefreshControl } from 'react-native';
 import { Text } from '@/components/ui/text';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { ScreenHeader } from '@/components/ui/ScreenHeader';
@@ -26,6 +26,7 @@ export default function ChampionshipScreen() {
 
     const [selectedDriver, setSelectedDriver] = useState<DriverStanding | null>(null);
     const [selectedTeam, setSelectedTeam] = useState<TeamStanding | null>(null);
+    const [refreshing, setRefreshing] = useState(false);
 
     const getTeamLogo = () => require('@/assets/images/placeholder_team.png');
 
@@ -52,6 +53,27 @@ export default function ChampionshipScreen() {
             console.error(error);
         } finally {
             setLoading(false);
+        }
+    }
+
+    // Pull-to-refresh : force le refetch de l'onglet actif (ignore le cache de loadData)
+    async function onRefresh() {
+        setRefreshing(true);
+        try {
+            if (activeTab === 'calendar') {
+                const data = await fetchMeetings(2026);
+                setMeetings(data);
+            } else if (subTab === 'drivers') {
+                const data = await fetchDriverStandings(2026);
+                setDriverStandings(data.sort((a, b) => a.position - b.position));
+            } else {
+                const data = await fetchTeamStandings(2026);
+                setTeamStandings(data.sort((a, b) => a.position - b.position));
+            }
+        } catch (error) {
+            console.error(error);
+        } finally {
+            setRefreshing(false);
         }
     }
 
@@ -174,6 +196,7 @@ export default function ChampionshipScreen() {
                             renderItem={({ item }) => <MeetingCard meeting={item} isPast={new Date(item.date_end).getTime() < Date.now()} />}
                             contentContainerStyle={{ padding: 16, paddingBottom: 100 }}
                             showsVerticalScrollIndicator={false}
+                            refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor="#ef1f14" />}
                         />
                     )}
                 </TabsContent>
@@ -199,6 +222,7 @@ export default function ChampionshipScreen() {
                                 data={driverStandings}
                                 keyExtractor={(item) => item.driver_number.toString()}
                                 contentContainerStyle={{ padding: 16, paddingBottom: 100 }}
+                                refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor="#ef1f14" />}
                                 renderItem={({ item }) => {
                                     const d = item.driver;
                                     const tColor = d?.team_colour || '333';
@@ -227,6 +251,7 @@ export default function ChampionshipScreen() {
                                 data={teamStandings}
                                 keyExtractor={(item) => item.team_name}
                                 contentContainerStyle={{ padding: 16, paddingBottom: 100 }}
+                                refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor="#ef1f14" />}
                                 renderItem={({ item }) => {
                                     const tColor = item.team_colour || '333';
                                     return (

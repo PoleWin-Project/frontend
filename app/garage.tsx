@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { View, ScrollView, Pressable, Image, TouchableOpacity } from 'react-native';
+import { View, ScrollView, Pressable, Image, TouchableOpacity, RefreshControl } from 'react-native';
 import { Stack, useRouter } from 'expo-router';
 import { BlurView } from 'expo-blur';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -15,11 +15,19 @@ export default function GarageScreen() {
   const insets = useSafeAreaInsets();
   const { accessToken, user } = useAuth();
   const [reactionPlays, setReactionPlays] = useState<PlaysToday | null>(null);
+  const [refreshing, setRefreshing] = useState(false);
 
   useEffect(() => {
     if (!accessToken) return;
     fetchPlaysToday(accessToken, 'reaction').then(setReactionPlays);
   }, [accessToken]);
+
+  async function onRefresh() {
+    if (!accessToken) return;
+    setRefreshing(true);
+    await fetchPlaysToday(accessToken, 'reaction').then(setReactionPlays).catch(() => {});
+    setRefreshing(false);
+  }
 
   const games = [
     {
@@ -100,6 +108,7 @@ export default function GarageScreen() {
           className="flex-1 px-6 pt-4"
           showsVerticalScrollIndicator={false}
           contentContainerStyle={{ paddingBottom: insets.bottom + 100 }}
+          refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor="#E10600" />}
         >
           {/* Welcome Card */}
           <View className="mb-10">
