@@ -1,9 +1,9 @@
 import React, { useState } from 'react';
-import { View, TouchableOpacity, Modal, ScrollView, TextInput, ActivityIndicator } from 'react-native';
+import { View, TouchableOpacity, Modal, ScrollView, TextInput, ActivityIndicator, Alert } from 'react-native';
 import { Text } from '@/components/ui/text';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Trophy, Clock, CheckCircle2, Lock, User, Coins, Trash2 } from 'lucide-react-native';
+import { Trophy, Clock, CheckCircle2, Lock, User, Coins, Trash2, HelpCircle, X } from 'lucide-react-native';
 import { Prediction, Pronostic, Driver, placePronostic, updatePronostic, deletePronostic } from '@/lib/api/meetings';
 import { useAuth } from '@/context/AuthContext';
 
@@ -17,11 +17,15 @@ interface PredictionCardProps {
 export function PredictionCard({ prediction, initialPronostic, drivers, onRefresh }: PredictionCardProps) {
     const { refreshProfile } = useAuth();
     const isPodium = prediction.type === 'PODIUM';
+    const isSafetyCar = prediction.type === 'SAFETY_CAR';
     const [pickerVisible, setPickerVisible] = useState(false);
     const [selectedDriver, setSelectedDriver] = useState<Driver | null>(null);
     const [podiumDrivers, setPodiumDrivers] = useState<(Driver | null)[]>([null, null, null]);
+    const [selectedOption, setSelectedOption] = useState<string | null>(null);
     const [points, setPoints] = useState(initialPronostic?.pointsStaked.toString() || '10');
     const [loading, setLoading] = useState(false);
+    const [infoModalVisible, setInfoModalVisible] = useState(false);
+    const [infoContent, setInfoContent] = useState<{title: string, message: string} | null>(null);
 
     // Sync state when props change (important for refresh after placing a prono)
     React.useEffect(() => {
@@ -33,6 +37,8 @@ export function PredictionCard({ prediction, initialPronostic, drivers, onRefres
                     drivers.find(d => d.name_acronym === acronyms[1]) || null,
                     drivers.find(d => d.name_acronym === acronyms[2]) || null,
                 ]);
+            } else if (isSafetyCar) {
+                setSelectedOption(initialPronostic.detail?.value || null);
             } else {
                 const driver = drivers.find(d => d.name_acronym === initialPronostic.detail?.value);
                 if (driver) setSelectedDriver(driver);
@@ -41,19 +47,25 @@ export function PredictionCard({ prediction, initialPronostic, drivers, onRefres
         } else {
             setSelectedDriver(null);
             setPodiumDrivers([null, null, null]);
+            setSelectedOption(null);
             setPoints('10');
         }
-    }, [initialPronostic, drivers, isPodium]);
+    }, [initialPronostic, drivers, isPodium, isSafetyCar]);
 
     const isLocked = new Date(prediction.closesAt).getTime() < Date.now();
     const hasBet = !!initialPronostic;
 
     const handlePlaceBet = async () => {
-        const valueToSubmit = isPodium ? podiumDrivers.map(d => d?.name_acronym).join(',') : selectedDriver?.name_acronym;
+        let valueToSubmit: string | undefined;
         if (isPodium) {
             if (podiumDrivers.includes(null)) return;
+            valueToSubmit = podiumDrivers.map(d => d?.name_acronym).join(',');
+        } else if (isSafetyCar) {
+            if (!selectedOption) return;
+            valueToSubmit = selectedOption;
         } else {
             if (!selectedDriver) return;
+            valueToSubmit = selectedDriver.name_acronym;
         }
         
         setLoading(true);
@@ -93,7 +105,36 @@ export function PredictionCard({ prediction, initialPronostic, drivers, onRefres
             case 'RACE_WINNER':   return 'Qui gagnera la course ?';
             case 'SPRINT_WINNER': return 'Qui gagnera le sprint ?';
             case 'PODIUM':        return 'Quel sera le podium ?';
+            case 'SAFETY_CAR':    return 'Y aura-t-il une Safety Car ?';
+            case 'DNF':           return 'Quel pilote va abandonner ?';
+            case 'FASTEST_LAP':   return 'Qui fera le meilleur tour ?';
             default:              return type.replace(/_/g, ' ');
+        }
+    };
+
+    const showExplanation = (type: string) => {
+        const explanations: Record<string, { title: string, message: string }> = {
+            'PODIUM': {
+                title: 'Podium',
+                message: 'Choisissez les 3 pilotes du podium. Gain de x4 si l\'ordre exact est trouvé, ou x2 si vous avez les 3 bons pilotes dans le désordre.'
+            },
+            'SAFETY_CAR': {
+                title: 'Safety Car',
+                message: 'Pronostiquez si la voiture de sécurité (Safety Car) sortira sur la piste pendant la course (Virtual Safety Car non incluse).'
+            },
+            'DNF': {
+                title: 'Abandon (DNF)',
+                message: 'Choisissez un pilote qui n\'arrivera pas à terminer la course (abandon, crash ou disqualification).'
+            },
+            'FASTEST_LAP': {
+                title: 'Meilleur Tour',
+                message: 'Pronostiquez le pilote qui réalisera le meilleur tour absolu sur l\'ensemble de la course (souvent réalisé dans les derniers tours).'
+            }
+        };
+        const info = explanations[type];
+        if (info) {
+            setInfoContent(info);
+            setInfoModalVisible(true);
         }
     };
 
@@ -123,9 +164,16 @@ export function PredictionCard({ prediction, initialPronostic, drivers, onRefres
             <View className={`h-1 w-full ${isLocked ? 'bg-muted' : 'bg-primary'}`} />
             <CardHeader className="flex-row items-center justify-between pb-2">
                 <View className="flex-1">
-                    <CardTitle className="text-lg font-bold uppercase tracking-tight text-foreground">
-                        {formatType(prediction.type)}
-                    </CardTitle>
+                    <View className="flex-row items-center gap-2 pr-2">
+                        <CardTitle className="text-lg font-bold uppercase tracking-tight text-foreground flex-shrink">
+                            {formatType(prediction.type)}
+                        </CardTitle>
+                        {['PODIUM', 'SAFETY_CAR', 'DNF', 'FASTEST_LAP'].includes(prediction.type) && (
+                            <TouchableOpacity onPress={() => showExplanation(prediction.type)} className="p-1">
+                                <HelpCircle size={16} color="#9ca3af" />
+                            </TouchableOpacity>
+                        )}
+                    </View>
                     <View className="flex-row items-center mt-1">
                         <Clock size={12} color={isLocked ? '#9ca3af' : '#6b7280'} />
                         <Text className="text-[10px] text-muted-foreground ml-1">
@@ -145,7 +193,7 @@ export function PredictionCard({ prediction, initialPronostic, drivers, onRefres
                     <View className="bg-primary/5 border border-primary/20 rounded-xl p-3">
                         <View className="flex-row items-center justify-between">
                             <View className="flex-row items-center flex-1 pr-4">
-                                {!isPodium ? (
+                                {!isPodium && !isSafetyCar && (
                                     <>
                                         <View 
                                             style={{ backgroundColor: selectedDriver ? `#${selectedDriver.team_colour}` : '#3b82f6' }} 
@@ -158,7 +206,16 @@ export function PredictionCard({ prediction, initialPronostic, drivers, onRefres
                                             </Text>
                                         </View>
                                     </>
-                                ) : (
+                                )}
+                                {isSafetyCar && (
+                                    <View>
+                                        <Text className="text-xs text-muted-foreground font-medium">Votre pronostic</Text>
+                                        <Text className="text-base font-bold text-foreground">
+                                            {selectedOption === 'YES' ? 'OUI' : selectedOption === 'NO' ? 'NON' : initialPronostic?.detail?.value}
+                                        </Text>
+                                    </View>
+                                )}
+                                {isPodium && (
                                     <View>
                                         <Text className="text-xs text-muted-foreground font-medium mb-1">Votre podium</Text>
                                         <View className="flex-row items-center gap-2">
@@ -256,46 +313,65 @@ export function PredictionCard({ prediction, initialPronostic, drivers, onRefres
                             </View>
                         )}
 
-                        <Text className="text-sm font-bold text-muted-foreground uppercase mb-3">Choisir un pilote</Text>
-                        <ScrollView className="flex-1 mb-6" showsVerticalScrollIndicator={false}>
-                            <View className="flex-row flex-wrap gap-2">
-                                {drivers.map((driver) => {
-                                    const isSelected = isPodium 
-                                        ? podiumDrivers.some(d => d?.driver_number === driver.driver_number)
-                                        : selectedDriver?.driver_number === driver.driver_number;
-                                        
-                                    return (
-                                        <TouchableOpacity
-                                            key={driver.driver_number}
-                                            onPress={() => handleDriverSelect(driver)}
-                                            className={`w-[48%] p-3 rounded-xl border flex-row items-center ${
-                                                isSelected
-                                                    ? 'border-primary bg-primary/10'
-                                                    : 'border-border/50 bg-muted/20'
-                                            }`}
-                                        >
-                                            <View 
-                                                style={{ backgroundColor: `#${driver.team_colour}` }} 
-                                                className="w-1.5 h-6 rounded-full mr-2" 
-                                            />
-                                            <View className="flex-1">
-                                                <Text className="text-xs text-muted-foreground font-mono">{driver.name_acronym}</Text>
-                                                <Text className="text-sm font-bold text-foreground" numberOfLines={1}>
-                                                    {driver.full_name.split(' ').pop()}
-                                                </Text>
-                                            </View>
-                                            {isPodium && isSelected && (
-                                                <View className="bg-primary px-1.5 rounded">
-                                                    <Text className="text-white text-xs font-bold">
-                                                        P{podiumDrivers.findIndex(d => d?.driver_number === driver.driver_number) + 1}
-                                                    </Text>
-                                                </View>
-                                            )}
-                                        </TouchableOpacity>
-                                    );
-                                })}
+                        {isSafetyCar ? (
+                            <View className="flex-row justify-between mb-6 gap-4">
+                                <TouchableOpacity
+                                    onPress={() => setSelectedOption('YES')}
+                                    className={`flex-1 p-4 rounded-xl border items-center justify-center ${selectedOption === 'YES' ? 'border-primary bg-primary/10' : 'border-border/50 bg-muted/20'}`}
+                                >
+                                    <Text className="text-lg font-black text-foreground">OUI</Text>
+                                </TouchableOpacity>
+                                <TouchableOpacity
+                                    onPress={() => setSelectedOption('NO')}
+                                    className={`flex-1 p-4 rounded-xl border items-center justify-center ${selectedOption === 'NO' ? 'border-primary bg-primary/10' : 'border-border/50 bg-muted/20'}`}
+                                >
+                                    <Text className="text-lg font-black text-foreground">NON</Text>
+                                </TouchableOpacity>
                             </View>
-                        </ScrollView>
+                        ) : (
+                            <>
+                                <Text className="text-sm font-bold text-muted-foreground uppercase mb-3">Choisir un pilote</Text>
+                                <ScrollView className="flex-1 mb-6" showsVerticalScrollIndicator={false}>
+                                    <View className="flex-row flex-wrap gap-2">
+                                        {drivers.map((driver) => {
+                                            const isSelected = isPodium 
+                                                ? podiumDrivers.some(d => d?.driver_number === driver.driver_number)
+                                                : selectedDriver?.driver_number === driver.driver_number;
+                                                
+                                            return (
+                                                <TouchableOpacity
+                                                    key={driver.driver_number}
+                                                    onPress={() => handleDriverSelect(driver)}
+                                                    className={`w-[48%] p-3 rounded-xl border flex-row items-center ${
+                                                        isSelected
+                                                            ? 'border-primary bg-primary/10'
+                                                            : 'border-border/50 bg-muted/20'
+                                                    }`}
+                                                >
+                                                    <View 
+                                                        style={{ backgroundColor: `#${driver.team_colour}` }} 
+                                                        className="w-1.5 h-6 rounded-full mr-2" 
+                                                    />
+                                                    <View className="flex-1">
+                                                        <Text className="text-xs text-muted-foreground font-mono">{driver.name_acronym}</Text>
+                                                        <Text className="text-sm font-bold text-foreground" numberOfLines={1}>
+                                                            {driver.full_name.split(' ').pop()}
+                                                        </Text>
+                                                    </View>
+                                                    {isPodium && isSelected && (
+                                                        <View className="bg-primary px-1.5 rounded">
+                                                            <Text className="text-white text-xs font-bold">
+                                                                P{podiumDrivers.findIndex(d => d?.driver_number === driver.driver_number) + 1}
+                                                            </Text>
+                                                        </View>
+                                                    )}
+                                                </TouchableOpacity>
+                                            );
+                                        })}
+                                    </View>
+                                </ScrollView>
+                            </>
+                        )}
 
                         <View className="mb-6">
                             <Text className="text-sm font-bold text-muted-foreground uppercase mb-3">Mise (Points)</Text>
@@ -324,6 +400,43 @@ export function PredictionCard({ prediction, initialPronostic, drivers, onRefres
                             ) : (
                                 <Text className="text-white text-lg font-bold">Confirmer le Prono</Text>
                             )}
+                        </Button>
+                    </View>
+                </View>
+            </Modal>
+
+            {/* Info Modal */}
+            <Modal
+                animationType="fade"
+                transparent={true}
+                visible={infoModalVisible}
+                onRequestClose={() => setInfoModalVisible(false)}
+            >
+                <View className="flex-1 justify-center items-center bg-black/60 p-4">
+                    <View className="bg-zinc-900 border border-white/10 rounded-3xl p-6 w-full max-w-sm shadow-2xl relative">
+                        <TouchableOpacity 
+                            onPress={() => setInfoModalVisible(false)}
+                            className="absolute top-4 right-4 z-10 w-8 h-8 items-center justify-center rounded-full bg-white/5"
+                        >
+                            <X size={18} color="#9ca3af" />
+                        </TouchableOpacity>
+                        
+                        <View className="w-12 h-12 rounded-full bg-primary/20 items-center justify-center mb-4">
+                            <HelpCircle size={24} color="#ef4444" />
+                        </View>
+                        
+                        <Text className="text-xl font-black text-white uppercase italic mb-2">
+                            {infoContent?.title}
+                        </Text>
+                        <Text className="text-base text-white/80 leading-relaxed mb-6">
+                            {infoContent?.message}
+                        </Text>
+                        
+                        <Button 
+                            onPress={() => setInfoModalVisible(false)} 
+                            className="w-full bg-primary rounded-xl h-12"
+                        >
+                            <Text className="text-white text-sm font-bold uppercase tracking-widest">J'ai compris</Text>
                         </Button>
                     </View>
                 </View>

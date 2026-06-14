@@ -35,7 +35,11 @@ export function PronosticHistoryCard({ pronostic }: { pronostic: Pronostic }) {
         switch (type) {
             case 'POLE_POSITION': return 'Pole · Qualifs';
             case 'RACE_WINNER':   return 'Vainqueur Course';
+            case 'SPRINT_WINNER': return 'Vainqueur Sprint';
             case 'PODIUM':        return 'Podium (Top 3)';
+            case 'SAFETY_CAR':    return 'Safety Car';
+            case 'DNF':           return 'Abandon (DNF)';
+            case 'FASTEST_LAP':   return 'Meilleur Tour';
             default:              return type.replace(/_/g, ' ');
         }
     };
@@ -45,6 +49,9 @@ export function PronosticHistoryCard({ pronostic }: { pronostic: Pronostic }) {
         if (type === 'PODIUM') {
             const drivers = value.split(',');
             return drivers.map((d, i) => `${i + 1}. ${d}`).join(' | ');
+        }
+        if (type === 'SAFETY_CAR') {
+            return value === 'YES' ? 'OUI' : value === 'NO' ? 'NON' : value;
         }
         return value;
     };
@@ -59,12 +66,7 @@ export function PronosticHistoryCard({ pronostic }: { pronostic: Pronostic }) {
                     {getStatusIcon()}
                 </View>
                 <View className="flex-1">
-                    {sessionName && (
-                        <Text className="text-xs text-primary font-black uppercase tracking-wider mb-0.5">
-                            {sessionName}
-                        </Text>
-                    )}
-                    <Text className="text-foreground font-bold text-lg leading-tight mb-0.5">
+                    <Text className="text-foreground font-bold text-lg leading-tight mb-0.5 mt-0.5">
                         {formatValue(prediction?.type, pronostic.detail?.value)}
                     </Text>
                     <View className="flex-row items-center">
@@ -76,10 +78,10 @@ export function PronosticHistoryCard({ pronostic }: { pronostic: Pronostic }) {
                             {getStatusText()}
                         </Text>
                     </View>
-                    {isLost && prediction?.winningValue && (
-                        <View className="mt-1 bg-red-500/10 self-start px-2 py-0.5 rounded border border-red-500/20">
-                            <Text className="text-[10px] text-red-400 font-bold">
-                                Résultat : {formatValue(prediction.type, prediction.winningValue)}
+                    {prediction?.winningValue && (isLost || isWon) && (
+                        <View className={`mt-1.5 self-start px-2 py-0.5 rounded border ${isWon ? 'bg-green-500/10 border-green-500/20' : 'bg-red-500/10 border-red-500/20'}`}>
+                            <Text className={`text-[10px] font-bold ${isWon ? 'text-green-500' : 'text-red-400'}`}>
+                                Vrai résultat : {formatValue(prediction.type, prediction.winningValue)}
                             </Text>
                         </View>
                     )}
