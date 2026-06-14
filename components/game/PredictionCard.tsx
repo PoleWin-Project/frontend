@@ -16,36 +16,52 @@ interface PredictionCardProps {
 
 export function PredictionCard({ prediction, initialPronostic, drivers, onRefresh }: PredictionCardProps) {
     const { refreshProfile } = useAuth();
+    const isPodium = prediction.type === 'PODIUM';
     const [pickerVisible, setPickerVisible] = useState(false);
-    const [selectedDriver, setSelectedDriver] = useState<Driver | null>(
-        initialPronostic ? drivers.find(d => d.name_acronym === initialPronostic.detail?.value) || null : null
-    );
+    const [selectedDriver, setSelectedDriver] = useState<Driver | null>(null);
+    const [podiumDrivers, setPodiumDrivers] = useState<(Driver | null)[]>([null, null, null]);
     const [points, setPoints] = useState(initialPronostic?.pointsStaked.toString() || '10');
     const [loading, setLoading] = useState(false);
 
     // Sync state when props change (important for refresh after placing a prono)
     React.useEffect(() => {
         if (initialPronostic) {
-            const driver = drivers.find(d => d.name_acronym === initialPronostic.detail?.value);
-            if (driver) setSelectedDriver(driver);
+            if (isPodium) {
+                const acronyms = initialPronostic.detail?.value.split(',') || [];
+                setPodiumDrivers([
+                    drivers.find(d => d.name_acronym === acronyms[0]) || null,
+                    drivers.find(d => d.name_acronym === acronyms[1]) || null,
+                    drivers.find(d => d.name_acronym === acronyms[2]) || null,
+                ]);
+            } else {
+                const driver = drivers.find(d => d.name_acronym === initialPronostic.detail?.value);
+                if (driver) setSelectedDriver(driver);
+            }
             setPoints(initialPronostic.pointsStaked.toString());
         } else {
             setSelectedDriver(null);
+            setPodiumDrivers([null, null, null]);
             setPoints('10');
         }
-    }, [initialPronostic, drivers]);
+    }, [initialPronostic, drivers, isPodium]);
 
     const isLocked = new Date(prediction.closesAt).getTime() < Date.now();
     const hasBet = !!initialPronostic;
 
     const handlePlaceBet = async () => {
-        if (!selectedDriver) return;
+        const valueToSubmit = isPodium ? podiumDrivers.map(d => d?.name_acronym).join(',') : selectedDriver?.name_acronym;
+        if (isPodium) {
+            if (podiumDrivers.includes(null)) return;
+        } else {
+            if (!selectedDriver) return;
+        }
+        
         setLoading(true);
         try {
             if (hasBet) {
-                await updatePronostic(prediction.id, parseInt(points), selectedDriver.name_acronym);
+                await updatePronostic(prediction.id, parseInt(points), valueToSubmit!);
             } else {
-                await placePronostic(prediction.id, parseInt(points), selectedDriver.name_acronym);
+                await placePronostic(prediction.id, parseInt(points), valueToSubmit!);
             }
             setPickerVisible(false);
             onRefresh();
@@ -76,7 +92,29 @@ export function PredictionCard({ prediction, initialPronostic, drivers, onRefres
             case 'POLE_POSITION': return 'Qui finira 1er aux qualifs ?';
             case 'RACE_WINNER':   return 'Qui gagnera la course ?';
             case 'SPRINT_WINNER': return 'Qui gagnera le sprint ?';
+            case 'PODIUM':        return 'Quel sera le podium ?';
             default:              return type.replace(/_/g, ' ');
+        }
+    };
+
+    const handleDriverSelect = (driver: Driver) => {
+        if (isPodium) {
+            if (podiumDrivers.find(d => d?.driver_number === driver.driver_number)) {
+                // Remove it
+                setPodiumDrivers(prev => prev.map(d => d?.driver_number === driver.driver_number ? null : d));
+                return;
+            }
+            // Add to first available slot
+            const emptyIndex = podiumDrivers.findIndex(d => d === null);
+            if (emptyIndex !== -1) {
+                setPodiumDrivers(prev => {
+                    const next = [...prev];
+                    next[emptyIndex] = driver;
+                    return next;
+                });
+            }
+        } else {
+            setSelectedDriver(driver);
         }
     };
 
@@ -106,17 +144,34 @@ export function PredictionCard({ prediction, initialPronostic, drivers, onRefres
                 {hasBet ? (
                     <View className="bg-primary/5 border border-primary/20 rounded-xl p-3">
                         <View className="flex-row items-center justify-between">
-                            <View className="flex-row items-center">
-                                <View 
-                                    style={{ backgroundColor: selectedDriver ? `#${selectedDriver.team_colour}` : '#3b82f6' }} 
-                                    className="w-1 h-8 rounded-full mr-3" 
-                                />
-                                <View>
-                                    <Text className="text-xs text-muted-foreground font-medium">Votre pronostic</Text>
-                                    <Text className="text-base font-bold text-foreground">
-                                        {selectedDriver?.full_name || initialPronostic?.detail?.value}
-                                    </Text>
-                                </View>
+                            <View className="flex-row items-center flex-1 pr-4">
+                                {!isPodium ? (
+                                    <>
+                                        <View 
+                                            style={{ backgroundColor: selectedDriver ? `#${selectedDriver.team_colour}` : '#3b82f6' }} 
+                                            className="w-1 h-8 rounded-full mr-3" 
+                                        />
+                                        <View>
+                                            <Text className="text-xs text-muted-foreground font-medium">Votre pronostic</Text>
+                                            <Text className="text-base font-bold text-foreground">
+                                                {selectedDriver?.full_name || initialPronostic?.detail?.value}
+                                            </Text>
+                                        </View>
+                                    </>
+                                ) : (
+                                    <View>
+                                        <Text className="text-xs text-muted-foreground font-medium mb-1">Votre podium</Text>
+                                        <View className="flex-row items-center gap-2">
+                                            {podiumDrivers.map((d, i) => (
+                                                <View key={i} className="bg-background/50 px-2 py-1 rounded border border-border/50">
+                                                    <Text className="text-xs font-bold text-foreground">
+                                                        <Text className="text-[10px] text-muted-foreground">{i + 1}.</Text> {d?.name_acronym}
+                                                    </Text>
+                                                </View>
+                                            ))}
+                                        </View>
+                                    </View>
+                                )}
                             </View>
                             <View className="items-end">
                                 <View className="flex-row items-center bg-primary/20 px-2 py-1 rounded-md mb-1">
@@ -154,11 +209,11 @@ export function PredictionCard({ prediction, initialPronostic, drivers, onRefres
                         <View className="flex-row justify-between items-center mb-4">
                             <View>
                                 <Text className="text-muted-foreground text-[10px] font-bold uppercase tracking-wider">Cote Standard</Text>
-                                <Text className="text-xl font-black text-foreground italic">x2.0</Text>
+                                <Text className="text-xl font-black text-foreground italic">{isPodium ? 'x4.0' : 'x2.0'}</Text>
                             </View>
                             <View className="items-end">
-                                <Text className="text-muted-foreground text-[10px] font-bold uppercase tracking-wider">Gain Potentiel</Text>
-                                <Text className="text-xl font-black text-green-500 italic">+{parseInt(points) * 2} pts</Text>
+                                <Text className="text-muted-foreground text-[10px] font-bold uppercase tracking-wider">Gain Potentiel max</Text>
+                                <Text className="text-xl font-black text-green-500 italic">+{parseInt(points) * (isPodium ? 4 : 2)} pts</Text>
                             </View>
                         </View>
                         <Button 
@@ -188,31 +243,57 @@ export function PredictionCard({ prediction, initialPronostic, drivers, onRefres
                             </TouchableOpacity>
                         </View>
 
+                        {isPodium && (
+                            <View className="flex-row justify-between mb-4 gap-2">
+                                {[0, 1, 2].map((i) => (
+                                    <View key={i} className={`flex-1 p-3 rounded-xl border items-center justify-center ${podiumDrivers[i] ? 'border-primary bg-primary/10' : 'border-border/50 bg-muted/20'}`}>
+                                        <Text className="text-xs font-bold text-muted-foreground uppercase mb-1">P{i + 1}</Text>
+                                        <Text className="text-sm font-black text-foreground">
+                                            {podiumDrivers[i]?.name_acronym || '---'}
+                                        </Text>
+                                    </View>
+                                ))}
+                            </View>
+                        )}
+
                         <Text className="text-sm font-bold text-muted-foreground uppercase mb-3">Choisir un pilote</Text>
                         <ScrollView className="flex-1 mb-6" showsVerticalScrollIndicator={false}>
                             <View className="flex-row flex-wrap gap-2">
-                                {drivers.map((driver) => (
-                                    <TouchableOpacity
-                                        key={driver.driver_number}
-                                        onPress={() => setSelectedDriver(driver)}
-                                        className={`w-[48%] p-3 rounded-xl border flex-row items-center ${
-                                            selectedDriver?.driver_number === driver.driver_number
-                                                ? 'border-primary bg-primary/10'
-                                                : 'border-border/50 bg-muted/20'
-                                        }`}
-                                    >
-                                        <View 
-                                            style={{ backgroundColor: `#${driver.team_colour}` }} 
-                                            className="w-1.5 h-6 rounded-full mr-2" 
-                                        />
-                                        <View className="flex-1">
-                                            <Text className="text-xs text-muted-foreground font-mono">{driver.name_acronym}</Text>
-                                            <Text className="text-sm font-bold text-foreground" numberOfLines={1}>
-                                                {driver.full_name.split(' ').pop()}
-                                            </Text>
-                                        </View>
-                                    </TouchableOpacity>
-                                ))}
+                                {drivers.map((driver) => {
+                                    const isSelected = isPodium 
+                                        ? podiumDrivers.some(d => d?.driver_number === driver.driver_number)
+                                        : selectedDriver?.driver_number === driver.driver_number;
+                                        
+                                    return (
+                                        <TouchableOpacity
+                                            key={driver.driver_number}
+                                            onPress={() => handleDriverSelect(driver)}
+                                            className={`w-[48%] p-3 rounded-xl border flex-row items-center ${
+                                                isSelected
+                                                    ? 'border-primary bg-primary/10'
+                                                    : 'border-border/50 bg-muted/20'
+                                            }`}
+                                        >
+                                            <View 
+                                                style={{ backgroundColor: `#${driver.team_colour}` }} 
+                                                className="w-1.5 h-6 rounded-full mr-2" 
+                                            />
+                                            <View className="flex-1">
+                                                <Text className="text-xs text-muted-foreground font-mono">{driver.name_acronym}</Text>
+                                                <Text className="text-sm font-bold text-foreground" numberOfLines={1}>
+                                                    {driver.full_name.split(' ').pop()}
+                                                </Text>
+                                            </View>
+                                            {isPodium && isSelected && (
+                                                <View className="bg-primary px-1.5 rounded">
+                                                    <Text className="text-white text-xs font-bold">
+                                                        P{podiumDrivers.findIndex(d => d?.driver_number === driver.driver_number) + 1}
+                                                    </Text>
+                                                </View>
+                                            )}
+                                        </TouchableOpacity>
+                                    );
+                                })}
                             </View>
                         </ScrollView>
 
@@ -235,7 +316,7 @@ export function PredictionCard({ prediction, initialPronostic, drivers, onRefres
 
                         <Button 
                             onPress={handlePlaceBet} 
-                            disabled={!selectedDriver || loading}
+                            disabled={(isPodium ? podiumDrivers.includes(null) : !selectedDriver) || loading}
                             className="w-full bg-primary h-14 rounded-2xl"
                         >
                             {loading ? (
