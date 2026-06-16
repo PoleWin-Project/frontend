@@ -25,7 +25,7 @@ export function PredictionCard({ prediction, initialPronostic, drivers, onRefres
     const [points, setPoints] = useState(initialPronostic?.pointsStaked.toString() || '10');
     const [loading, setLoading] = useState(false);
     const [infoModalVisible, setInfoModalVisible] = useState(false);
-    const [infoContent, setInfoContent] = useState<{title: string, message: string} | null>(null);
+    const [infoContent, setInfoContent] = useState<{ title: string, message: string } | null>(null);
 
     // Sync state when props change (important for refresh after placing a prono)
     React.useEffect(() => {
@@ -67,7 +67,7 @@ export function PredictionCard({ prediction, initialPronostic, drivers, onRefres
             if (!selectedDriver) return;
             valueToSubmit = selectedDriver.name_acronym;
         }
-        
+
         setLoading(true);
         try {
             if (hasBet) {
@@ -102,13 +102,13 @@ export function PredictionCard({ prediction, initialPronostic, drivers, onRefres
     const formatType = (type: string) => {
         switch (type) {
             case 'POLE_POSITION': return 'Qui finira 1er aux qualifs ?';
-            case 'RACE_WINNER':   return 'Qui gagnera la course ?';
+            case 'RACE_WINNER': return 'Qui gagnera la course ?';
             case 'SPRINT_WINNER': return 'Qui gagnera le sprint ?';
-            case 'PODIUM':        return 'Quel sera le podium ?';
-            case 'SAFETY_CAR':    return 'Y aura-t-il une Safety Car ?';
-            case 'DNF':           return 'Quel pilote va abandonner ?';
-            case 'FASTEST_LAP':   return 'Qui fera le meilleur tour ?';
-            default:              return type.replace(/_/g, ' ');
+            case 'PODIUM': return 'Quel sera le podium ?';
+            case 'SAFETY_CAR': return 'Y aura-t-il une Safety Car ?';
+            case 'DNF': return 'Quel pilote va abandonner ?';
+            case 'FASTEST_LAP': return 'Qui fera le meilleur tour ?';
+            default: return type.replace(/_/g, ' ');
         }
     };
 
@@ -160,7 +160,7 @@ export function PredictionCard({ prediction, initialPronostic, drivers, onRefres
     };
 
     return (
-        <Card className="mb-4 border-border/40 shadow-sm bg-card/80 overflow-hidden">
+        <Card className="border-border/40 shadow-sm bg-card/80 overflow-hidden">
             <View className={`h-1 w-full ${isLocked ? 'bg-muted' : 'bg-primary'}`} />
             <CardHeader className="flex-row items-center justify-between pb-2">
                 <View className="flex-1">
@@ -192,12 +192,12 @@ export function PredictionCard({ prediction, initialPronostic, drivers, onRefres
                 {hasBet ? (
                     <View className="bg-primary/5 border border-primary/20 rounded-xl p-3">
                         <View className="flex-row items-center justify-between">
-                            <View className="flex-row items-center flex-1 pr-4">
+                            <View className="flex-row items-center flex-1 pr-2">
                                 {!isPodium && !isSafetyCar && (
                                     <>
-                                        <View 
-                                            style={{ backgroundColor: selectedDriver ? `#${selectedDriver.team_colour}` : '#3b82f6' }} 
-                                            className="w-1 h-8 rounded-full mr-3" 
+                                        <View
+                                            style={{ backgroundColor: selectedDriver ? `#${selectedDriver.team_colour}` : '#3b82f6' }}
+                                            className="w-1 h-8 rounded-full mr-3"
                                         />
                                         <View>
                                             <Text className="text-xs text-muted-foreground font-medium">Votre pronostic</Text>
@@ -218,11 +218,11 @@ export function PredictionCard({ prediction, initialPronostic, drivers, onRefres
                                 {isPodium && (
                                     <View>
                                         <Text className="text-xs text-muted-foreground font-medium mb-1">Votre podium</Text>
-                                        <View className="flex-row items-center gap-2">
+                                        <View className="flex-row items-center gap-1.5 flex-wrap">
                                             {podiumDrivers.map((d, i) => (
-                                                <View key={i} className="bg-background/50 px-2 py-1 rounded border border-border/50">
-                                                    <Text className="text-xs font-bold text-foreground">
-                                                        <Text className="text-[10px] text-muted-foreground">{i + 1}.</Text> {d?.name_acronym}
+                                                <View key={i} className="bg-background/50 px-1.5 py-0.5 rounded border border-border/50">
+                                                    <Text className="text-[11px] font-bold text-foreground">
+                                                        <Text className="text-[9px] text-muted-foreground">{i + 1}.</Text> {d?.name_acronym}
                                                     </Text>
                                                 </View>
                                             ))}
@@ -235,23 +235,23 @@ export function PredictionCard({ prediction, initialPronostic, drivers, onRefres
                                     <Coins size={14} color="#ef4444" />
                                     <Text className="text-sm font-bold text-primary ml-1">{initialPronostic?.pointsStaked}</Text>
                                 </View>
-                                <View className="flex-row items-center">
-                                    <Text className="text-[10px] text-green-500 font-bold uppercase">Gain : +{Math.floor((initialPronostic?.pointsStaked || 0) * (initialPronostic?.detail?.multiplier || 2))}</Text>
-                                    <Text className="text-[10px] text-muted-foreground font-bold ml-1 uppercase">pts (x{(initialPronostic?.detail?.multiplier || 2).toFixed(1)})</Text>
+                                <View className="flex-row items-center mt-0.5">
+                                    <Text className="text-[10px] text-green-500 font-bold uppercase">+{Math.floor((initialPronostic?.pointsStaked || 0) * (initialPronostic?.detail?.multiplier || 2))} pts</Text>
+                                    <Text className="text-[9px] text-muted-foreground font-bold ml-1 uppercase">(x{(initialPronostic?.detail?.multiplier || 2).toFixed(1)})</Text>
                                 </View>
                             </View>
                         </View>
                         {!isLocked && (
                             <View className="flex-row gap-2 mt-3">
-                                <Button 
-                                    variant="outline" 
+                                <Button
+                                    variant="outline"
                                     onPress={() => setPickerVisible(true)}
                                     className="flex-1 h-8 border-primary/20 bg-transparent"
                                 >
                                     <Text className="text-primary text-xs font-bold uppercase">Modifier mon pari</Text>
                                 </Button>
-                                <Button 
-                                    variant="outline" 
+                                <Button
+                                    variant="outline"
                                     onPress={handleDeleteBet}
                                     disabled={loading}
                                     className="px-4 h-8 border-red-500/20 bg-red-500/10"
@@ -269,12 +269,12 @@ export function PredictionCard({ prediction, initialPronostic, drivers, onRefres
                                 <Text className="text-xl font-black text-foreground italic">{isPodium ? 'x4.0' : 'x2.0'}</Text>
                             </View>
                             <View className="items-end">
-                                <Text className="text-muted-foreground text-[10px] font-bold uppercase tracking-wider">Gain Potentiel max</Text>
+                                <Text className="text-muted-foreground text-[10px] font-bold uppercase tracking-wider"> Gain Potentiel max</Text>
                                 <Text className="text-xl font-black text-green-500 italic">+{parseInt(points) * (isPodium ? 4 : 2)} pts</Text>
                             </View>
                         </View>
-                        <Button 
-                            onPress={() => !isLocked && setPickerVisible(true)} 
+                        <Button
+                            onPress={() => !isLocked && setPickerVisible(true)}
                             disabled={isLocked}
                             className="w-full bg-foreground h-10"
                         >
@@ -334,23 +334,22 @@ export function PredictionCard({ prediction, initialPronostic, drivers, onRefres
                                 <ScrollView className="flex-1 mb-6" showsVerticalScrollIndicator={false}>
                                     <View className="flex-row flex-wrap gap-2">
                                         {drivers.map((driver) => {
-                                            const isSelected = isPodium 
+                                            const isSelected = isPodium
                                                 ? podiumDrivers.some(d => d?.driver_number === driver.driver_number)
                                                 : selectedDriver?.driver_number === driver.driver_number;
-                                                
+
                                             return (
                                                 <TouchableOpacity
                                                     key={driver.driver_number}
                                                     onPress={() => handleDriverSelect(driver)}
-                                                    className={`w-[48%] p-3 rounded-xl border flex-row items-center ${
-                                                        isSelected
+                                                    className={`w-[48%] p-3 rounded-xl border flex-row items-center ${isSelected
                                                             ? 'border-primary bg-primary/10'
                                                             : 'border-border/50 bg-muted/20'
-                                                    }`}
+                                                        }`}
                                                 >
-                                                    <View 
-                                                        style={{ backgroundColor: `#${driver.team_colour}` }} 
-                                                        className="w-1.5 h-6 rounded-full mr-2" 
+                                                    <View
+                                                        style={{ backgroundColor: `#${driver.team_colour}` }}
+                                                        className="w-1.5 h-6 rounded-full mr-2"
                                                     />
                                                     <View className="flex-1">
                                                         <Text className="text-xs text-muted-foreground font-mono">{driver.name_acronym}</Text>
@@ -380,9 +379,8 @@ export function PredictionCard({ prediction, initialPronostic, drivers, onRefres
                                     <TouchableOpacity
                                         key={p}
                                         onPress={() => setPoints(p)}
-                                        className={`px-4 py-2 rounded-lg border ${
-                                            points === p ? 'border-primary bg-primary/10' : 'border-border/50'
-                                        }`}
+                                        className={`px-4 py-2 rounded-lg border ${points === p ? 'border-primary bg-primary/10' : 'border-border/50'
+                                            }`}
                                     >
                                         <Text className={`font-bold ${points === p ? 'text-primary' : 'text-muted-foreground'}`}>{p}</Text>
                                     </TouchableOpacity>
@@ -390,8 +388,8 @@ export function PredictionCard({ prediction, initialPronostic, drivers, onRefres
                             </View>
                         </View>
 
-                        <Button 
-                            onPress={handlePlaceBet} 
+                        <Button
+                            onPress={handlePlaceBet}
                             disabled={(isPodium ? podiumDrivers.includes(null) : !selectedDriver) || loading}
                             className="w-full bg-primary h-14 rounded-2xl"
                         >
@@ -414,26 +412,26 @@ export function PredictionCard({ prediction, initialPronostic, drivers, onRefres
             >
                 <View className="flex-1 justify-center items-center bg-black/60 p-4">
                     <View className="bg-zinc-900 border border-white/10 rounded-3xl p-6 w-full max-w-sm shadow-2xl relative">
-                        <TouchableOpacity 
+                        <TouchableOpacity
                             onPress={() => setInfoModalVisible(false)}
                             className="absolute top-4 right-4 z-10 w-8 h-8 items-center justify-center rounded-full bg-white/5"
                         >
                             <X size={18} color="#9ca3af" />
                         </TouchableOpacity>
-                        
+
                         <View className="w-12 h-12 rounded-full bg-primary/20 items-center justify-center mb-4">
                             <HelpCircle size={24} color="#ef4444" />
                         </View>
-                        
+
                         <Text className="text-xl font-black text-white uppercase italic mb-2">
                             {infoContent?.title}
                         </Text>
                         <Text className="text-base text-white/80 leading-relaxed mb-6">
                             {infoContent?.message}
                         </Text>
-                        
-                        <Button 
-                            onPress={() => setInfoModalVisible(false)} 
+
+                        <Button
+                            onPress={() => setInfoModalVisible(false)}
                             className="w-full bg-primary rounded-xl h-12"
                         >
                             <Text className="text-white text-sm font-bold uppercase tracking-widest">J'ai compris</Text>

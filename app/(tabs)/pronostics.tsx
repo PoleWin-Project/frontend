@@ -228,15 +228,27 @@ export default function PronosticsScreen() {
                                         {(() => {
                                             const allowed = ['POLE_POSITION', 'RACE_WINNER', 'SPRINT_WINNER', 'PODIUM', 'DNF', 'SAFETY_CAR', 'FASTEST_LAP'];
                                             const visible = (predictionsMap[session.id] || []).filter(p => allowed.includes(p.type));
-                                            return visible.length > 0 ? visible.map(prediction => (
-                                                <PredictionCard
-                                                    key={prediction.id}
-                                                    prediction={prediction}
-                                                    drivers={driversMap[session.id] || []}
-                                                    initialPronostic={pronosticsMap[prediction.id] || null}
-                                                    onRefresh={loadData}
-                                                />
-                                            )) : (
+                                            return visible.length > 0 ? (
+                                                <ScrollView 
+                                                    horizontal 
+                                                    showsHorizontalScrollIndicator={false}
+                                                    className="-mx-4"
+                                                    contentContainerStyle={{ paddingHorizontal: 16 }}
+                                                    snapToInterval={316}
+                                                    decelerationRate="fast"
+                                                >
+                                                    {visible.map((prediction, index) => (
+                                                        <View key={prediction.id} style={{ width: 300, marginRight: index === visible.length - 1 ? 0 : 16 }}>
+                                                            <PredictionCard
+                                                                prediction={prediction}
+                                                                drivers={driversMap[session.id] || []}
+                                                                initialPronostic={pronosticsMap[prediction.id] || null}
+                                                                onRefresh={loadData}
+                                                            />
+                                                        </View>
+                                                    ))}
+                                                </ScrollView>
+                                            ) : (
                                                 <View className="bg-card/50 border border-border/20 rounded-2xl p-6 items-center border-dashed">
                                                     <Info size={24} color="#9ca3af" className="mb-2" />
                                                     <Text className="text-muted-foreground text-center text-xs font-medium">
