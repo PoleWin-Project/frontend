@@ -1,13 +1,15 @@
 import React, { useEffect, useState } from 'react';
-import { View, ScrollView, RefreshControl, ActivityIndicator, TouchableOpacity } from 'react-native';
+import { View, ScrollView, RefreshControl, ActivityIndicator, TouchableOpacity, Image } from 'react-native';
 import { Text } from '@/components/ui/text';
 import { Calendar, MapPin, Info, ChevronDown, ChevronUp, CheckCircle2, XCircle, Clock } from 'lucide-react-native';
-import { fetchRaceSessions, RaceSession, fetchPredictions, Prediction, fetchMyPronostic, Pronostic, fetchDrivers, Driver, fetchMyPronosticsForSession, fetchMyPronosticsHistory } from '@/lib/api/meetings';
+import { fetchRaceSessions, RaceSession, fetchPredictions, Prediction, fetchMyPronostic, Pronostic, fetchDrivers, Driver, fetchMyPronosticsForSession, fetchMyPronosticsHistory, fetchMeetings, MeetingItem } from '@/lib/api/meetings';
 import { PredictionCard } from '@/components/game/PredictionCard';
 import { PronosticHistoryCard } from '@/components/game/PronosticHistoryCard';
 import { DemoModeCard } from '@/components/game/DemoModeCard';
 import { DemoPredictionCard } from '@/components/game/DemoPredictionCard';
 import { useDemo } from '@/context/DemoContext';
+import { CircuitTrack } from '@/components/calendar/CircuitTrack';
+import { getCircuitTrack } from '@/lib/circuits';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { F1Loader } from '@/components/ui/F1Loader';
 import { ScreenHeader } from '@/components/ui/ScreenHeader';
@@ -24,6 +26,7 @@ export default function PronosticsScreen() {
     const [predictionsMap, setPredictionsMap] = useState<Record<number, Prediction[]>>({});
     const [pronosticsMap, setPronosticsMap] = useState<Record<number, Pronostic | null>>({});
     const [driversMap, setDriversMap] = useState<Record<number, Driver[]>>({});
+    const [meetings, setMeetings] = useState<MeetingItem[]>([]);
     const [activeTab, setActiveTab] = useState('upcoming');
     const [history, setHistory] = useState<Pronostic[]>([]);
     const [historyFilter, setHistoryFilter] = useState<'ALL' | 'WON' | 'LOST' | 'PENDING'>('ALL');
@@ -123,6 +126,8 @@ export default function PronosticsScreen() {
 
             const hist = await fetchMyPronosticsHistory();
             setHistory(hist);
+            const mtgs = await fetchMeetings();
+            setMeetings(mtgs);
             await refreshProfile().catch(() => {});
         } catch (error) {
             console.error('Failed to load game data:', error);
@@ -154,6 +159,9 @@ export default function PronosticsScreen() {
     }
 
     const nextGP = upcomingSessions[0];
+    const nextGPMeeting = nextGP ? meetings.find(m => m.location === nextGP.location || nextGP.name.includes(m.meeting_name)) : null;
+    const track = nextGPMeeting ? getCircuitTrack(nextGPMeeting) : null;
+    const circuitImage = nextGPMeeting?.circuit_image || '';
 
     return (
         <View className="flex-1 bg-background">
@@ -183,7 +191,19 @@ export default function PronosticsScreen() {
                         {nextGP ? (
                             <View className="p-4 pt-0">
                                 {/* Next GP Hero */}
-                                <View className="bg-zinc-900 rounded-3xl overflow-hidden mb-6 border border-white/5 shadow-2xl">
+                                <View className="bg-zinc-900 rounded-3xl overflow-hidden mb-6 border border-white/5 shadow-2xl relative">
+                                        {track ? (
+                                            <View className="absolute right-[-10px] top-[16px] opacity-80" pointerEvents="none">
+                                                <CircuitTrack points={track.points} width={160} height={160} color="white" strokeWidth={3} isAnimated={true} animatedColor="#39ff14" />
+                                            </View>
+                                        ) : circuitImage ? (
+                                        <Image 
+                                            source={{ uri: circuitImage }} 
+                                            className="absolute right-[-30px] bottom-[-10px] w-56 h-56 opacity-20" 
+                                            resizeMode="contain"
+                                            style={{ tintColor: 'white' }}
+                                        />
+                                    ) : null}
                                     <View className="p-6 h-48 justify-between bg-black/40">
                                         <View className="flex-row justify-between items-start">
                                             <View className="bg-primary px-3 py-1 rounded-sm">
