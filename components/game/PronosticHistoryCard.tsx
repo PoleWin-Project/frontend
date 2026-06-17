@@ -36,11 +36,28 @@ export function PronosticHistoryCard({ pronostic }: { pronostic: Pronostic }) {
             case 'POLE_POSITION': return 'Pole · Qualifs';
             case 'RACE_WINNER':   return 'Vainqueur Course';
             case 'SPRINT_WINNER': return 'Vainqueur Sprint';
+            case 'PODIUM':        return 'Podium (Top 3)';
+            case 'SAFETY_CAR':    return 'Safety Car';
+            case 'DNF':           return 'Abandon (DNF)';
+            case 'FASTEST_LAP':   return 'Meilleur Tour';
             default:              return type.replace(/_/g, ' ');
         }
     };
 
+    const formatValue = (type?: string, value?: string) => {
+        if (!value) return 'Inconnu';
+        if (type === 'PODIUM') {
+            const drivers = value.split(',');
+            return drivers.map((d, i) => `${i + 1}. ${d}`).join(' | ');
+        }
+        if (type === 'SAFETY_CAR') {
+            return value === 'YES' ? 'OUI' : value === 'NO' ? 'NON' : value;
+        }
+        return value;
+    };
+
     const prediction = pronostic.prediction as any;
+    const sessionName = prediction?.session?.name ? prediction.session.name.split(' - ')[0] : null;
 
     return (
         <View className="bg-card/80 border border-border/40 rounded-2xl p-4 mb-3 flex-row items-center justify-between">
@@ -49,18 +66,25 @@ export function PronosticHistoryCard({ pronostic }: { pronostic: Pronostic }) {
                     {getStatusIcon()}
                 </View>
                 <View className="flex-1">
-                    <Text className="text-foreground font-bold text-lg">
-                        {pronostic.detail?.value || 'Pilote inconnu'}
+                    <Text className="text-foreground font-bold text-lg leading-tight mb-0.5 mt-0.5">
+                        {formatValue(prediction?.type, pronostic.detail?.value)}
                     </Text>
-                    <View className="flex-row items-center mt-0.5">
-                        <Text className="text-muted-foreground text-xs font-medium uppercase">
+                    <View className="flex-row items-center">
+                        <Text className="text-muted-foreground text-[10px] font-medium uppercase">
                             {prediction ? formatType(prediction.type) : 'Pronostic'}
                         </Text>
                         <Text className="text-muted-foreground mx-1">•</Text>
-                        <Text className={`text-xs font-bold uppercase ${getStatusColor()}`}>
+                        <Text className={`text-[10px] font-bold uppercase ${getStatusColor()}`}>
                             {getStatusText()}
                         </Text>
                     </View>
+                    {prediction?.winningValue && (isLost || isWon) && (
+                        <View className={`mt-1.5 self-start px-2 py-0.5 rounded border ${isWon ? 'bg-green-500/10 border-green-500/20' : 'bg-red-500/10 border-red-500/20'}`}>
+                            <Text className={`text-[10px] font-bold ${isWon ? 'text-green-500' : 'text-red-400'}`}>
+                                Vrai résultat : {formatValue(prediction.type, prediction.winningValue)}
+                            </Text>
+                        </View>
+                    )}
                 </View>
             </View>
             <View className="items-end">
