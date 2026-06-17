@@ -1,4 +1,4 @@
-import { View, FlatList, ActivityIndicator } from 'react-native';
+import { View, FlatList, ActivityIndicator, RefreshControl } from 'react-native';
 import { Text } from '@/components/ui/text';
 import { Stack } from 'expo-router';
 import { fetchF1News, NewsArticle } from '@/lib/api/news';
@@ -11,6 +11,7 @@ export default function AllNewsScreen() {
     const [loadingMore, setLoadingMore] = useState(false);
     const [nextPage, setNextPage] = useState<string | null>(null);
     const [error, setError] = useState<string | null>(null);
+    const [refreshing, setRefreshing] = useState(false);
 
     const loadInitialNews = async () => {
         try {
@@ -31,6 +32,12 @@ export default function AllNewsScreen() {
 
     useEffect(() => {
         loadInitialNews();
+    }, []);
+
+    const onRefresh = useCallback(async () => {
+        setRefreshing(true);
+        await loadInitialNews();
+        setRefreshing(false);
     }, []);
 
     const loadMoreNews = useCallback(async () => {
@@ -93,6 +100,7 @@ export default function AllNewsScreen() {
                 onEndReachedThreshold={0.5}
                 ListFooterComponent={renderFooter}
                 showsVerticalScrollIndicator={false}
+                refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor="#E10600" />}
             />
         </>
     );

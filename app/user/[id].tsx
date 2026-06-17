@@ -1,6 +1,6 @@
 import React, { useCallback, useEffect, useState } from 'react';
 import {
-    View, ScrollView, TouchableOpacity, ActivityIndicator, StyleSheet,
+    View, ScrollView, TouchableOpacity, ActivityIndicator, StyleSheet, RefreshControl,
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import Animated, { FadeInDown } from 'react-native-reanimated';
@@ -90,6 +90,7 @@ export default function UserProfileScreen() {
     const [friendsCount, setFriendsCount] = useState<number | null>(null);
     const [userBadges,   setUserBadges]   = useState<UserBadge[]>([]);
     const [allBadges,    setAllBadges]    = useState<Badge[]>([]);
+    const [refreshing,   setRefreshing]   = useState(false);
 
     const load = useCallback(async () => {
         if (!accessToken) return;
@@ -120,6 +121,12 @@ export default function UserProfileScreen() {
     }, [accessToken, userId]);
 
     useEffect(() => { load(); }, [load]);
+
+    const onRefresh = useCallback(async () => {
+        setRefreshing(true);
+        await load();
+        setRefreshing(false);
+    }, [load]);
 
     useEffect(() => {
         const unsub = on('friend:status_changed', (data) => {
@@ -196,6 +203,7 @@ export default function UserProfileScreen() {
             <ScrollView
                 contentContainerStyle={s.scroll}
                 showsVerticalScrollIndicator={false}
+                refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor="#E10600" />}
             >
                 {/* Avatar card */}
                 <Animated.View entering={FadeInDown.delay(60).springify()} style={s.avatarCard}>
