@@ -1,7 +1,7 @@
 import React, { useState, useCallback } from 'react';
 import {
     View, FlatList, TextInput, TouchableOpacity,
-    ActivityIndicator, StyleSheet, Platform, Pressable
+    ActivityIndicator, StyleSheet, Platform, Pressable, RefreshControl
 } from 'react-native';
 import { useFocusEffect } from 'expo-router';
 import Animated, { FadeInRight, FadeInUp, useSharedValue, useAnimatedStyle, withSpring, FadeInDown } from 'react-native-reanimated';
@@ -125,6 +125,12 @@ export default function PlayerLeaderboardScreen() {
             setLoading(false);
         }
     }
+
+    const onRefresh = useCallback(async () => {
+        setRefreshing(true);
+        await loadData(true);
+        setRefreshing(false);
+    }, []);
 
     const isSearching = search.trim().length > 0;
     const filtered: PlayerRank[] = isSearching
