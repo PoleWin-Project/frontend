@@ -6,7 +6,7 @@ import { MoonStar, Star, Sun, ChevronRight, Info, Trophy, User, MessageCircle } 
 import { useColorScheme } from 'nativewind';
 import * as React from 'react';
 import { useEffect, useState, useCallback } from 'react';
-import { Image, type ImageStyle, View, ScrollView, ImageBackground, TouchableOpacity } from 'react-native';
+import { Image, type ImageStyle, View, ScrollView, ImageBackground, TouchableOpacity, RefreshControl } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { fetchF1News, NewsArticle } from '@/lib/api/news';
 import { NewsCard } from '@/components/news/NewsCard';
@@ -39,22 +39,26 @@ export default function Screen() {
   const [error, setError] = useState<string | null>(null);
   const [unreadCount, setUnreadCount] = useState(0);
   const [incomingCount, setIncomingCount] = useState(0);
+  const [refreshing, setRefreshing] = useState(false);
+  const [refreshKey, setRefreshKey] = useState(0);
+
+  const loadNews = useCallback(async () => {
+    try {
+      const data = await fetchF1News();
+      if (data.results) {
+        setLatestNews(data.results.slice(0, 3));
+        setError(null);
+      }
+    } catch (err: any) {
+      setError(err.message || 'Error fetching news');
+    } finally {
+      setLoading(false);
+    }
+  }, []);
 
   useEffect(() => {
-    async function loadNews() {
-      try {
-        const data = await fetchF1News();
-        if (data.results) {
-          setLatestNews(data.results.slice(0, 3));
-        }
-      } catch (err: any) {
-        setError(err.message || 'Error fetching news');
-      } finally {
-        setLoading(false);
-      }
-    }
     loadNews();
-  }, []);
+  }, [loadNews]);
 
   const loadBadges = useCallback(() => {
     if (!accessToken) return;
@@ -84,12 +88,22 @@ export default function Screen() {
 
   const totalBadgeCount = unreadCount + incomingCount;
 
+  const onRefresh = useCallback(async () => {
+    setRefreshing(true);
+    // Remonte les widgets autonomes (pit stop, prochain GP, stats) pour qu'ils refetchent
+    setRefreshKey(k => k + 1);
+    loadBadges();
+    await loadNews();
+    setRefreshing(false);
+  }, [loadBadges, loadNews]);
+
   return (
     <>
-      <ScrollView 
-        className="flex-1 bg-background" 
+      <ScrollView
+        className="flex-1 bg-background"
         contentContainerStyle={{ paddingBottom: 140 }}
         showsVerticalScrollIndicator={false}
+        refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor="#E10600" />}
       >
         {/* ─── Hero Section v7: Immersive Full Bleed ─── */}
         <ImageBackground
@@ -164,13 +178,13 @@ export default function Screen() {
           )}
 
           {/* Pit Stop / Garage Widget */}
-          <PitStopWidget />
+          <PitStopWidget key={`pit-${refreshKey}`} />
 
           {/* Prochain Grand Prix (Sessions) */}
-          <NextSessionWidget />
+          <NextSessionWidget key={`next-${refreshKey}`} />
 
           {/* Quick Stats / Actions */}
-          <QuickStats />
+          <QuickStats key={`stats-${refreshKey}`} />
 
           <View className="mb-6 flex-row items-center justify-between">
             <Text className="font-heading text-xl font-bold text-foreground">Dernières Actualités</Text>
