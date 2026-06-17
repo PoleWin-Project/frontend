@@ -1,8 +1,10 @@
 import { View, Image, Text, TouchableOpacity, ActivityIndicator } from 'react-native';
 import { MeetingItem, SessionItem, fetchSessions, fetchSessionResults, SessionResult } from '@/lib/api/meetings';
 import { Calendar, MapPin, Clock, ChevronDown, ChevronUp, Trophy } from 'lucide-react-native';
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { useRouter } from 'expo-router';
+import { CircuitTrack } from '@/components/calendar/CircuitTrack';
+import { getCircuitTrack } from '@/lib/circuits';
 
 interface MeetingCardProps {
     meeting: MeetingItem;
@@ -46,6 +48,8 @@ export function MeetingCard({ meeting, isPast = false }: MeetingCardProps) {
             }
         });
     };
+
+    const track = useMemo(() => getCircuitTrack(meeting), [meeting.circuit_short_name, meeting.location]);
 
     const startDate = new Date(meeting.date_start);
     const endDate = new Date(meeting.date_end);
@@ -147,7 +151,11 @@ export function MeetingCard({ meeting, isPast = false }: MeetingCardProps) {
                         )}
                     </View>
 
-                    {meeting.circuit_image && (
+                    {track ? (
+                        <View className="mt-6 border border-border/40 rounded-lg bg-background/50 h-[140px] items-center justify-center overflow-hidden">
+                            <CircuitTrack points={track.points} width={300} height={132} color="#9ca3af" />
+                        </View>
+                    ) : meeting.circuit_image ? (
                         <View className="mt-6 border border-border/40 rounded-lg p-3 bg-background/50 h-[140px] justify-center overflow-hidden">
                             <Image
                                 source={{ uri: meeting.circuit_image }}
@@ -157,7 +165,7 @@ export function MeetingCard({ meeting, isPast = false }: MeetingCardProps) {
                                 tintColor="#9ca3af"
                             />
                         </View>
-                    )}
+                    ) : null}
 
                     {/* Inline Session Details */}
                     <View className="mt-4">

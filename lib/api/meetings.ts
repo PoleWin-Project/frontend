@@ -194,6 +194,7 @@ export interface Prediction {
     sessionId: number;
     type: string;
     closesAt: string;
+    winningValue?: string;
 }
 
 export interface Pronostic {

@@ -6,6 +6,8 @@ import { useEffect, useState } from 'react';
 import { ArrowLeft, MapPin, Clock, Calendar as CalendarIcon, Trophy } from 'lucide-react-native';
 import { fetchSessions, SessionItem, fetchSessionResults, SessionResult } from '@/lib/api/meetings';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { CircuitTrack } from '@/components/calendar/CircuitTrack';
+import { getCircuitTrack } from '@/lib/circuits';
 
 export default function MeetingDetailScreen() {
     const params = useLocalSearchParams();
@@ -28,6 +30,11 @@ export default function MeetingDetailScreen() {
             setLoading(false);
         }
     }
+
+    const track = getCircuitTrack({
+        circuit_short_name: params.circuit_short_name as string,
+        location: params.location as string,
+    });
 
     useEffect(() => {
         loadData();
@@ -133,7 +140,14 @@ export default function MeetingDetailScreen() {
                                 <Text className="text-sm text-muted-foreground">{params.location}, {params.country_name}</Text>
                             </View>
 
-                            {params.circuit_image ? (
+                            {track ? (
+                                <View className="w-full items-center py-6 bg-muted/30 rounded-lg border border-border/40">
+                                    <CircuitTrack points={track.points} width={300} height={240} color="#d1d5db" strokeWidth={3} />
+                                    <Text className="text-xs text-muted-foreground mt-3">
+                                        {(track.length / 1000).toFixed(3)} km
+                                    </Text>
+                                </View>
+                            ) : params.circuit_image ? (
                                 <View className="w-full flex-row justify-center py-6 bg-muted/30 rounded-lg border border-border/40">
                                     <Image
                                         source={{ uri: params.circuit_image as string }}
