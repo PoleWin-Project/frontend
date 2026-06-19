@@ -52,25 +52,43 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         AsyncStorage.getItem(USER_KEY),
       ]);
 
-      if (storedRefresh) {
-        const result = await refreshTokens(storedRefresh);
-        if (result.ok) {
-          const userJson = storedUser ? JSON.parse(storedUser) : null;
-          await Promise.all([
-            AsyncStorage.setItem(ACCESS_TOKEN_KEY, result.accessToken),
-            AsyncStorage.setItem(REFRESH_TOKEN_KEY, result.refreshToken),
-          ]);
-          setState({
-            user: userJson,
-            accessToken: result.accessToken,
-            isInitialized: true,
-            isLoading: false,
-            error: null,
-          });
-          return;
-        }
+      if (storedRefresh && storedUser) {
+        // CONNEXION OPTIMISTE : On connecte l'utilisateur immédiatement avec ses données locales
+        const userJson = JSON.parse(storedUser);
+        setState({
+          user: userJson,
+          accessToken: storedAccess,
+          isInitialized: true,
+          isLoading: false,
+          error: null,
+        });
+
+        // On rafraîchit en arrière-plan sans bloquer l'UI
+        refreshTokens(storedRefresh).then(async (result) => {
+          if (result.ok) {
+            await Promise.all([
+              AsyncStorage.setItem(ACCESS_TOKEN_KEY, result.accessToken),
+              AsyncStorage.setItem(REFRESH_TOKEN_KEY, result.refreshToken),
+            ]);
+            setState((s) => ({ ...s, accessToken: result.accessToken }));
+          } else {
+            // On ne déconnecte l'utilisateur QUE si la session est vraiment invalide/expirée.
+            // Si c'est un problème de réseau ou le serveur Render en veille (erreur_reseau ou serveur_veille), 
+            // on ignore et on le laisse connecté avec son token actuel.
+            if (result.error !== 'erreur_reseau' && result.error !== 'serveur_veille') {
+              await Promise.all([
+                AsyncStorage.removeItem(ACCESS_TOKEN_KEY),
+                AsyncStorage.removeItem(REFRESH_TOKEN_KEY),
+                AsyncStorage.removeItem(USER_KEY),
+              ]);
+              setState((s) => ({ ...s, user: null, accessToken: null }));
+            }
+          }
+        });
+        return; // Fin de l'initialisation optimiste
       }
 
+      // Si aucune session n'est trouvée
       await Promise.all([
         AsyncStorage.removeItem(ACCESS_TOKEN_KEY),
         AsyncStorage.removeItem(REFRESH_TOKEN_KEY),

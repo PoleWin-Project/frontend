@@ -209,13 +209,18 @@ export async function refreshTokens(
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ refreshToken }),
     });
+
+    if (res.status >= 500) {
+      return { ok: false, error: 'serveur_veille' };
+    }
+
     const data = await res.json();
 
     if (!res.ok) {
-      return { ok: false, error: data.message || 'Session expiree' };
+      return { ok: false, error: data.message || 'session_invalide' };
     }
     if (data.status === 'error') {
-      return { ok: false, error: data.message || 'Session expiree' };
+      return { ok: false, error: data.message || 'session_invalide' };
     }
 
     return {
@@ -224,8 +229,7 @@ export async function refreshTokens(
       refreshToken: data.refreshToken,
     };
   } catch (e: unknown) {
-    const msg = e instanceof Error ? e.message : 'Erreur reseau';
-    return { ok: false, error: msg };
+    return { ok: false, error: 'erreur_reseau' };
   }
 }
 
