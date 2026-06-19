@@ -125,7 +125,14 @@ export function NextSessionWidget() {
 
     const formatDay = (isoString: string) => {
         const date = new Date(isoString);
-        return date.toLocaleDateString('fr-FR', { weekday: 'short', day: 'numeric', month: 'short' });
+        const weekdays = ['dim.', 'lun.', 'mar.', 'mer.', 'jeu.', 'ven.', 'sam.'];
+        const months = ['janv.', 'févr.', 'mars', 'avr.', 'mai', 'juin', 'juil.', 'août', 'sept.', 'oct.', 'nov.', 'déc.'];
+        
+        return {
+            weekday: weekdays[date.getDay()],
+            day: date.getDate().toString().padStart(2, '0'),
+            month: months[date.getMonth()]
+        };
     };
 
     const pad = (n: number) => n.toString().padStart(2, '0');
@@ -189,8 +196,8 @@ export function NextSessionWidget() {
                         <View className="items-end">
                             <View className="bg-white/5 p-3 rounded-2xl border border-white/10 items-center justify-center min-w-[70px]">
                                 <Text className="text-[10px] text-muted-foreground font-black uppercase tracking-widest mb-1 opacity-50">Main</Text>
-                                <Text className="text-lg font-black text-primary uppercase italic">{formatDay(nextMeeting.date_start).split(' ')[1]}</Text>
-                                <Text className="text-[10px] text-white font-bold uppercase">{formatDay(nextMeeting.date_start).split(' ')[2]}</Text>
+                                <Text className="text-lg font-black text-primary uppercase italic" numberOfLines={1} adjustsFontSizeToFit>{formatDay(nextMeeting.date_start).day}</Text>
+                                <Text className="text-[10px] text-white font-bold uppercase" numberOfLines={1} adjustsFontSizeToFit>{formatDay(nextMeeting.date_start).month}</Text>
                             </View>
                         </View>
                     </View>
@@ -215,28 +222,28 @@ export function NextSessionWidget() {
                                     {nextSession.session_name}
                                 </Text>
                             </View>
-                            <View className="flex-row items-center justify-center gap-2">
+                            <View className="flex-row items-center justify-between w-full px-1">
                                 {countdown.days > 0 && (
                                     <>
-                                        <View className="items-center bg-white/10 rounded-lg px-3 py-2 min-w-[50px]">
-                                            <Text className="text-2xl font-black text-white font-mono">{pad(countdown.days)}</Text>
+                                        <View className="flex-1 items-center bg-white/10 rounded-lg py-2 mx-1">
+                                            <Text className="text-xl sm:text-2xl font-black text-white font-mono" numberOfLines={1} adjustsFontSizeToFit>{pad(countdown.days)}</Text>
                                             <Text className="text-[8px] text-muted-foreground font-bold uppercase tracking-widest mt-0.5">jours</Text>
                                         </View>
-                                        <Text className="text-xl font-black text-primary">:</Text>
+                                        <Text className="text-lg font-black text-primary">:</Text>
                                     </>
                                 )}
-                                <View className="items-center bg-white/10 rounded-lg px-3 py-2 min-w-[50px]">
-                                    <Text className="text-2xl font-black text-white font-mono">{pad(countdown.hours)}</Text>
-                                    <Text className="text-[8px] text-muted-foreground font-bold uppercase tracking-widest mt-0.5">heures</Text>
+                                <View className="flex-1 items-center bg-white/10 rounded-lg py-2 mx-1">
+                                    <Text className="text-xl sm:text-2xl font-black text-white font-mono" numberOfLines={1} adjustsFontSizeToFit>{pad(countdown.hours)}</Text>
+                                    <Text className="text-[8px] text-muted-foreground font-bold uppercase tracking-widest mt-0.5" numberOfLines={1} adjustsFontSizeToFit>heures</Text>
                                 </View>
-                                <Text className="text-xl font-black text-primary">:</Text>
-                                <View className="items-center bg-white/10 rounded-lg px-3 py-2 min-w-[50px]">
-                                    <Text className="text-2xl font-black text-white font-mono">{pad(countdown.mins)}</Text>
+                                <Text className="text-lg font-black text-primary">:</Text>
+                                <View className="flex-1 items-center bg-white/10 rounded-lg py-2 mx-1">
+                                    <Text className="text-xl sm:text-2xl font-black text-white font-mono" numberOfLines={1} adjustsFontSizeToFit>{pad(countdown.mins)}</Text>
                                     <Text className="text-[8px] text-muted-foreground font-bold uppercase tracking-widest mt-0.5">min</Text>
                                 </View>
-                                <Text className="text-xl font-black text-primary">:</Text>
-                                <View className="items-center bg-white/10 rounded-lg px-3 py-2 min-w-[50px]">
-                                    <Text className="text-2xl font-black text-white font-mono">{pad(countdown.secs)}</Text>
+                                <Text className="text-lg font-black text-primary">:</Text>
+                                <View className="flex-1 items-center bg-white/10 rounded-lg py-2 mx-1">
+                                    <Text className="text-xl sm:text-2xl font-black text-white font-mono" numberOfLines={1} adjustsFontSizeToFit>{pad(countdown.secs)}</Text>
                                     <Text className="text-[8px] text-muted-foreground font-bold uppercase tracking-widest mt-0.5">sec</Text>
                                 </View>
                             </View>
@@ -270,7 +277,7 @@ export function NextSessionWidget() {
 
                                         <View className="flex-row items-center gap-4">
                                             <Text className="text-[10px] text-muted-foreground font-black uppercase tracking-widest text-right">
-                                                {formatDay(session.date_start).split(' ')[0]}
+                                                {formatDay(session.date_start).weekday}
                                             </Text>
                                             <View className={`min-w-[55px] items-center py-1.5 px-2 rounded-lg ${isRace ? 'bg-primary' : 'bg-white/10'}`}>
                                                 <Text className={`text-xs font-black tracking-tighter ${isRace ? 'text-white' : 'text-foreground'}`}>
