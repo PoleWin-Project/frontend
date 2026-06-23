@@ -7,6 +7,8 @@ import { Calendar as CalendarIcon, MapPin, Clock, Gamepad2 } from 'lucide-react-
 import { BlurView } from 'expo-blur';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Link } from 'expo-router';
+import { Weekday, WeekdayFr } from '@/lib/enums/weekday.enum';
+import { Month, MonthFr } from '@/lib/enums/month.enum';
 
 interface CountdownValues {
     days: number;
@@ -14,56 +16,6 @@ interface CountdownValues {
     mins: number;
     secs: number;
 }
-
-enum Weekday {
-    Sunday = 0,
-    Monday = 1,
-    Tuesday = 2,
-    Wednesday = 3,
-    Thursday = 4,
-    Friday = 5,
-    Saturday = 6
-}
-
-const WeekdayFr: Record<Weekday, string> = {
-    [Weekday.Sunday]: 'dim.',
-    [Weekday.Monday]: 'lun.',
-    [Weekday.Tuesday]: 'mar.',
-    [Weekday.Wednesday]: 'mer.',
-    [Weekday.Thursday]: 'jeu.',
-    [Weekday.Friday]: 'ven.',
-    [Weekday.Saturday]: 'sam.'
-};
-
-enum Month {
-    January = 0,
-    February = 1,
-    March = 2,
-    April = 3,
-    May = 4,
-    June = 5,
-    July = 6,
-    August = 7,
-    September = 8,
-    October = 9,
-    November = 10,
-    December = 11
-}
-
-const MonthFr: Record<Month, string> = {
-    [Month.January]: 'janv.',
-    [Month.February]: 'févr.',
-    [Month.March]: 'mars',
-    [Month.April]: 'avr.',
-    [Month.May]: 'mai',
-    [Month.June]: 'juin',
-    [Month.July]: 'juil.',
-    [Month.August]: 'août',
-    [Month.September]: 'sept.',
-    [Month.October]: 'oct.',
-    [Month.November]: 'nov.',
-    [Month.December]: 'déc.'
-};
 
 export function NextSessionWidget() {
     const [nextMeeting, setNextMeeting] = useState<MeetingItem | null>(null);
@@ -175,7 +127,7 @@ export function NextSessionWidget() {
 
     const formatDay = (isoString: string) => {
         const date = new Date(isoString);
-        
+
         return {
             weekday: WeekdayFr[date.getDay() as Weekday],
             day: date.getDate().toString().padStart(2, '0'),
