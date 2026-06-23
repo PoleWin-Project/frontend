@@ -93,6 +93,14 @@ export default function ProfileScreen() {
         if (isEditing && teams.length === 0) loadLists();
     }, [isEditing]);
 
+    useEffect(() => {
+        if (!isEditing) {
+            setEditBio(user?.profile?.bio || '');
+            setEditTeam(user?.profile?.favoriteTeamCode || '');
+            setEditDriver(user?.profile?.favoriteDriverCode || '');
+        }
+    }, [isEditing, user?.profile]);
+
     async function loadStats() {
         if (!accessToken) return;
         const res = await fetchUserStats(accessToken);
