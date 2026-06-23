@@ -41,7 +41,7 @@ export function PitStopWidget() {
                 <Text style={{ color: '#E10600', fontWeight: '900', fontSize: 10, textTransform: 'uppercase', letterSpacing: 2 }}>Refuel Center</Text>
 
               </View>
-              <Text className="text-white font-black text-lg italic uppercase">Entrer aux stands</Text>
+              <Text className="text-white font-black text-lg italic uppercase" numberOfLines={1} adjustsFontSizeToFit>Entrer aux stands</Text>
               <Text className="text-white/40 text-[10px] font-bold">Gagnez des points via les mini-jeux</Text>
             </View>
           </View>

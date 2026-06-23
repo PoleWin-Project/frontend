@@ -15,6 +15,11 @@ export default function TabLayout() {
                 height: 60 + insets.bottom,
                 paddingBottom: insets.bottom,
                 paddingTop: 10,
+            },
+            tabBarAllowFontScaling: false,
+            tabBarLabelStyle: {
+                fontSize: 10,
+                marginTop: 2,
             }
         }}>
             <Tabs.Screen
