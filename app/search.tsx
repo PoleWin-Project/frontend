@@ -9,10 +9,14 @@ import { ChevronLeft, Search, X, Trophy, UserPlus, UserCheck, Clock } from 'luci
 import { useAuth } from '@/context/AuthContext';
 import { searchUsers, SearchUser } from '@/lib/api/users';
 import { fetchFriendStatus, sendFriendRequest, FriendStatus } from '@/lib/api/friends';
+import { TourGuideZone } from 'rn-tourguide';
+import { useScreenTour } from '@/hooks/usePoleWinTour';
+import { tourStep } from '@/lib/onboarding';
 
 export default function SearchScreen() {
     const router = useRouter();
     const { accessToken, user: me } = useAuth();
+    useScreenTour('search');
 
     const [query, setQuery]           = useState('');
     const [results, setResults]       = useState<SearchUser[]>([]);
@@ -167,25 +171,33 @@ export default function SearchScreen() {
                         <ChevronLeft size={20} color="rgba(255,255,255,0.7)" />
                     </TouchableOpacity>
 
-                    <View className="flex-1 flex-row items-center bg-white/5 border border-white/10 rounded-2xl px-3 gap-2">
-                        <Search size={16} color="rgba(255,255,255,0.3)" />
-                        <TextInput
-                            ref={inputRef}
-                            value={query}
-                            onChangeText={handleChange}
-                            placeholder="Rechercher un pilote..."
-                            placeholderTextColor="rgba(255,255,255,0.25)"
-                            className="flex-1 text-white text-sm py-2.5"
-                            returnKeyType="search"
-                            autoCapitalize="none"
-                            autoCorrect={false}
-                        />
-                        {query.length > 0 && (
-                            <TouchableOpacity onPress={handleClear}>
-                                <X size={15} color="rgba(255,255,255,0.4)" />
-                            </TouchableOpacity>
-                        )}
-                    </View>
+                    <TourGuideZone
+                        zone={1}
+                        tourKey="search"
+                        shape="rectangle"
+                        style={{ flex: 1 }}
+                        text={tourStep(1, 1, 'Trouve tes amis 👥', 'Cherche tes amis et ajoute-les pour comparer vos pronos.')}
+                    >
+                        <View className="flex-1 flex-row items-center bg-white/5 border border-white/10 rounded-2xl px-3 gap-2">
+                            <Search size={16} color="rgba(255,255,255,0.3)" />
+                            <TextInput
+                                ref={inputRef}
+                                value={query}
+                                onChangeText={handleChange}
+                                placeholder="Rechercher un pilote..."
+                                placeholderTextColor="rgba(255,255,255,0.25)"
+                                className="flex-1 text-white text-sm py-2.5"
+                                returnKeyType="search"
+                                autoCapitalize="none"
+                                autoCorrect={false}
+                            />
+                            {query.length > 0 && (
+                                <TouchableOpacity onPress={handleClear}>
+                                    <X size={15} color="rgba(255,255,255,0.4)" />
+                                </TouchableOpacity>
+                            )}
+                        </View>
+                    </TourGuideZone>
                 </View>
             </View>
 

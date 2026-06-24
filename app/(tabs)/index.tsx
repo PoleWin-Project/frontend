@@ -18,6 +18,9 @@ import { useSocket } from '@/context/SocketContext';
 import { PitStopWidget } from '@/components/home/PitStopWidget';
 import { fetchUnreadCount } from '@/lib/api/dms';
 import { fetchIncomingRequests } from '@/lib/api/friends';
+import { TourGuideZone } from 'rn-tourguide';
+import { useScreenTour } from '@/hooks/usePoleWinTour';
+import { tourStep } from '@/lib/onboarding';
 
 const LOGO = {
   light: require('@/assets/images/react-native-reusables-light.png'),
@@ -34,6 +37,9 @@ export default function Screen() {
   const { on } = useSocket();
   const { colorScheme } = useColorScheme();
   const router = useRouter();
+  const tourScrollRef = React.useRef<ScrollView>(null);
+  const tourScrollY = React.useRef(0);
+  useScreenTour('home', { scrollRef: tourScrollRef, scrollYRef: tourScrollY });
   const [latestNews, setLatestNews] = useState<NewsArticle[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -100,9 +106,12 @@ export default function Screen() {
   return (
     <>
       <ScrollView
+        ref={tourScrollRef}
         className="flex-1 bg-background"
         contentContainerStyle={{ paddingBottom: 140 }}
         showsVerticalScrollIndicator={false}
+        onScroll={(e) => { tourScrollY.current = e.nativeEvent.contentOffset.y; }}
+        scrollEventThrottle={16}
         refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor="#E10600" />}
       >
         {/* ─── Hero Section v7: Immersive Full Bleed ─── */}
@@ -133,19 +142,26 @@ export default function Screen() {
           />
 
           {/* Logo center piece */}
-          <View
-            style={{
-              shadowColor: '#E10600', shadowOffset: { width: 0, height: 10 },
-              shadowOpacity: 0.3, shadowRadius: 25, elevation: 15,
-              marginTop: 40,
-            }}
+          <TourGuideZone
+            zone={1}
+            tourKey="home"
+            shape="circle"
+            text={tourStep(1, 5, 'Bienvenue 🏁', "Bienvenue sur PoleWin 🏁 L'app de pronos F1 entre amis ! Suis le guide.")}
           >
-            <Image
-              source={require('@/assets/images/polewin.png')}
-              style={{ width: 140, height: 140 }}
-              resizeMode="contain"
-            />
-          </View>
+            <View
+              style={{
+                shadowColor: '#E10600', shadowOffset: { width: 0, height: 10 },
+                shadowOpacity: 0.3, shadowRadius: 25, elevation: 15,
+                marginTop: 40,
+              }}
+            >
+              <Image
+                source={require('@/assets/images/polewin.png')}
+                style={{ width: 140, height: 140 }}
+                resizeMode="contain"
+              />
+            </View>
+          </TourGuideZone>
 
           {/* Stylized Season Badge */}
           <View className="absolute bottom-6 bg-[#E10600]/20 border border-[#E10600]/50 px-3 py-1 rounded-full">
@@ -178,23 +194,51 @@ export default function Screen() {
           )}
 
           {/* Pit Stop / Garage Widget */}
-          <PitStopWidget key={`pit-${refreshKey}`} />
+          <TourGuideZone
+            zone={2}
+            tourKey="home"
+            shape="rectangle"
+            text={tourStep(2, 5, 'Le Garage 🛠️', 'Accède aux mini-jeux du Garage pour gagner des points entre deux courses.')}
+          >
+            <PitStopWidget key={`pit-${refreshKey}`} />
+          </TourGuideZone>
 
           {/* Prochain Grand Prix (Sessions) */}
-          <NextSessionWidget key={`next-${refreshKey}`} />
+          <TourGuideZone
+            zone={3}
+            tourKey="home"
+            shape="rectangle"
+            text={tourStep(3, 5, 'Prochain GP ⏱️', "Suis le prochain Grand Prix et ouvre la session live d'un simple tap.")}
+          >
+            <NextSessionWidget key={`next-${refreshKey}`} />
+          </TourGuideZone>
 
           {/* Quick Stats / Actions */}
-          <QuickStats key={`stats-${refreshKey}`} />
+          <TourGuideZone
+            zone={4}
+            tourKey="home"
+            shape="rectangle"
+            text={tourStep(4, 5, 'Raccourcis ⚡', 'Ces raccourcis t’emmènent directement aux pronos, au classement et aux écuries.')}
+          >
+            <QuickStats key={`stats-${refreshKey}`} />
+          </TourGuideZone>
 
-          <View className="mb-6 flex-row items-center justify-between">
-            <Text className="font-heading text-xl font-bold text-foreground">Dernières Actualités</Text>
-            <Link href="/news" asChild>
-              <Button variant="ghost" className="flex-row gap-1">
-                <Text>Voir tout</Text>
-                <Icon as={ChevronRight} size={16} />
-              </Button>
-            </Link>
-          </View>
+          <TourGuideZone
+            zone={5}
+            tourKey="home"
+            shape="rectangle"
+            text={tourStep(5, 5, 'Les actus F1 📰', 'Retrouve les dernières actualités F1 — touche « Voir tout » pour la liste complète.')}
+          >
+            <View className="mb-6 flex-row items-center justify-between">
+              <Text className="font-heading text-xl font-bold text-foreground">Dernières Actualités</Text>
+              <Link href="/news" asChild>
+                <Button variant="ghost" className="flex-row gap-1">
+                  <Text>Voir tout</Text>
+                  <Icon as={ChevronRight} size={16} />
+                </Button>
+              </Link>
+            </View>
+          </TourGuideZone>
 
           {loading ? (
             <View className="h-48 items-center justify-center">

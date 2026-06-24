@@ -15,6 +15,9 @@ import {
     PlayerRank, MyRank,
 } from '@/lib/api/leaderboard';
 import { useAuth } from '@/context/AuthContext';
+import { TourGuideZone } from 'rn-tourguide';
+import { useScreenTour } from '@/hooks/usePoleWinTour';
+import { tourStep } from '@/lib/onboarding';
 
 const AnimatedPressable = Animated.createAnimatedComponent(Pressable);
 
@@ -95,6 +98,7 @@ function PlayerRow({ item, index, isMe }: { item: PlayerRank; index: number; isM
 // ─── Main Screen ──────────────────────────────────────────────────────────────
 export default function PlayerLeaderboardScreen() {
     const { user } = useAuth();
+    useScreenTour('classement');
     const [loading, setLoading] = useState(true);
     const [allPlayers, setAllPlayers] = useState<PlayerRank[]>([]);
     const [myRank, setMyRank] = useState<MyRank | null>(null);
@@ -144,15 +148,22 @@ export default function PlayerLeaderboardScreen() {
 
     const ListHeader = useCallback(() => (
         <Animated.View entering={FadeInDown.delay(50).springify()} style={styles.sectionHeader}>
-            <View style={styles.sectionTitleRow}>
-                <Trophy size={20} color="#E10600" />
-                <Text style={styles.sectionTitle}>
-                    {isSearching
-                        ? `${filtered.length} Résultat${filtered.length !== 1 ? 's' : ''}`
-                        : 'Tableau d\'Honneur'
-                    }
-                </Text>
-            </View>
+            <TourGuideZone
+                zone={2}
+                tourKey="classement"
+                shape="rectangle"
+                text={tourStep(2, 2, 'Le Classement 🏆', 'Grimpe dans le classement mondial et dépasse tes amis.')}
+            >
+                <View style={styles.sectionTitleRow}>
+                    <Trophy size={20} color="#E10600" />
+                    <Text style={styles.sectionTitle}>
+                        {isSearching
+                            ? `${filtered.length} Résultat${filtered.length !== 1 ? 's' : ''}`
+                            : 'Tableau d\'Honneur'
+                        }
+                    </Text>
+                </View>
+            </TourGuideZone>
             <Text style={styles.sectionSub}>
                 {isSearching
                     ? `pour « ${search.trim()} »`
@@ -199,6 +210,12 @@ export default function PlayerLeaderboardScreen() {
                 showPoints
             />
 
+            <TourGuideZone
+                zone={1}
+                tourKey="classement"
+                shape="rectangle"
+                text={tourStep(1, 2, 'Cherche un pilote 🔎', 'Recherche un joueur précis pour voir son rang dans le classement.')}
+            >
             <View style={styles.searchWrap}>
                 <View style={[styles.searchBar, focused && styles.searchBarFocused]}>
                     <Search size={18} color={focused ? '#fff' : 'rgba(255,255,255,0.4)'} />
@@ -224,6 +241,7 @@ export default function PlayerLeaderboardScreen() {
                     )}
                 </View>
             </View>
+            </TourGuideZone>
 
             <FlatList
                 data={shown}

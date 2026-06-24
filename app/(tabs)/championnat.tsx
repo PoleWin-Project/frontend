@@ -8,6 +8,9 @@ import { Icon } from '@/components/ui/icon';
 import { BlurView } from 'expo-blur';
 import { fetchMeetings, fetchDriverStandings, fetchTeamStandings, MeetingItem, DriverStanding, TeamStanding } from '@/lib/api/meetings';
 import { MeetingCard } from '@/components/calendar/MeetingCard';
+import { TourGuideZone } from 'rn-tourguide';
+import { useScreenTour } from '@/hooks/usePoleWinTour';
+import { tourStep } from '@/lib/onboarding';
 
 // Type guards
 function isDriverStanding(item: any): item is DriverStanding {
@@ -27,6 +30,8 @@ export default function ChampionshipScreen() {
     const [selectedDriver, setSelectedDriver] = useState<DriverStanding | null>(null);
     const [selectedTeam, setSelectedTeam] = useState<TeamStanding | null>(null);
     const [refreshing, setRefreshing] = useState(false);
+
+    useScreenTour('championnat');
 
     const getTeamLogo = () => require('@/assets/images/placeholder_team.png');
 
@@ -167,14 +172,30 @@ export default function ChampionshipScreen() {
             <Tabs value={activeTab} onValueChange={setActiveTab} className="flex-1">
                 <View className="mx-4 mt-4 border-b border-white/5">
                     <TabsList className="bg-transparent h-14">
-                        <TabsTrigger value="calendar" className="flex-1 flex-row gap-2">
-                            <Icon as={CalendarIcon} size={14} className={activeTab === 'calendar' ? 'text-primary' : 'text-white/40'} />
-                            <Text className={activeTab === 'calendar' ? 'text-white' : 'text-white/40'}>Calendrier</Text>
-                        </TabsTrigger>
-                        <TabsTrigger value="f1" className="flex-1 flex-row gap-2">
-                            <Icon as={Trophy} size={14} className={activeTab === 'f1' ? 'text-primary' : 'text-white/40'} />
-                            <Text className={activeTab === 'f1' ? 'text-white' : 'text-white/40'}>Classement F1</Text>
-                        </TabsTrigger>
+                        <TourGuideZone
+                            zone={1}
+                            tourKey="championnat"
+                            shape="rectangle"
+                            style={{ flex: 1 }}
+                            text={tourStep(1, 2, 'Le Calendrier 📅', 'Onglet Calendrier : retrouve tous les Grands Prix de la saison.')}
+                        >
+                            <TabsTrigger value="calendar" className="flex-1 flex-row gap-2">
+                                <Icon as={CalendarIcon} size={14} className={activeTab === 'calendar' ? 'text-primary' : 'text-white/40'} />
+                                <Text className={activeTab === 'calendar' ? 'text-white' : 'text-white/40'}>Calendrier</Text>
+                            </TabsTrigger>
+                        </TourGuideZone>
+                        <TourGuideZone
+                            zone={2}
+                            tourKey="championnat"
+                            shape="rectangle"
+                            style={{ flex: 1 }}
+                            text={tourStep(2, 2, 'Classement F1 🏆', 'Onglet Classement F1 : le championnat pilotes et écuries en direct.')}
+                        >
+                            <TabsTrigger value="f1" className="flex-1 flex-row gap-2">
+                                <Icon as={Trophy} size={14} className={activeTab === 'f1' ? 'text-primary' : 'text-white/40'} />
+                                <Text className={activeTab === 'f1' ? 'text-white' : 'text-white/40'}>Classement F1</Text>
+                            </TabsTrigger>
+                        </TourGuideZone>
                     </TabsList>
                 </View>
 

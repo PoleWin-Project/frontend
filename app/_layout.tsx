@@ -24,6 +24,9 @@ import { useAuth } from '@/context/AuthContext';
 import { useSegments, useRouter } from 'expo-router';
 import { PushRegistrar } from '@/components/PushRegistrar';
 import { PronoResultsNotifier } from '@/components/game/PronoResultsNotifier';
+import { TourGuideProvider } from 'rn-tourguide';
+import { PoleWinTourProvider } from '@/hooks/usePoleWinTour';
+import { PoleWinTooltip } from '@/components/onboarding/PoleWinTooltip';
 
 function AuthGuard({ children }: { children: React.ReactNode }) {
   const { user, isInitialized } = useAuth();
@@ -44,7 +47,7 @@ function AuthGuard({ children }: { children: React.ReactNode }) {
     } else if (user && inAuthGroup && !inResetPassword) {
       // Vérifier si le profil est complet (onboarding terminé)
       const hasCompletedOnboarding = user.profile?.favoriteTeamCode || user.profile?.favoriteDriverCode;
-      
+
       if (!hasCompletedOnboarding) {
         router.replace('/onboarding');
       } else {
@@ -84,22 +87,42 @@ export default function RootLayout() {
       <AuthProvider>
         <SocketProvider>
           <DemoProvider>
-          <AuthGuard>
-            <StatusBar style="auto" />
-            <PushRegistrar />
-            <PronoResultsNotifier />
-            <Stack>
-              <Stack.Screen name="(tabs)"    options={{ headerShown: false }} />
-              <Stack.Screen name="(auth)"    options={{ headerShown: false }} />
-              <Stack.Screen name="onboarding" options={{ headerShown: false, presentation: 'fullScreenModal' }} />
-              <Stack.Screen name="messages" options={{ headerShown: false }} />
-              <Stack.Screen name="user"     options={{ headerShown: false }} />
-              <Stack.Screen name="search"            options={{ headerShown: false }} />
-              <Stack.Screen name="games"             options={{ headerShown: false, animation: 'slide_from_right' }} />
-              <Stack.Screen name="live-session/[sessionKey]" options={{ headerShown: false, animation: 'slide_from_bottom' }} />
-            </Stack>
-            <PortalHost />
-          </AuthGuard>
+            <PoleWinTourProvider>
+              <TourGuideProvider
+                tooltipComponent={PoleWinTooltip}
+                androidStatusBarVisible
+                backdropColor="rgba(0,0,0,0.75)"
+                maskOffset={8}
+                wrapperStyle={{ flex: 1 }}
+                // Conteneur de tooltip neutre : on retire le clipping/padding/fond
+                // par défaut pour laisser déborder l'avatar et le halo pulsé.
+                tooltipStyle={{
+                  overflow: 'visible',
+                  backgroundColor: 'transparent',
+                  paddingHorizontal: 0,
+                  paddingTop: 0,
+                  paddingBottom: 0,
+                  borderRadius: 0,
+                }}
+              >
+                <AuthGuard>
+                  <StatusBar style="auto" />
+                  <PushRegistrar />
+                  <PronoResultsNotifier />
+                  <Stack>
+                    <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
+                    <Stack.Screen name="(auth)" options={{ headerShown: false }} />
+                    <Stack.Screen name="onboarding" options={{ headerShown: false, presentation: 'fullScreenModal' }} />
+                    <Stack.Screen name="messages" options={{ headerShown: false }} />
+                    <Stack.Screen name="user" options={{ headerShown: false }} />
+                    <Stack.Screen name="search" options={{ headerShown: false }} />
+                    <Stack.Screen name="games" options={{ headerShown: false, animation: 'slide_from_right' }} />
+                    <Stack.Screen name="live-session/[sessionKey]" options={{ headerShown: false, animation: 'slide_from_bottom' }} />
+                  </Stack>
+                  <PortalHost />
+                </AuthGuard>
+              </TourGuideProvider>
+            </PoleWinTourProvider>
           </DemoProvider>
         </SocketProvider>
       </AuthProvider>
