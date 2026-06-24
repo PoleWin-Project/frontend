@@ -23,6 +23,7 @@ export {
 import { useAuth } from '@/context/AuthContext';
 import { useSegments, useRouter } from 'expo-router';
 import { PushRegistrar } from '@/components/PushRegistrar';
+import { PronoResultsNotifier } from '@/components/game/PronoResultsNotifier';
 
 function AuthGuard({ children }: { children: React.ReactNode }) {
   const { user, isInitialized } = useAuth();
@@ -86,6 +87,7 @@ export default function RootLayout() {
           <AuthGuard>
             <StatusBar style="auto" />
             <PushRegistrar />
+            <PronoResultsNotifier />
             <Stack>
               <Stack.Screen name="(tabs)"    options={{ headerShown: false }} />
               <Stack.Screen name="(auth)"    options={{ headerShown: false }} />
