@@ -17,7 +17,12 @@ export async function fetchPlaysToday(accessToken: string, gameId: string): Prom
   }
 }
 
-export async function rewardUser(accessToken: string, points: number, gameId: string) {
+export async function rewardUser(
+    accessToken: string,
+    points: number,
+    gameId: string,
+    metricMs?: number,
+) {
     try {
         const res = await fetch(`${API_URL}/games/reward`, {
             method: 'POST',
@@ -25,11 +30,38 @@ export async function rewardUser(accessToken: string, points: number, gameId: st
                 'Content-Type': 'application/json',
                 'Authorization': `Bearer ${accessToken}`
             },
-            body: JSON.stringify({ points, gameId })
+            body: JSON.stringify({ points, gameId, metricMs })
         });
         return await res.json();
     } catch (e) {
         console.error("Error rewarding user:", e);
         return { status: 'error', message: 'Erreur réseau' };
+    }
+}
+
+export interface LeaderboardEntry {
+    rank: number;
+    userId: number;
+    displayName: string | null;
+    avatarUrl: string | null;
+    bestMs: number;
+    isMe: boolean;
+}
+
+export interface Leaderboard {
+    entries: LeaderboardEntry[];
+    me: LeaderboardEntry | null;
+}
+
+export async function fetchLeaderboard(accessToken: string, gameId: string): Promise<Leaderboard> {
+    try {
+        const res = await fetch(`${API_URL}/games/leaderboard?gameId=${gameId}`, {
+            headers: { Authorization: `Bearer ${accessToken}` },
+        });
+        if (!res.ok) return { entries: [], me: null };
+        const json = await res.json();
+        return { entries: json.entries ?? [], me: json.me ?? null };
+    } catch {
+        return { entries: [], me: null };
     }
 }
