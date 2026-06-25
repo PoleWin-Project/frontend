@@ -7,15 +7,11 @@ import { useAuth } from '@/context/AuthContext';
 import { useSocket } from '@/context/SocketContext';
 import { fetchConversations, Conversation } from '@/lib/api/dms';
 import { fetchIncomingRequests, FriendRequest, respondToRequest } from '@/lib/api/friends';
-import { TourGuideZone } from 'rn-tourguide';
-import { useScreenTour } from '@/hooks/usePoleWinTour';
-import { tourStep } from '@/lib/onboarding';
 
 export default function MessagesScreen() {
     const router = useRouter();
     const { accessToken, user } = useAuth();
     const { on } = useSocket();
-    useScreenTour('messages');
 
     const [conversations, setConversations]   = useState<Conversation[]>([]);
     const [incoming, setIncoming]             = useState<FriendRequest[]>([]);
@@ -150,12 +146,6 @@ export default function MessagesScreen() {
             </View>
 
             {/* Tabs */}
-            <TourGuideZone
-                zone={1}
-                tourKey="messages"
-                shape="rectangle"
-                text={tourStep(1, 1, 'Tes conversations 💬', 'Discute directement avec tes amis après chaque course.')}
-            >
             <View className="flex-row border-b border-white/5">
                 {(['messages', 'requests'] as const).map(t => (
                     <TouchableOpacity
@@ -170,7 +160,6 @@ export default function MessagesScreen() {
                     </TouchableOpacity>
                 ))}
             </View>
-            </TourGuideZone>
 
             {loading ? (
                 <View className="flex-1 items-center justify-center">

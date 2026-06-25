@@ -91,8 +91,9 @@ export default function RootLayout() {
               <TourGuideProvider
                 tooltipComponent={PoleWinTooltip}
                 androidStatusBarVisible
-                backdropColor="rgba(0,0,0,0.75)"
+                backdropColor="rgba(0,0,0,0.88)"
                 maskOffset={8}
+                animationDuration={300}
                 wrapperStyle={{ flex: 1 }}
                 // Conteneur de tooltip neutre : on retire le clipping/padding/fond
                 // par défaut pour laisser déborder l'avatar et le halo pulsé.

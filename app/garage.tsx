@@ -9,9 +9,6 @@ import { Icon } from '@/components/ui/icon';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useAuth } from '@/context/AuthContext';
 import { fetchPlaysToday, type PlaysToday } from '@/lib/api/games';
-import { TourGuideZone } from 'rn-tourguide';
-import { useScreenTour } from '@/hooks/usePoleWinTour';
-import { tourStep } from '@/lib/onboarding';
 
 export default function GarageScreen() {
   const router = useRouter();
@@ -19,8 +16,6 @@ export default function GarageScreen() {
   const { accessToken, user } = useAuth();
   const [reactionPlays, setReactionPlays] = useState<PlaysToday | null>(null);
   const [refreshing, setRefreshing] = useState(false);
-
-  useScreenTour('garage');
 
   useEffect(() => {
     if (!accessToken) return;
@@ -141,8 +136,7 @@ export default function GarageScreen() {
           {/* Game Selection */}
           <Text className="text-white/60 text-[11px] font-black uppercase tracking-[2px] mb-4">Unités de Production</Text>
 
-          {games.map((game) => {
-            const card = (
+          {games.map((game) => (
             <Pressable
               key={game.id}
               className="mb-6"
@@ -224,19 +218,7 @@ export default function GarageScreen() {
                 </View>
               </View>
             </Pressable>
-            );
-            return game.id === 'reaction' ? (
-              <TourGuideZone
-                key={game.id}
-                zone={1}
-                tourKey="garage"
-                shape="rectangle"
-                text={tourStep(1, 1, 'Reaction Test ⚡', 'Teste tes réflexes avec le Reaction Test — le plus rapide gagne des coins.')}
-              >
-                {card}
-              </TourGuideZone>
-            ) : card;
-          })}
+          ))}
 
         </ScrollView>
       </View>

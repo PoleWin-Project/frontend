@@ -32,6 +32,10 @@ const IMAGE_STYLE: ImageStyle = {
   width: 76,
 };
 
+// Zones du tour d'accueil situées DANS la ScrollView (les onglets 6-10 sont
+// dans la barre de navigation, donc hors scroll).
+const HOME_SCROLL_ZONES = [1, 2, 3, 4, 5, 6];
+
 export default function Screen() {
   const { user, accessToken } = useAuth();
   const { on } = useSocket();
@@ -39,7 +43,7 @@ export default function Screen() {
   const router = useRouter();
   const tourScrollRef = React.useRef<ScrollView>(null);
   const tourScrollY = React.useRef(0);
-  useScreenTour('home', { scrollRef: tourScrollRef, scrollYRef: tourScrollY });
+  useScreenTour('home', { scrollRef: tourScrollRef, scrollYRef: tourScrollY, scrollZones: HOME_SCROLL_ZONES });
   const [latestNews, setLatestNews] = useState<NewsArticle[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -122,18 +126,26 @@ export default function Screen() {
         >
           {/* Message icon — top right */}
           {user && (
-            <TouchableOpacity
-              onPress={() => router.push('/messages' as any)}
-              style={{ position: 'absolute', top: 52, right: 16, zIndex: 10 }}
-              className="w-10 h-10 bg-black/40 border border-white/20 rounded-full items-center justify-center"
-            >
-              <MessageCircle size={20} color="white" />
-              {totalBadgeCount > 0 && (
-                <View className="absolute -top-1 -right-1 min-w-[16px] h-4 bg-primary rounded-full items-center justify-center px-1">
-                  <Text className="text-white text-[9px] font-black">{totalBadgeCount > 99 ? '99' : totalBadgeCount}</Text>
-                </View>
-              )}
-            </TouchableOpacity>
+            <View style={{ position: 'absolute', top: 52, right: 16, zIndex: 10 }}>
+              <TourGuideZone
+                zone={2}
+                tourKey="home"
+                shape="circle"
+                text={tourStep(2, 11, 'Messagerie 💬', 'Retrouve tes discussions et notifications ici.')}
+              >
+                <TouchableOpacity
+                  onPress={() => router.push('/messages' as any)}
+                  className="w-10 h-10 bg-black/40 border border-white/20 rounded-full items-center justify-center"
+                >
+                  <MessageCircle size={20} color="white" />
+                  {totalBadgeCount > 0 && (
+                    <View className="absolute -top-1 -right-1 min-w-[16px] h-4 bg-primary rounded-full items-center justify-center px-1">
+                      <Text className="text-white text-[9px] font-black">{totalBadgeCount > 99 ? '99' : totalBadgeCount}</Text>
+                    </View>
+                  )}
+                </TouchableOpacity>
+              </TourGuideZone>
+            </View>
           )}
           {/* Gradient Overlay for blending into the background and text readability */}
           <LinearGradient
@@ -146,7 +158,7 @@ export default function Screen() {
             zone={1}
             tourKey="home"
             shape="circle"
-            text={tourStep(1, 5, 'Bienvenue 🏁', "Bienvenue sur PoleWin 🏁 L'app de pronos F1 entre amis ! Suis le guide.")}
+            text={tourStep(1, 11, 'Bienvenue 🏁', "Bienvenue sur PoleWin 🏁 L'app de pronos F1 entre amis ! Suis le guide.")}
           >
             <View
               style={{
@@ -195,39 +207,33 @@ export default function Screen() {
 
           {/* Pit Stop / Garage Widget */}
           <TourGuideZone
-            zone={2}
+            zone={3}
             tourKey="home"
             shape="rectangle"
-            text={tourStep(2, 5, 'Le Garage 🛠️', 'Accède aux mini-jeux du Garage pour gagner des points entre deux courses.')}
+            text={tourStep(3, 11, 'Le Garage 🛠️', 'Accède aux mini-jeux du Garage pour gagner des points entre deux courses.')}
           >
             <PitStopWidget key={`pit-${refreshKey}`} />
           </TourGuideZone>
 
-          {/* Prochain Grand Prix (Sessions) */}
-          <TourGuideZone
-            zone={3}
-            tourKey="home"
-            shape="rectangle"
-            text={tourStep(3, 5, 'Prochain GP ⏱️', "Suis le prochain Grand Prix et ouvre la session live d'un simple tap.")}
-          >
-            <NextSessionWidget key={`next-${refreshKey}`} />
-          </TourGuideZone>
+          {/* Prochain Grand Prix (Sessions) — la zone 3 du tour est définie
+              dans le widget lui-même (sur son en-tête compact). */}
+          <NextSessionWidget key={`next-${refreshKey}`} />
 
           {/* Quick Stats / Actions */}
           <TourGuideZone
-            zone={4}
+            zone={5}
             tourKey="home"
             shape="rectangle"
-            text={tourStep(4, 5, 'Raccourcis ⚡', 'Ces raccourcis t’emmènent directement aux pronos, au classement et aux écuries.')}
+            text={tourStep(5, 11, 'Raccourcis ⚡', 'Ces raccourcis t’emmènent directement aux pronos, au classement et aux écuries.')}
           >
             <QuickStats key={`stats-${refreshKey}`} />
           </TourGuideZone>
 
           <TourGuideZone
-            zone={5}
+            zone={6}
             tourKey="home"
             shape="rectangle"
-            text={tourStep(5, 5, 'Les actus F1 📰', 'Retrouve les dernières actualités F1 — touche « Voir tout » pour la liste complète.')}
+            text={tourStep(6, 11, 'Les actus F1 📰', 'Retrouve les dernières actualités F1 — touche « Voir tout » pour la liste complète.')}
           >
             <View className="mb-6 flex-row items-center justify-between">
               <Text className="font-heading text-xl font-bold text-foreground">Dernières Actualités</Text>

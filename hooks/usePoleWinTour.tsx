@@ -116,44 +116,108 @@ interface ScreenTourOptions {
     scrollRef?: React.RefObject<any>;
     /** Offset de scroll courant (alimenté par onScroll de la ScrollView). */
     scrollYRef?: React.MutableRefObject<number>;
+    /**
+     * Numéros de zones (order) réellement situées DANS la ScrollView.
+     * Les autres (ex. boutons de la barre d'onglets) ne sont pas défilées.
+     */
+    scrollZones?: number[];
 }
 
 export function useScreenTour(tourKey: TourKey, options: ScreenTourOptions = {}) {
-    const { delay = 800, scrollRef, scrollYRef } = options;
+    const { delay = 800, scrollRef, scrollYRef, scrollZones } = options;
     const { canStart, start, eventEmitter } = useTourGuideController(tourKey);
     const { done, shouldAutoStart, markSeen, replayNonce } = usePoleWinTour();
 
-    // Marque le sous-tour comme vu dès qu'il se ferme (fin, skip ou tap backdrop).
+    // Étape courante (nom) — mis à jour SYNCHRONEMENT à chaque stepChange.
+    // Sert de garde anti-rembobinage (cf. forceRemeasure) sans dépendre d'une
+    // closure de getCurrentStep, qui peut être périmée au moment où le rAF se
+    // déclenche (cause des cibles mal ciblées après un scroll).
+    const currentNameRef = useRef<string | null>(null);
+    // true tant que la 1re étape du tour n'a pas été traitée (remis à false au stop).
+    const firstStepDoneRef = useRef(false);
+    // Empêche la boucle infinie : marque le step qu'on vient de re-déclencher.
+    const remeasureRef = useRef<string | null>(null);
+
+    // Marque le sous-tour comme vu dès qu'il se ferme (fin, skip ou tap backdrop)
+    // et réarme le repère « 1re étape » pour le prochain démarrage.
     useEffect(() => {
         if (!eventEmitter) return;
-        const onStop = () => markSeen(tourKey);
+        const onStop = () => {
+            markSeen(tourKey);
+            firstStepDoneRef.current = false;
+        };
         eventEmitter.on('stop', onStop);
         return () => eventEmitter.off('stop', onStop);
     }, [eventEmitter, tourKey, markSeen]);
 
-    // Défile pour amener l'élément de l'étape courante dans le viewport.
-    // On mesure en coordonnées écran (measure / measureInWindow) — compatible
-    // New Architecture — plutôt que measureLayout (qui exige un ref natif).
+    // À chaque étape : (1) amène la cible dans le viewport si besoin, puis
+    // (2) force une re-mesure (re-start du même step) UNIQUEMENT quand c'est utile.
+    // Cette re-mesure est nécessaire car :
+    //   - rn-tourguide mesure la cible AVANT notre scroll → spotlight décalé ;
+    //   - le SvgMask n'anime son opacité (assombrissement) que dans
+    //     componentDidUpdate, quand la position/size CHANGE de référence. Au
+    //     1er step d'un tour il vient de monter → aucune mise à jour → il reste
+    //     à opacity 0. Re-déclencher animateMove crée une nouvelle position et
+    //     l'assombrit.
+    // On ne force donc la re-mesure que si (a) on a réellement scrollé, ou
+    // (b) c'est la 1re étape du tour — sinon on évite un clignotement inutile
+    // (le masque est déjà sombre et la cible déjà bien mesurée).
     useEffect(() => {
-        if (!eventEmitter || !scrollRef) return;
+        if (!eventEmitter) return;
         const onStepChange = (step: any) => {
-            const sv: any = scrollRef.current;
+            const name: string | undefined = step?.name;
+            // Re-fire déclenché par notre propre re-mesure : laisser rn-tourguide
+            // recalculer et s'arrêter là.
+            if (name != null && remeasureRef.current === name) {
+                remeasureRef.current = null;
+                currentNameRef.current = name;
+                return;
+            }
+            currentNameRef.current = name ?? null;
+            const isFirstOfTour = !firstStepDoneRef.current;
+            firstStepDoneRef.current = true;
+
+            const forceRemeasure = () =>
+                requestAnimationFrame(() =>
+                    requestAnimationFrame(() => {
+                        // Re-déclenche seulement si on est TOUJOURS sur cette étape
+                        // (l'utilisateur n'a pas cliqué « Suivant » entre-temps).
+                        if (name != null && currentNameRef.current === name) {
+                            remeasureRef.current = name;
+                            start(name as any);
+                        }
+                    }),
+                );
+
+            // Défilement uniquement pour les zones réellement dans la ScrollView.
+            const inScroll = scrollRef && scrollZones && step?.order != null && scrollZones.includes(step.order);
+            const sv: any = inScroll ? scrollRef!.current : null;
             const wrapper: any = step?.wrapper ?? step?.target?.wrapper;
-            if (!sv?.scrollTo || typeof wrapper?.measure !== 'function') return;
-            const nativeScroll: any = sv.getNativeScrollRef?.() ?? sv;
-            if (typeof nativeScroll?.measureInWindow !== 'function') return;
-            wrapper.measure((_x: number, _y: number, _w: number, _h: number, _pageX: number, pageY: number) => {
-                if (typeof pageY !== 'number') return;
-                nativeScroll.measureInWindow((_cx: number, cy: number) => {
-                    const offset = scrollYRef?.current ?? 0;
-                    const targetContentY = offset + (pageY - cy);
-                    sv.scrollTo({ y: Math.max(0, targetContentY - 110), animated: true });
+            const nativeScroll: any = sv?.getNativeScrollRef?.() ?? sv;
+
+            if (sv?.scrollTo && typeof wrapper?.measure === 'function' && typeof nativeScroll?.measureInWindow === 'function') {
+                wrapper.measure((_x: number, _y: number, _w: number, targetH: number, _pageX: number, pageY: number) => {
+                    if (typeof pageY !== 'number') { if (isFirstOfTour) forceRemeasure(); return; }
+                    nativeScroll.measureInWindow((_cx: number, cy: number, _cw: number, ch: number) => {
+                        const offset = scrollYRef?.current ?? 0;
+                        // Centre la cible dans le viewport (marge haute mini 70px).
+                        const desiredTop = Math.max(70, ((ch || 0) - (targetH || 0)) / 2);
+                        const y = Math.max(0, offset + (pageY - cy) - desiredTop);
+                        const willScroll = Math.abs(y - offset) >= 6;
+                        if (willScroll) sv.scrollTo({ y, animated: false });
+                        // Re-mesure si on a scrollé (cible déplacée) ou au 1er step.
+                        if (willScroll || isFirstOfTour) forceRemeasure();
+                    });
                 });
-            });
+            } else if (isFirstOfTour) {
+                // Écran sans scroll (Pronos…) : forcer la re-mesure au 1er step pour
+                // que le fond s'assombrisse (sinon le masque reste à opacity 0).
+                forceRemeasure();
+            }
         };
         eventEmitter.on('stepChange', onStepChange);
         return () => eventEmitter.off('stepChange', onStepChange);
-    }, [eventEmitter, scrollRef, scrollYRef]);
+    }, [eventEmitter, scrollRef, scrollYRef, scrollZones, start]);
 
     // Auto-déclenchement au focus de l'écran (uniquement au 1er passage).
     useFocusEffect(

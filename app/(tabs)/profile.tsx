@@ -22,9 +22,7 @@ import { ScreenHeader } from '@/components/ui/ScreenHeader';
 import { fetchMyBadges, fetchAllBadges, type UserBadge, type Badge } from '@/lib/api/badges';
 import { BadgeCatalog, BadgeTileHero } from '@/components/ui/badge-card';
 import { GuestPrompt } from '@/components/ui/GuestPrompt';
-import { TourGuideZone } from 'rn-tourguide';
-import { useScreenTour, usePoleWinTour } from '@/hooks/usePoleWinTour';
-import { tourStep } from '@/lib/onboarding';
+import { usePoleWinTour } from '@/hooks/usePoleWinTour';
 
 // ─── Couleur avatar déterministe ──────────────────────────────────────────
 const AVATAR_GRADIENTS: [string, string][] = [
@@ -67,9 +65,6 @@ export default function ProfileScreen() {
     const { user, logout, deleteAccount, updateUserProfile, accessToken, isLoading: isAuthLoading } = useAuth();
     const insets = useSafeAreaInsets();
     const router = useRouter();
-    const tourScrollRef = React.useRef<ScrollView>(null);
-    const tourScrollY = React.useRef(0);
-    useScreenTour('profile', { scrollRef: tourScrollRef, scrollYRef: tourScrollY });
     const { replayTour } = usePoleWinTour();
 
     // Réinitialise le tutoriel puis renvoie sur l'accueil pour le redémarrer.
@@ -191,12 +186,9 @@ export default function ProfileScreen() {
             <ScreenHeader title="Mon Profil" subtitle="Tableau de bord pilote" showPoints />
 
             <ScrollView
-                ref={tourScrollRef}
                 style={styles.scroll}
                 contentContainerStyle={[styles.scrollContent, { paddingBottom: insets.bottom + 40 }]}
                 showsVerticalScrollIndicator={false}
-                onScroll={(e) => { tourScrollY.current = e.nativeEvent.contentOffset.y; }}
-                scrollEventThrottle={16}
                 refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor="#E10600" />}
             >
                 {/* ── Hero card ── */}
@@ -367,12 +359,6 @@ export default function ProfileScreen() {
                 {!isEditing && (() => {
                     const pionnier = allBadges.find(b => b.code === 'pionnier_du_paddock') ?? null;
                     return (
-                        <TourGuideZone
-                            zone={1}
-                            tourKey="profile"
-                            shape="rectangle"
-                            text={tourStep(1, 3, 'Tes badges 🎖️', 'Débloque des badges et accumule des coins en jouant.')}
-                        >
                         <Animated.View entering={FadeInDown.delay(200).springify()} style={styles.badgeCard}>
                             <Pressable style={styles.badgeHeader} onPress={() => setBadgesOpen(v => !v)}>
                                 <View>
@@ -400,18 +386,11 @@ export default function ProfileScreen() {
                                 </View>
                             )}
                         </Animated.View>
-                        </TourGuideZone>
                     );
                 })()}
 
                 {/* ── Stats grid ── */}
                 <Text style={styles.sectionTitle}>Statistiques</Text>
-                <TourGuideZone
-                    zone={2}
-                    tourKey="profile"
-                    shape="rectangle"
-                    text={tourStep(2, 3, 'Tes statistiques 📈', 'Points, victoires, win rate… suis ta progression de pilote ici.')}
-                >
                 <View style={styles.statsGrid}>
                     <StatCard
                         icon={<Trophy size={18} color="#FFD700" />}
@@ -449,16 +428,9 @@ export default function ProfileScreen() {
                         delay={300}
                     />
                 </View>
-                </TourGuideZone>
 
                 {/* ── Paramètres ── */}
                 <Text style={styles.sectionTitle}>Paramètres système</Text>
-                <TourGuideZone
-                    zone={3}
-                    tourKey="profile"
-                    shape="rectangle"
-                    text={tourStep(3, 3, 'Réglages ⚙️', 'Gère ton compte ici — et rejoue ce tutoriel quand tu veux.')}
-                >
                 <Animated.View entering={FadeInDown.delay(360).springify()} style={styles.settingsCard}>
                     <Pressable onPress={handleLogout} style={styles.settingsRow}>
                         <View style={[styles.settingsIcon, { backgroundColor: 'rgba(255,255,255,0.05)' }]}>
@@ -481,7 +453,6 @@ export default function ProfileScreen() {
                 <Pressable onPress={handleReplayTour} style={styles.replayTutoBtn}>
                     <Text style={styles.replayTutoText}>Revoir le tutoriel</Text>
                 </Pressable>
-                </TourGuideZone>
 
                 <Text style={styles.versionText}>PoleWin v1.2.0 • Build b742</Text>
             </ScrollView>

@@ -1,6 +1,6 @@
 import * as React from 'react';
 import { useEffect, useRef, useState } from 'react';
-import { Animated, Easing, Image, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { Animated, Easing, Image, Platform, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import type { TooltipProps } from 'rn-tourguide';
 import { parseTourStep } from '@/lib/onboarding';
 import { usePoleWinTour } from '@/hooks/usePoleWinTour';
@@ -11,12 +11,13 @@ const AVATAR_TUTO = require('@/assets/avatars/Avatar-tuto.png');
 // On s'aligne dessus — Bebas Neue / Nunito ne sont pas embarquées.
 const FONT_TITLE = 'Montserrat_Bold';
 const FONT_BODY = 'Inter';
+const IS_ANDROID = Platform.OS === 'android';
 
 const RED = '#E10600';
 const HALO_PAD = 6; // marge du halo autour de l'élément ciblé
-const AVATAR_RESERVE = 72; // largeur réservée à l'avatar à droite de la bulle
+const AVATAR_SIZE = 76;
+const AVATAR_RESERVE = 60; // largeur réservée à l'avatar à droite de la bulle
 
-interface TargetRect { x: number; y: number; width: number; height: number }
 interface HaloRect { left: number; top: number; width: number; height: number }
 interface ArrowState { dir: 'up' | 'down'; left: number }
 
@@ -24,9 +25,11 @@ interface ArrowState { dir: 'up' | 'down'; left: number }
  * Tooltip custom du tutoriel PoleWin.
  * - Bulle à gauche, avatar pilote à droite (débordant en bas)
  * - « Étape X / N », titre, corps, navigation + skip
- * - Animation fade + slideUp à chaque changement d'étape
- * - Flèche directionnelle + halo pulsé pointant l'élément mis en avant
- *   (mesuré via currentStep.target.measure(), au-dessus du masque rn-tourguide)
+ * - Flèche directionnelle + halo rouge pulsé sur l'élément mis en avant.
+ *
+ * Halo : positionné relativement à la bulle. On mesure la cible ET la bulle avec
+ * measureInWindow (même repère → pas de décalage StatusBar sur Android) APRÈS la
+ * stabilisation de la bulle (rn-tourguide l'anime ~1s), sinon le halo tombe à côté.
  */
 export function PoleWinTooltip({
     isFirstStep,
@@ -58,42 +61,36 @@ export function PoleWinTooltip({
         ]).start();
     }, [currentStep?.order, opacity, translateY]);
 
-    // Mesure l'élément ciblé pour positionner flèche + halo (après que la bulle
-    // se soit posée, sinon measureInWindow renvoie une position transitoire).
+    // Positionne halo + flèche une fois la bulle stabilisée.
     useEffect(() => {
         let cancelled = false;
         setHalo(null);
         setArrow(null);
 
-        const target: any = currentStep?.target;
-        if (!target || typeof target.measure !== 'function') return;
+        const wrapper: any = currentStep?.wrapper ?? (currentStep?.target as any)?.wrapper;
+        if (!wrapper || typeof wrapper.measureInWindow !== 'function') return;
 
         const timer = setTimeout(() => {
-            Promise.resolve(target.measure())
-                .then((rect: TargetRect) => {
-                    if (cancelled || !rect || !rowRef.current) return;
-                    rowRef.current.measureInWindow((rx, ry, rw, rh) => {
-                        if (cancelled) return;
-                        setHalo({
-                            left: rect.x - rx - HALO_PAD,
-                            top: rect.y - ry - HALO_PAD,
-                            width: rect.width + HALO_PAD * 2,
-                            height: rect.height + HALO_PAD * 2,
-                        });
-                        const targetBottom = rect.y + rect.height;
-                        const dir: 'up' | 'down' =
-                            targetBottom <= ry ? 'up'
-                                : rect.y >= ry + rh ? 'down'
-                                    : rect.y + rect.height / 2 < ry + rh / 2 ? 'up' : 'down';
-                        const bubbleRight = rw - AVATAR_RESERVE;
-                        const left = Math.max(20, Math.min(rect.x + rect.width / 2 - rx, bubbleRight - 20));
-                        setArrow({ dir, left });
+            if (cancelled || !rowRef.current) return;
+            wrapper.measureInWindow((tx: number, ty: number, tw: number, th: number) => {
+                if (cancelled || !rowRef.current || tw === 0) return;
+                rowRef.current.measureInWindow((rx, ry, rw, rh) => {
+                    if (cancelled) return;
+                    // Coordonnées de la cible relatives à la bulle (même repère window).
+                    setHalo({
+                        left: tx - rx - HALO_PAD,
+                        top: ty - ry - HALO_PAD,
+                        width: tw + HALO_PAD * 2,
+                        height: th + HALO_PAD * 2,
                     });
-                })
-                .catch(() => {});
-            // ~650ms : laisse le temps au scroll (≈300ms) et à l'anim de
-            // placement du tooltip rn-tourguide (≈400ms) de se stabiliser.
-        }, 650);
+                    // Direction de la flèche : cible au-dessus ou en dessous de la bulle.
+                    const dir: 'up' | 'down' = ty + th / 2 < ry + rh / 2 ? 'up' : 'down';
+                    const bubbleRight = rw - AVATAR_RESERVE;
+                    const left = Math.max(18, Math.min(tx + tw / 2 - rx, bubbleRight - 18));
+                    setArrow({ dir, left });
+                });
+            });
+        }, 1150);
 
         return () => {
             cancelled = true;
@@ -126,8 +123,8 @@ export function PoleWinTooltip({
         return () => loop.stop();
     }, [arrow, bounce]);
 
-    const haloScale = pulse.interpolate({ inputRange: [0, 1], outputRange: [1, 1.18] });
-    const haloOpacity = pulse.interpolate({ inputRange: [0, 1], outputRange: [0.85, 0] });
+    const haloScale = pulse.interpolate({ inputRange: [0, 1], outputRange: [1, 1.16] });
+    const haloOpacity = pulse.interpolate({ inputRange: [0, 1], outputRange: [0.9, 0] });
     const bounceShift = bounce.interpolate({ inputRange: [0, 1], outputRange: [0, arrow?.dir === 'up' ? -6 : 6] });
 
     const isLast = !!isLastStep;
@@ -137,8 +134,10 @@ export function PoleWinTooltip({
     };
     const handlePrimary = () => {
         if (isLast) {
+            // Fin de CE sous-tour : on le ferme (→ marqué « vu »), mais on ne
+            // termine pas tout l'onboarding (les autres sous-tours, ex. Pronos,
+            // pourront encore s'afficher). Seul « Passer » termine tout.
             handleStop?.();
-            markTourDone();
         } else {
             handleNext?.();
         }
@@ -147,7 +146,7 @@ export function PoleWinTooltip({
 
     return (
         <Animated.View ref={rowRef} style={[styles.row, { opacity, transform: [{ translateY }] }]}>
-            {/* Halo pulsé sur l'élément ciblé */}
+            {/* Halo rouge pulsé sur l'élément ciblé */}
             {halo && (
                 <Animated.View
                     pointerEvents="none"
@@ -181,28 +180,28 @@ export function PoleWinTooltip({
             {/* Bulle */}
             <View style={styles.bubble}>
                 {typeof step === 'number' && (
-                    <Text style={styles.stepIndicator}>
+                    <Text allowFontScaling={false} style={styles.stepIndicator}>
                         Étape {step}{typeof total === 'number' ? ` / ${total}` : ''}
                     </Text>
                 )}
-                {!!title && <Text style={styles.title}>{title}</Text>}
-                <Text style={styles.body}>{body}</Text>
+                {!!title && <Text allowFontScaling={false} style={styles.title}>{title}</Text>}
+                <Text allowFontScaling={false} style={styles.body}>{body}</Text>
 
                 <View style={styles.actions}>
                     {!isFirstStep ? (
                         <TouchableOpacity onPress={() => handlePrev?.()} style={styles.prevBtn} activeOpacity={0.8}>
-                            <Text style={styles.prevText}>Précédent</Text>
+                            <Text allowFontScaling={false} style={styles.prevText}>Précédent</Text>
                         </TouchableOpacity>
                     ) : (
                         <View style={styles.prevSpacer} />
                     )}
                     <TouchableOpacity onPress={handlePrimary} style={styles.nextBtn} activeOpacity={0.85}>
-                        <Text style={styles.nextText}>{primaryLabel}</Text>
+                        <Text allowFontScaling={false} style={styles.nextText}>{primaryLabel}</Text>
                     </TouchableOpacity>
                 </View>
 
                 <TouchableOpacity onPress={handleSkip} style={styles.skipBtn} activeOpacity={0.7}>
-                    <Text style={styles.skipText}>Passer le tutoriel</Text>
+                    <Text allowFontScaling={false} style={styles.skipText}>Passer le tutoriel</Text>
                 </TouchableOpacity>
             </View>
 
@@ -218,7 +217,7 @@ const styles = StyleSheet.create({
     row: {
         flexDirection: 'row',
         alignItems: 'flex-end',
-        maxWidth: 360,
+        maxWidth: IS_ANDROID ? 300 : 330,
         alignSelf: 'center',
     },
     bubble: {
@@ -227,39 +226,39 @@ const styles = StyleSheet.create({
         borderWidth: 1.5,
         borderColor: RED,
         borderRadius: 16,
-        paddingHorizontal: 18,
-        paddingTop: 14,
-        paddingBottom: 12,
+        paddingHorizontal: 16,
+        paddingTop: 12,
+        paddingBottom: 10,
         // réserve la place de l'avatar à droite (léger chevauchement voulu)
         marginRight: AVATAR_RESERVE,
     },
     stepIndicator: {
         color: RED,
         fontFamily: FONT_BODY,
-        fontSize: 11,
+        fontSize: 10,
         fontWeight: '800',
         letterSpacing: 1,
         textTransform: 'uppercase',
-        marginBottom: 6,
+        marginBottom: 4,
     },
     title: {
         color: '#FFFFFF',
         fontFamily: FONT_TITLE,
-        fontSize: 19,
+        fontSize: IS_ANDROID ? 15 : 17,
         letterSpacing: 0.3,
-        marginBottom: 6,
+        marginBottom: 4,
     },
     body: {
         color: '#F5F5F7',
         fontFamily: FONT_BODY,
-        fontSize: 14,
-        lineHeight: 20,
+        fontSize: IS_ANDROID ? 12 : 13,
+        lineHeight: IS_ANDROID ? 16 : 18,
     },
     actions: {
         flexDirection: 'row',
         alignItems: 'center',
         justifyContent: 'space-between',
-        marginTop: 14,
+        marginTop: 12,
     },
     prevBtn: { paddingVertical: 8, paddingHorizontal: 4 },
     prevSpacer: { flex: 0 },
@@ -291,12 +290,12 @@ const styles = StyleSheet.create({
     avatar: {
         position: 'absolute',
         right: 0,
-        bottom: -18,
-        width: 90,
-        height: 90,
+        bottom: -14,
+        width: AVATAR_SIZE,
+        height: AVATAR_SIZE,
         zIndex: 10,
     },
-    avatarImg: { width: 90, height: 90 },
+    avatarImg: { width: AVATAR_SIZE, height: AVATAR_SIZE },
     arrowBase: {
         position: 'absolute',
         width: 0,
