@@ -18,6 +18,9 @@ import { useSocket } from '@/context/SocketContext';
 import { PitStopWidget } from '@/components/home/PitStopWidget';
 import { fetchUnreadCount } from '@/lib/api/dms';
 import { fetchIncomingRequests } from '@/lib/api/friends';
+import { TourGuideZone } from 'rn-tourguide';
+import { useScreenTour } from '@/hooks/usePoleWinTour';
+import { tourStep } from '@/lib/onboarding';
 
 const LOGO = {
   light: require('@/assets/images/react-native-reusables-light.png'),
@@ -29,11 +32,18 @@ const IMAGE_STYLE: ImageStyle = {
   width: 76,
 };
 
+// Zones du tour d'accueil situées DANS la ScrollView (les onglets 6-10 sont
+// dans la barre de navigation, donc hors scroll).
+const HOME_SCROLL_ZONES = [1, 2, 3, 4, 5, 6];
+
 export default function Screen() {
   const { user, accessToken } = useAuth();
   const { on } = useSocket();
   const { colorScheme } = useColorScheme();
   const router = useRouter();
+  const tourScrollRef = React.useRef<ScrollView>(null);
+  const tourScrollY = React.useRef(0);
+  useScreenTour('home', { scrollRef: tourScrollRef, scrollYRef: tourScrollY, scrollZones: HOME_SCROLL_ZONES });
   const [latestNews, setLatestNews] = useState<NewsArticle[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -100,9 +110,12 @@ export default function Screen() {
   return (
     <>
       <ScrollView
+        ref={tourScrollRef}
         className="flex-1 bg-background"
         contentContainerStyle={{ paddingBottom: 140 }}
         showsVerticalScrollIndicator={false}
+        onScroll={(e) => { tourScrollY.current = e.nativeEvent.contentOffset.y; }}
+        scrollEventThrottle={16}
         refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor="#E10600" />}
       >
         {/* ─── Hero Section v7: Immersive Full Bleed ─── */}
@@ -113,18 +126,26 @@ export default function Screen() {
         >
           {/* Message icon — top right */}
           {user && (
-            <TouchableOpacity
-              onPress={() => router.push('/messages' as any)}
-              style={{ position: 'absolute', top: 52, right: 16, zIndex: 10 }}
-              className="w-10 h-10 bg-black/40 border border-white/20 rounded-full items-center justify-center"
-            >
-              <MessageCircle size={20} color="white" />
-              {totalBadgeCount > 0 && (
-                <View className="absolute -top-1 -right-1 min-w-[16px] h-4 bg-primary rounded-full items-center justify-center px-1">
-                  <Text className="text-white text-[9px] font-black">{totalBadgeCount > 99 ? '99' : totalBadgeCount}</Text>
-                </View>
-              )}
-            </TouchableOpacity>
+            <View style={{ position: 'absolute', top: 52, right: 16, zIndex: 10 }}>
+              <TourGuideZone
+                zone={2}
+                tourKey="home"
+                shape="circle"
+                text={tourStep(2, 11, 'Messagerie 💬', 'Retrouve tes discussions et notifications ici.')}
+              >
+                <TouchableOpacity
+                  onPress={() => router.push('/messages' as any)}
+                  className="w-10 h-10 bg-black/40 border border-white/20 rounded-full items-center justify-center"
+                >
+                  <MessageCircle size={20} color="white" />
+                  {totalBadgeCount > 0 && (
+                    <View className="absolute -top-1 -right-1 min-w-[16px] h-4 bg-primary rounded-full items-center justify-center px-1">
+                      <Text className="text-white text-[9px] font-black">{totalBadgeCount > 99 ? '99' : totalBadgeCount}</Text>
+                    </View>
+                  )}
+                </TouchableOpacity>
+              </TourGuideZone>
+            </View>
           )}
           {/* Gradient Overlay for blending into the background and text readability */}
           <LinearGradient
@@ -133,19 +154,26 @@ export default function Screen() {
           />
 
           {/* Logo center piece */}
-          <View
-            style={{
-              shadowColor: '#E10600', shadowOffset: { width: 0, height: 10 },
-              shadowOpacity: 0.3, shadowRadius: 25, elevation: 15,
-              marginTop: 40,
-            }}
+          <TourGuideZone
+            zone={1}
+            tourKey="home"
+            shape="circle"
+            text={tourStep(1, 11, 'Bienvenue 🏁', "Bienvenue sur PoleWin 🏁 L'app de pronos F1 entre amis ! Suis le guide.")}
           >
-            <Image
-              source={require('@/assets/images/polewin.png')}
-              style={{ width: 140, height: 140 }}
-              resizeMode="contain"
-            />
-          </View>
+            <View
+              style={{
+                shadowColor: '#E10600', shadowOffset: { width: 0, height: 10 },
+                shadowOpacity: 0.3, shadowRadius: 25, elevation: 15,
+                marginTop: 40,
+              }}
+            >
+              <Image
+                source={require('@/assets/images/polewin.png')}
+                style={{ width: 140, height: 140 }}
+                resizeMode="contain"
+              />
+            </View>
+          </TourGuideZone>
 
           {/* Stylized Season Badge */}
           <View className="absolute bottom-6 bg-[#E10600]/20 border border-[#E10600]/50 px-3 py-1 rounded-full">
@@ -178,23 +206,45 @@ export default function Screen() {
           )}
 
           {/* Pit Stop / Garage Widget */}
-          <PitStopWidget key={`pit-${refreshKey}`} />
+          <TourGuideZone
+            zone={3}
+            tourKey="home"
+            shape="rectangle"
+            text={tourStep(3, 11, 'Le Garage 🛠️', 'Accède aux mini-jeux du Garage pour gagner des points entre deux courses.')}
+          >
+            <PitStopWidget key={`pit-${refreshKey}`} />
+          </TourGuideZone>
 
-          {/* Prochain Grand Prix (Sessions) */}
+          {/* Prochain Grand Prix (Sessions) — la zone 3 du tour est définie
+              dans le widget lui-même (sur son en-tête compact). */}
           <NextSessionWidget key={`next-${refreshKey}`} />
 
           {/* Quick Stats / Actions */}
-          <QuickStats key={`stats-${refreshKey}`} />
+          <TourGuideZone
+            zone={5}
+            tourKey="home"
+            shape="rectangle"
+            text={tourStep(5, 11, 'Raccourcis ⚡', 'Ces raccourcis t’emmènent directement aux pronos, au classement et aux écuries.')}
+          >
+            <QuickStats key={`stats-${refreshKey}`} />
+          </TourGuideZone>
 
-          <View className="mb-6 flex-row items-center justify-between">
-            <Text className="font-heading text-xl font-bold text-foreground">Dernières Actualités</Text>
-            <Link href="/news" asChild>
-              <Button variant="ghost" className="flex-row gap-1">
-                <Text>Voir tout</Text>
-                <Icon as={ChevronRight} size={16} />
-              </Button>
-            </Link>
-          </View>
+          <TourGuideZone
+            zone={6}
+            tourKey="home"
+            shape="rectangle"
+            text={tourStep(6, 11, 'Les actus F1 📰', 'Retrouve les dernières actualités F1 — touche « Voir tout » pour la liste complète.')}
+          >
+            <View className="mb-6 flex-row items-center justify-between">
+              <Text className="font-heading text-xl font-bold text-foreground">Dernières Actualités</Text>
+              <Link href="/news" asChild>
+                <Button variant="ghost" className="flex-row gap-1">
+                  <Text>Voir tout</Text>
+                  <Icon as={ChevronRight} size={16} />
+                </Button>
+              </Link>
+            </View>
+          </TourGuideZone>
 
           {loading ? (
             <View className="h-48 items-center justify-center">

@@ -9,6 +9,8 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { Link } from 'expo-router';
 import { Weekday, WeekdayFr } from '@/lib/enums/weekday.enum';
 import { Month, MonthFr } from '@/lib/enums/month.enum';
+import { TourGuideZone } from 'rn-tourguide';
+import { tourStep } from '@/lib/onboarding';
 
 interface CountdownValues {
     days: number;
@@ -139,12 +141,19 @@ export function NextSessionWidget() {
 
     return (
         <View className="mb-8">
-            <View className="flex-row items-center gap-3 mb-5 px-1">
-                <View className="w-1 h-6 bg-primary rounded-full" />
-                <Text className="font-heading text-xl font-black text-foreground uppercase tracking-tighter">
-                    Prochain <Text className="text-primary">Event</Text>
-                </Text>
-            </View>
+            <TourGuideZone
+                zone={4}
+                tourKey="home"
+                shape="rectangle"
+                text={tourStep(4, 11, 'Prochain GP ⏱️', "Suis le prochain Grand Prix et ouvre la session live d'un simple tap.")}
+            >
+                <View className="flex-row items-center gap-3 mb-5 px-1">
+                    <View className="w-1 h-6 bg-primary rounded-full" />
+                    <Text className="font-heading text-xl font-black text-foreground uppercase tracking-tighter">
+                        Prochain <Text className="text-primary">Event</Text>
+                    </Text>
+                </View>
+            </TourGuideZone>
 
             <View
                 style={{
