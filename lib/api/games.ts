@@ -39,6 +39,23 @@ export async function rewardUser(
     }
 }
 
+export async function recordFalseStart(accessToken: string, gameId: string) {
+    try {
+        const res = await fetch(`${API_URL}/games/false-start`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${accessToken}`
+            },
+            body: JSON.stringify({ gameId })
+        });
+        return await res.json();
+    } catch (e) {
+        console.error("Error recording false start:", e);
+        return { status: 'error', message: 'Erreur réseau' };
+    }
+}
+
 export interface LeaderboardEntry {
     rank: number;
     userId: number;

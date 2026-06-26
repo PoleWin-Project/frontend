@@ -20,6 +20,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useAuth } from '@/context/AuthContext';
 import {
   rewardUser,
+  recordFalseStart,
   fetchPlaysToday,
   fetchLeaderboard,
   type PlaysToday,
@@ -333,6 +334,13 @@ export default function ReactionTestScreen() {
           stopPulse();
           setStateSafe('false-start');
           animBg(2, 80);
+          // Un faux départ compte comme une partie (anti pre-shoot)
+          const token = accessTokenRef.current;
+          if (token) {
+            recordFalseStart(token, 'reaction')
+              .then(() => fetchPlaysToday(token, 'reaction').then(setPlays))
+              .catch(() => { /* silent */ });
+          }
           return;
         }
 
