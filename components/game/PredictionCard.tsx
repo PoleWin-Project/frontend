@@ -390,7 +390,7 @@ export function PredictionCard({ prediction, initialPronostic, drivers, onRefres
 
                         <Button
                             onPress={handlePlaceBet}
-                            disabled={(isPodium ? podiumDrivers.includes(null) : !selectedDriver) || loading}
+                            disabled={(isPodium ? podiumDrivers.includes(null) : isSafetyCar ? !selectedOption : !selectedDriver) || loading}
                             className="w-full bg-primary h-14 rounded-2xl"
                         >
                             {loading ? (
