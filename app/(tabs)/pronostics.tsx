@@ -15,9 +15,14 @@ import { F1Loader } from '@/components/ui/F1Loader';
 import { ScreenHeader } from '@/components/ui/ScreenHeader';
 import { useAuth } from '@/context/AuthContext';
 import { GuestPrompt } from '@/components/ui/GuestPrompt';
+import { TourGuideZone } from 'rn-tourguide';
+import { useScreenTour } from '@/hooks/usePoleWinTour';
+import { tourStep } from '@/lib/onboarding';
 
 export default function PronosticsScreen() {
     const { user, refreshProfile } = useAuth();
+
+    useScreenTour('pronostics');
 
     const demo = useDemo();
     const [loading, setLoading] = useState(true);
@@ -170,12 +175,28 @@ export default function PronosticsScreen() {
             <Tabs value={activeTab} onValueChange={setActiveTab} className="flex-1">
                 <View className="mx-4 mt-4 mb-2">
                     <TabsList className="flex-row">
-                        <TabsTrigger value="upcoming" className="flex-1">
-                            <Text>À venir</Text>
-                        </TabsTrigger>
-                        <TabsTrigger value="history" className="flex-1">
-                            <Text>Historique</Text>
-                        </TabsTrigger>
+                        <TourGuideZone
+                            zone={1}
+                            tourKey="pronostics"
+                            shape="rectangle"
+                            style={{ flex: 1 }}
+                            text={tourStep(1, 2, 'Fais ton prono 🎯', 'Onglet « À venir » : avant chaque course, tente de deviner le Top 3.')}
+                        >
+                            <TabsTrigger value="upcoming" className="flex-1">
+                                <Text>À venir</Text>
+                            </TabsTrigger>
+                        </TourGuideZone>
+                        <TourGuideZone
+                            zone={2}
+                            tourKey="pronostics"
+                            shape="rectangle"
+                            style={{ flex: 1 }}
+                            text={tourStep(2, 2, 'Ton historique 📊', 'Onglet « Historique » : tes anciens pronos et les points gagnés.')}
+                        >
+                            <TabsTrigger value="history" className="flex-1">
+                                <Text>Historique</Text>
+                            </TabsTrigger>
+                        </TourGuideZone>
                     </TabsList>
                 </View>
 
