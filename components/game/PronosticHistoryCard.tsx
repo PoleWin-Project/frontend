@@ -50,6 +50,12 @@ export function PronosticHistoryCard({ pronostic }: { pronostic: Pronostic }) {
             const drivers = value.split(',');
             return drivers.map((d, i) => `${i + 1}. ${d}`).join(' | ');
         }
+        if (type === 'DNF') {
+            const drivers = value.split(',').map(d => d.trim()).filter(Boolean);
+            if (drivers.length === 0) return value;
+            if (drivers[0] === 'NONE') return 'Aucun abandon';
+            return drivers.join(', ');
+        }
         if (type === 'SAFETY_CAR') {
             return value === 'YES' ? 'OUI' : value === 'NO' ? 'NON' : value;
         }
