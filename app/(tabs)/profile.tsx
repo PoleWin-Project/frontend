@@ -22,6 +22,7 @@ import { ScreenHeader } from '@/components/ui/ScreenHeader';
 import { fetchMyBadges, fetchAllBadges, type UserBadge, type Badge } from '@/lib/api/badges';
 import { BadgeCatalog, BadgeTileHero } from '@/components/ui/badge-card';
 import { GuestPrompt } from '@/components/ui/GuestPrompt';
+import { usePoleWinTour } from '@/hooks/usePoleWinTour';
 
 // ─── Couleur avatar déterministe ──────────────────────────────────────────
 const AVATAR_GRADIENTS: [string, string][] = [
@@ -64,6 +65,13 @@ export default function ProfileScreen() {
     const { user, logout, deleteAccount, updateUserProfile, accessToken, isLoading: isAuthLoading } = useAuth();
     const insets = useSafeAreaInsets();
     const router = useRouter();
+    const { replayTour } = usePoleWinTour();
+
+    // Réinitialise le tutoriel puis renvoie sur l'accueil pour le redémarrer.
+    const handleReplayTour = () => {
+        replayTour();
+        router.replace('/(tabs)');
+    };
 
     const [isEditing, setIsEditing] = useState(false);
     const [editBio, setEditBio] = useState(user?.profile?.bio || '');
@@ -441,6 +449,11 @@ export default function ProfileScreen() {
                     </Pressable>
                 </Animated.View>
 
+                {/* Revoir le tutoriel d'onboarding */}
+                <Pressable onPress={handleReplayTour} style={styles.replayTutoBtn}>
+                    <Text style={styles.replayTutoText}>Revoir le tutoriel</Text>
+                </Pressable>
+
                 <Text style={styles.versionText}>PoleWin v1.2.0 • Build b742</Text>
             </ScrollView>
 
@@ -580,6 +593,16 @@ const styles = StyleSheet.create({
     settingsIcon: { width: 38, height: 38, borderRadius: 19, alignItems: 'center', justifyContent: 'center' },
     settingsText: { flex: 1, color: '#fff', fontWeight: '700', fontSize: 15 },
     settingsDivider: { height: 1, backgroundColor: 'rgba(255,255,255,0.04)', marginHorizontal: 16 },
+
+    // Revoir le tutoriel
+    replayTutoBtn: {
+        backgroundColor: '#E10600',
+        borderRadius: 10,
+        paddingVertical: 14,
+        alignItems: 'center',
+        marginTop: 16,
+    },
+    replayTutoText: { color: '#fff', fontFamily: 'Inter_Bold', fontWeight: '700', fontSize: 15 },
 
     // Misc
     versionText: { textAlign: 'center', color: 'rgba(255,255,255,0.12)', fontSize: 10, fontWeight: '600', letterSpacing: 1.5, marginTop: 12 },

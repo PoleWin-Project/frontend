@@ -7,17 +7,41 @@ import {
   Easing,
   Dimensions,
   TouchableOpacity,
+  ScrollView,
+  ActivityIndicator,
 } from 'react-native';
 import Svg, { Circle as SvgCircle, Defs, Pattern as SvgPattern, Rect } from 'react-native-svg';
+import { LinearGradient } from 'expo-linear-gradient';
 import { Stack, useRouter } from 'expo-router';
-import { ChevronLeft, Timer, Trophy, AlertTriangle, RotateCcw, Zap } from 'lucide-react-native';
+import { ChevronLeft, Timer, Trophy, AlertTriangle, RotateCcw, Zap, X, Crown } from 'lucide-react-native';
 import { Text } from '@/components/ui/text';
 import { Icon } from '@/components/ui/icon';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useAuth } from '@/context/AuthContext';
-import { rewardUser, fetchPlaysToday, type PlaysToday } from '@/lib/api/games';
+import {
+  rewardUser,
+  recordFalseStart,
+  fetchPlaysToday,
+  fetchLeaderboard,
+  type PlaysToday,
+  type Leaderboard,
+} from '@/lib/api/games';
 
 const { width: SW, height: SH } = Dimensions.get('window');
+
+// ─── Avatar helpers (cohérent avec la fiche profil) ─────────────────────────
+const AVATAR_GRADIENTS: [string, string][] = [
+  ['#E10600', '#7B0200'], ['#FF6B35', '#CC4400'],
+  ['#0067FF', '#003B99'], ['#00B4D8', '#005F73'],
+  ['#9B5DE5', '#6A00BB'], ['#F72585', '#B5007A'],
+  ['#06D6A0', '#028A5A'], ['#FFB703', '#C07800'],
+];
+function avatarGradient(name: string): [string, string] {
+  let h = 0;
+  for (let i = 0; i < name.length; i++) h = name.charCodeAt(i) + ((h << 5) - h);
+  return AVATAR_GRADIENTS[Math.abs(h) % AVATAR_GRADIENTS.length];
+}
+const RANK_COLORS: Record<number, string> = { 1: '#FFD700', 2: '#C0C0C0', 3: '#CD7F32' };
 const RIPPLE_MAX = 300;
 const NUM_RIPPLES = 4;
 const RIPPLE_DUR = 1600;
@@ -84,6 +108,20 @@ export default function ReactionTestScreen() {
   const [reactionTime, setReactionTime] = useState<number | null>(null);
   const [earnedPoints, setEarnedPoints] = useState<number | null>(null);
   const [rewarded, setRewarded] = useState(false);
+
+  // ─── Classement ──────────────────────────────────────────────────────────
+  const [leaderboardVisible, setLeaderboardVisible] = useState(false);
+  const [leaderboard, setLeaderboard] = useState<Leaderboard | null>(null);
+  const [leaderboardLoading, setLeaderboardLoading] = useState(false);
+
+  function openLeaderboard() {
+    setLeaderboardVisible(true);
+    if (!accessToken) return;
+    setLeaderboardLoading(true);
+    fetchLeaderboard(accessToken, 'reaction')
+      .then(setLeaderboard)
+      .finally(() => setLeaderboardLoading(false));
+  }
 
   // ─── Stable refs (safe to read from PanResponder) ────────────────────────
   const gameStateRef = useRef<GameState>('idle');
@@ -296,6 +334,13 @@ export default function ReactionTestScreen() {
           stopPulse();
           setStateSafe('false-start');
           animBg(2, 80);
+          // Un faux départ compte comme une partie (anti pre-shoot)
+          const token = accessTokenRef.current;
+          if (token) {
+            recordFalseStart(token, 'reaction')
+              .then(() => fetchPlaysToday(token, 'reaction').then(setPlays))
+              .catch(() => { /* silent */ });
+          }
           return;
         }
 
@@ -311,7 +356,7 @@ export default function ReactionTestScreen() {
           const token = accessTokenRef.current;
           if (token) {
             try {
-              await rewardUser(token, pts, 'reaction');
+              await rewardUser(token, pts, 'reaction', elapsed);
               await refreshProfileRef.current();
               setRewarded(true);
             } catch { /* silent */ }
@@ -468,7 +513,12 @@ export default function ReactionTestScreen() {
           <Text className="font-black text-[10px] text-primary uppercase tracking-[3px]">Reaction Test</Text>
           <Text className="font-black text-white text-xs italic uppercase">Le Garage</Text>
         </View>
-        <View className="w-10 h-10" />
+        <TouchableOpacity
+          onPress={openLeaderboard}
+          className="justify-center items-center bg-white/10 border border-white/20 rounded-full w-10 h-10"
+        >
+          <Icon as={Trophy} size={18} className="text-white" />
+        </TouchableOpacity>
       </View>
 
       {/* Game area — PanResponder lives here */}
@@ -582,6 +632,15 @@ export default function ReactionTestScreen() {
               )}
             </View>
 
+            {/* Classement */}
+            <TouchableOpacity
+              onPress={openLeaderboard}
+              style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, alignSelf: 'stretch', paddingVertical: 12, borderRadius: 16, backgroundColor: 'rgba(255,215,0,0.10)', borderWidth: 1, borderColor: 'rgba(255,215,0,0.30)' }}
+            >
+              <Icon as={Trophy} size={16} color="#FFD700" />
+              <Text className="font-black text-sm uppercase" style={{ color: '#FFD700', letterSpacing: 1 }}>Voir le classement</Text>
+            </TouchableOpacity>
+
             {/* Buttons */}
             <View style={{ flexDirection: 'row', gap: 12, width: '100%' }}>
               <TouchableOpacity
@@ -611,6 +670,113 @@ export default function ReactionTestScreen() {
           </Text>
         </View>
       )}
+
+      {/* Leaderboard modal */}
+      <Modal visible={leaderboardVisible} transparent animationType="slide" statusBarTranslucent onRequestClose={() => setLeaderboardVisible(false)}>
+        <View style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.92)', justifyContent: 'flex-end' }}>
+          <View style={{ maxHeight: '85%', backgroundColor: '#0c0c0f', borderTopLeftRadius: 28, borderTopRightRadius: 28, borderWidth: 1, borderColor: 'rgba(255,255,255,0.1)', overflow: 'hidden', paddingBottom: insets.bottom + 8 }}>
+
+            {/* Header */}
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 14, paddingHorizontal: 24, paddingTop: 22, paddingBottom: 18, borderBottomWidth: 1, borderBottomColor: 'rgba(255,255,255,0.07)' }}>
+              <View style={{ backgroundColor: 'rgba(255,215,0,0.15)', padding: 10, borderRadius: 14 }}>
+                <Icon as={Trophy} size={22} color="#FFD700" />
+              </View>
+              <View style={{ flex: 1 }}>
+                <Text style={{ color: 'white', fontWeight: '900', fontSize: 18, fontStyle: 'italic', textTransform: 'uppercase' }}>Classement</Text>
+                <Text style={{ color: 'rgba(255,255,255,0.35)', fontSize: 10, fontWeight: '700', textTransform: 'uppercase', letterSpacing: 2 }}>Meilleurs temps de réaction</Text>
+              </View>
+              <TouchableOpacity
+                onPress={() => setLeaderboardVisible(false)}
+                style={{ width: 36, height: 36, borderRadius: 18, backgroundColor: 'rgba(255,255,255,0.08)', alignItems: 'center', justifyContent: 'center' }}
+              >
+                <Icon as={X} size={18} color="white" />
+              </TouchableOpacity>
+            </View>
+
+            {leaderboardLoading ? (
+              <View style={{ paddingVertical: 60, alignItems: 'center' }}>
+                <ActivityIndicator color="#E10600" />
+              </View>
+            ) : !leaderboard || leaderboard.entries.length === 0 ? (
+              <View style={{ paddingVertical: 60, paddingHorizontal: 32, alignItems: 'center', gap: 12 }}>
+                <Icon as={Timer} size={40} color="rgba(255,255,255,0.2)" />
+                <Text style={{ color: 'rgba(255,255,255,0.4)', fontSize: 14, textAlign: 'center', lineHeight: 22 }}>
+                  Aucun temps enregistré pour l'instant.{'\n'}Sois le premier à entrer dans le classement !
+                </Text>
+              </View>
+            ) : (
+              <ScrollView contentContainerStyle={{ paddingVertical: 8 }}>
+                {leaderboard.entries.map((e) => {
+                  const name = e.displayName || `Pilote #${e.userId}`;
+                  const grad = avatarGradient(name);
+                  const rankColor = RANK_COLORS[e.rank];
+                  return (
+                    <View
+                      key={e.userId}
+                      style={{
+                        flexDirection: 'row', alignItems: 'center', gap: 14,
+                        marginHorizontal: 16, marginVertical: 4, paddingHorizontal: 14, paddingVertical: 10, borderRadius: 16,
+                        backgroundColor: e.isMe ? 'rgba(225,6,0,0.12)' : 'rgba(255,255,255,0.04)',
+                        borderWidth: 1, borderColor: e.isMe ? 'rgba(225,6,0,0.4)' : 'rgba(255,255,255,0.07)',
+                      }}
+                    >
+                      {/* Rank */}
+                      <View style={{ width: 30, alignItems: 'center' }}>
+                        {e.rank <= 3 ? (
+                          <Icon as={Crown} size={20} color={rankColor} />
+                        ) : (
+                          <Text style={{ color: 'rgba(255,255,255,0.5)', fontWeight: '900', fontSize: 15 }}>{e.rank}</Text>
+                        )}
+                      </View>
+                      {/* Avatar */}
+                      <LinearGradient colors={grad} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={{ width: 38, height: 38, borderRadius: 19, alignItems: 'center', justifyContent: 'center' }}>
+                        <Text style={{ color: 'white', fontWeight: '900', fontSize: 16, fontStyle: 'italic' }}>{name[0]?.toUpperCase()}</Text>
+                      </LinearGradient>
+                      {/* Name */}
+                      <Text numberOfLines={1} style={{ flex: 1, color: 'white', fontWeight: '800', fontSize: 14 }}>
+                        {name}{e.isMe ? ' (toi)' : ''}
+                      </Text>
+                      {/* Best time */}
+                      <View style={{ alignItems: 'flex-end' }}>
+                        <Text style={{ color: rankColor || '#fff', fontWeight: '900', fontSize: 16, fontStyle: 'italic' }}>{e.bestMs}</Text>
+                        <Text style={{ color: 'rgba(255,255,255,0.3)', fontSize: 9, fontWeight: '700', textTransform: 'uppercase', letterSpacing: 1 }}>ms</Text>
+                      </View>
+                    </View>
+                  );
+                })}
+
+                {/* Rang du joueur s'il est hors du top affiché */}
+                {leaderboard.me && !leaderboard.entries.some(e => e.isMe) && (
+                  <>
+                    <View style={{ alignItems: 'center', paddingVertical: 6 }}>
+                      <Text style={{ color: 'rgba(255,255,255,0.25)', fontWeight: '900', fontSize: 16 }}>···</Text>
+                    </View>
+                    <View
+                      style={{
+                        flexDirection: 'row', alignItems: 'center', gap: 14,
+                        marginHorizontal: 16, marginVertical: 4, paddingHorizontal: 14, paddingVertical: 10, borderRadius: 16,
+                        backgroundColor: 'rgba(225,6,0,0.12)', borderWidth: 1, borderColor: 'rgba(225,6,0,0.4)',
+                      }}
+                    >
+                      <View style={{ width: 30, alignItems: 'center' }}>
+                        <Text style={{ color: 'rgba(255,255,255,0.5)', fontWeight: '900', fontSize: 15 }}>{leaderboard.me.rank}</Text>
+                      </View>
+                      <View style={{ width: 38, height: 38, borderRadius: 19, backgroundColor: 'rgba(225,6,0,0.25)', alignItems: 'center', justifyContent: 'center' }}>
+                        <Icon as={Zap} size={18} color="#E10600" />
+                      </View>
+                      <Text style={{ flex: 1, color: 'white', fontWeight: '800', fontSize: 14 }}>Ton meilleur temps</Text>
+                      <View style={{ alignItems: 'flex-end' }}>
+                        <Text style={{ color: '#fff', fontWeight: '900', fontSize: 16, fontStyle: 'italic' }}>{leaderboard.me.bestMs}</Text>
+                        <Text style={{ color: 'rgba(255,255,255,0.3)', fontSize: 9, fontWeight: '700', textTransform: 'uppercase', letterSpacing: 1 }}>ms</Text>
+                      </View>
+                    </View>
+                  </>
+                )}
+              </ScrollView>
+            )}
+          </View>
+        </View>
+      </Modal>
 
       {/* Rules modal */}
       <Modal visible={rulesVisible} transparent animationType="fade" statusBarTranslucent>
