@@ -389,8 +389,12 @@ export default function ProfileScreen() {
                     );
                 })()}
 
-                {/* ── Stats grid ── */}
-                <Text style={styles.sectionTitle}>Statistiques</Text>
+                <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-end', marginBottom: 4 }}>
+                    <Text style={styles.sectionTitle}>Statistiques</Text>
+                    <Pressable onPress={() => router.push('/user/friends' as any)}>
+                        <Text style={{ color: '#00B4D8', fontSize: 12, fontWeight: '700' }}>Mes amis →</Text>
+                    </Pressable>
+                </View>
                 <View style={styles.statsGrid}>
                     <StatCard
                         icon={<Trophy size={18} color="#FFD700" />}

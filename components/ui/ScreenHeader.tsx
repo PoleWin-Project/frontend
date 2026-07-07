@@ -2,17 +2,21 @@ import React from 'react';
 import { View } from 'react-native';
 import { Text } from '@/components/ui/text';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { Trophy } from 'lucide-react-native';
+import { Trophy, ChevronLeft } from 'lucide-react-native';
 import { useAuth } from '@/context/AuthContext';
+import { useRouter } from 'expo-router';
+import { Pressable } from 'react-native';
 
 interface ScreenHeaderProps {
     title: string;
     subtitle?: string;
     showPoints?: boolean;
+    showBack?: boolean;
 }
 
-export function ScreenHeader({ title, subtitle, showPoints = false }: ScreenHeaderProps) {
+export function ScreenHeader({ title, subtitle, showPoints = false, showBack = false }: ScreenHeaderProps) {
     const { user } = useAuth();
+    const router = useRouter();
 
     // Split title to highlight the last word in primary color (e.g., "Pronos Win")
     const words = title.split(' ');
@@ -22,6 +26,11 @@ export function ScreenHeader({ title, subtitle, showPoints = false }: ScreenHead
     return (
         <SafeAreaView edges={['top']} className="bg-card">
             <View className="px-6 py-4 flex-row items-center justify-between border-b border-border/10">
+                {showBack && (
+                    <Pressable onPress={() => router.back()} className="mr-3 mt-1 active:opacity-70 p-1 -ml-2 rounded-full">
+                        <ChevronLeft size={24} color="#E10600" />
+                    </Pressable>
+                )}
                 <View className="flex-1 mr-3">
                     <Text className="text-3xl font-black italic uppercase tracking-tighter text-foreground" numberOfLines={1} adjustsFontSizeToFit>
                         {firstPart} <Text className="text-primary">{lastWord}</Text>

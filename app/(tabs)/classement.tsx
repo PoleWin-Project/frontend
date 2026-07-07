@@ -3,7 +3,7 @@ import {
     View, FlatList, TextInput, TouchableOpacity,
     ActivityIndicator, StyleSheet, Platform, Pressable, RefreshControl
 } from 'react-native';
-import { useFocusEffect } from 'expo-router';
+import { useFocusEffect, useRouter } from 'expo-router';
 import Animated, { FadeInRight, FadeInUp, useSharedValue, useAnimatedStyle, withSpring, FadeInDown } from 'react-native-reanimated';
 import { BlurView } from 'expo-blur';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -28,8 +28,9 @@ const MEDAL: Record<number, { emoji: string; color: string; rgb: string }> = {
 };
 
 // ─── Player Row ───────────────────────────────────────────────────────────────
-function PlayerRow({ item, index, isMe }: { item: PlayerRank; index: number; isMe: boolean }) {
-    const medal = MEDAL[item.rank] ?? null;
+function PlayerRow({ item, index, isMe, sort }: { item: PlayerRank; index: number; isMe: boolean; sort: 'points' | 'winRate' | 'netGain' }) {
+    const router = useRouter();
+    const medal = sort === 'points' ? MEDAL[item.rank] ?? null : null;
     const isPodium = item.rank <= 3;
     const scale = useSharedValue(1);
 
@@ -42,22 +43,23 @@ function PlayerRow({ item, index, isMe }: { item: PlayerRank; index: number; isM
             entering={FadeInRight.delay(Math.min(index * 40, 500)).springify().damping(14).mass(0.9)}
             onPressIn={() => scale.value = withSpring(0.95)}
             onPressOut={() => scale.value = withSpring(1)}
+            onPress={() => item.userId && router.push(`/user/${item.userId}` as any)}
             style={[
                 styles.rowCard,
                 animatedStyle,
-                isPodium && { borderColor: `rgba(${medal.rgb}, 0.3)`, borderWidth: 1 },
-                isMe && !isPodium && { borderColor: '#E10600', borderWidth: 1 },
+                isPodium && medal && { borderColor: `rgba(${medal.rgb}, 0.3)`, borderWidth: 1 },
+                isMe && (!isPodium || !medal) && { borderColor: '#E10600', borderWidth: 1 },
             ]}
         >
             {/* Background Gradient for Podium or Me */}
-            {isPodium && (
+            {isPodium && medal && (
                 <LinearGradient
                     colors={[`rgba(${medal.rgb}, 0.15)`, 'transparent']}
                     start={{ x: 0, y: 0 }} end={{ x: 0.8, y: 0 }}
                     style={[StyleSheet.absoluteFillObject, { borderRadius: 20 }]}
                 />
             )}
-            {isMe && !isPodium && (
+            {isMe && (!isPodium || !medal) && (
                 <LinearGradient
                     colors={['rgba(225,6,0,0.15)', 'transparent']}
                     start={{ x: 0, y: 0 }} end={{ x: 0.8, y: 0 }}
@@ -82,11 +84,13 @@ function PlayerRow({ item, index, isMe }: { item: PlayerRank; index: number; isM
                 </Text>
             </View>
 
-            <View style={[styles.pointsPill, isPodium && { backgroundColor: `rgba(${medal.rgb}, 0.15)` }, isMe && !isPodium && { backgroundColor: 'rgba(225,6,0,0.15)' }]}>
-                <Text style={[styles.pointsText, isPodium && { color: medal.color }, isMe && !isPodium && { color: '#E10600' }]}>
-                    {item.points.toLocaleString()}
+            <View style={[styles.pointsPill, isPodium && { backgroundColor: `rgba(${medal?.rgb ?? '255,255,255'}, 0.15)` }, isMe && !isPodium && { backgroundColor: 'rgba(225,6,0,0.15)' }]}>
+                <Text style={[styles.pointsText, isPodium && medal && { color: medal.color }, isMe && !isPodium && { color: '#E10600' }]}>
+                    {sort === 'points' ? item.points.toLocaleString() : sort === 'winRate' ? `${item.winRate ?? 0}%` : (item.netGain ?? 0).toLocaleString()}
                 </Text>
-                <Text style={[styles.pointsPts, isPodium && { color: medal.color }, isMe && !isPodium && { color: '#E10600' }]}>PTS</Text>
+                <Text style={[styles.pointsPts, isPodium && medal && { color: medal.color }, isMe && !isPodium && { color: '#E10600' }]}>
+                    {sort === 'points' ? 'PTS' : sort === 'winRate' ? 'WIN' : 'PTS'}
+                </Text>
             </View>
         </AnimatedPressable>
     );
@@ -100,6 +104,7 @@ export default function PlayerLeaderboardScreen() {
     const [myRank, setMyRank] = useState<MyRank | null>(null);
     const [search, setSearch] = useState('');
     const [focused, setFocused] = useState(false);
+    const [sort, setSort] = useState<"points" | "winRate" | "netGain">("points");
     const [visibleCount, setVisible] = useState(PAGE_SIZE);
     const [refreshing, setRefreshing] = useState(false);
 
@@ -110,11 +115,11 @@ export default function PlayerLeaderboardScreen() {
     );
 
     // silent = pull-to-refresh : pas d'overlay de chargement plein écran
-    async function loadData(silent = false) {
+    async function loadData(silent = false, currentSort = sort) {
         if (!silent) setLoading(true);
         try {
             const [players, rank] = await Promise.all([
-                fetchGlobalLeaderboard(100),
+                fetchGlobalLeaderboard(100, 1, currentSort),
                 fetchMyRank().catch(() => null),
             ]);
             setAllPlayers(players);
@@ -223,6 +228,24 @@ export default function PlayerLeaderboardScreen() {
                         </TouchableOpacity>
                     )}
                 </View>
+                
+                <View style={styles.sortContainer}>
+                    {(['points', 'winRate', 'netGain'] as const).map((s) => (
+                        <TouchableOpacity
+                            key={s}
+                            style={[styles.sortBtn, sort === s && styles.sortBtnActive]}
+                            onPress={() => {
+                                setSort(s);
+                                setVisible(PAGE_SIZE);
+                                loadData(false, s);
+                            }}
+                        >
+                            <Text style={[styles.sortText, sort === s && styles.sortTextActive]}>
+                                {s === 'points' ? 'Points' : s === 'winRate' ? 'Win Rate' : 'Bilan'}
+                            </Text>
+                        </TouchableOpacity>
+                    ))}
+                </View>
             </View>
 
             <FlatList
@@ -233,6 +256,7 @@ export default function PlayerLeaderboardScreen() {
                         item={item}
                         index={index}
                         isMe={user?.username?.toLowerCase() === item.username.toLowerCase()}
+                        sort={sort}
                     />
                 )}
                 ListHeaderComponent={ListHeader}
@@ -291,6 +315,17 @@ const styles = StyleSheet.create({
         flex: 1, marginLeft: 12, color: '#fff',
         fontSize: 16, fontWeight: '500',
     },
+
+    sortContainer: {
+        flexDirection: 'row', gap: 10, marginTop: 12,
+    },
+    sortBtn: {
+        paddingHorizontal: 16, paddingVertical: 8,
+        borderRadius: 20, backgroundColor: 'rgba(255,255,255,0.05)',
+    },
+    sortBtnActive: { backgroundColor: 'rgba(225,6,0,0.2)' },
+    sortText: { color: 'rgba(255,255,255,0.6)', fontSize: 13, fontWeight: '600' },
+    sortTextActive: { color: '#E10600', fontWeight: '800' },
 
     listContent: { paddingHorizontal: 20, paddingTop: 5 },
 
