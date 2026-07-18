@@ -10,6 +10,10 @@ export interface Badge {
     imageUrl: string | null;
     rarity: BadgeRarity | null;
     createdAt: string;
+    /** Nombre de détenteurs (présent sur GET /badges). */
+    ownedCount?: number;
+    /** Pourcentage d'utilisateurs possédant le badge (présent sur GET /badges). */
+    ownedPct?: number;
 }
 
 export interface UserBadge {

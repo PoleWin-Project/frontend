@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import {
     View, Image, TouchableOpacity, Modal, StyleSheet,
-    FlatList, Pressable,
+    Pressable,
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Text } from '@/components/ui/text';
@@ -17,7 +17,6 @@ const RARITY: Record<BadgeRarity, { label: string; color: string; glow: string }
     epic:      { label: 'Épique',      color: '#B76FFF', glow: '#B76FFF22' },
     legendary: { label: 'Légendaire',  color: '#FFD700', glow: '#FFD70022' },
 };
-const RARITY_ORDER: BadgeRarity[] = ['legendary', 'epic', 'rare', 'uncommon', 'common'];
 
 function rarityConfig(rarity: BadgeRarity | null | undefined) {
     return rarity ? (RARITY[rarity] ?? RARITY.common) : RARITY.common;
@@ -202,80 +201,13 @@ export function BadgeTileHero({
     );
 }
 
-// ─── Single tile ──────────────────────────────────────────────────────────────
-export function BadgeTile({
-    badge,
-    userBadge,
-}: {
-    badge: Badge;
-    userBadge: UserBadge | null;
-}) {
-    const [open, setOpen] = useState(false);
-    const rc = rarityConfig(badge.rarity);
-    const uri = badgeImageUri(badge.imageUrl);
-    const earned = !!userBadge;
-
-    return (
-        <>
-            <TouchableOpacity
-                style={[t.tile, { borderColor: earned ? rc.color + '55' : 'rgba(255,255,255,0.07)' }]}
-                onPress={() => setOpen(true)}
-                activeOpacity={0.75}
-            >
-                {earned && (
-                    <LinearGradient
-                        colors={[rc.glow, 'transparent']}
-                        style={StyleSheet.absoluteFillObject}
-                        start={{ x: 0.5, y: 0 }} end={{ x: 0.5, y: 1 }}
-                    />
-                )}
-
-                {/* Image */}
-                <View style={[
-                    t.imgWrap,
-                    { borderColor: earned ? rc.color + '33' : 'rgba(255,255,255,0.06)' },
-                    !earned && t.imgWrapLocked,
-                ]}>
-                    {uri ? (
-                        <Image
-                            source={{ uri }}
-                            style={[t.img, !earned && t.imgLocked]}
-                            resizeMode="contain"
-                        />
-                    ) : (
-                        <Shield size={26} color={earned ? rc.color : 'rgba(255,255,255,0.12)'} />
-                    )}
-                    {!earned && (
-                        <View style={t.lockOverlay}>
-                            <Lock size={12} color="rgba(255,255,255,0.5)" />
-                        </View>
-                    )}
-                </View>
-
-                <Text style={[t.name, !earned && t.nameLocked]} numberOfLines={2}>
-                    {badge.name}
-                </Text>
-
-                {/* Rarity dot */}
-                <View style={[t.dot, { backgroundColor: earned ? rc.color : 'rgba(255,255,255,0.15)' }]} />
-            </TouchableOpacity>
-
-            <BadgeModal
-                badge={badge}
-                userBadge={userBadge}
-                visible={open}
-                onClose={() => setOpen(false)}
-            />
-        </>
-    );
-}
-
 // ─── Exported catalog ─────────────────────────────────────────────────────────
 
 /**
- * Affiche le catalogue complet de badges.
- * - allBadges : tous les badges du système
- * - userBadges : les badges obtenus par l'utilisateur affiché
+ * Section badges : met en avant le badge « Pionnier du Paddock » et le
+ * pourcentage d'utilisateurs qui le possèdent.
+ * - allBadges : catalogue système (fournit `ownedPct`)
+ * - userBadges : badges obtenus par l'utilisateur affiché (statut débloqué)
  */
 export function BadgeCatalog({
     allBadges,
@@ -284,21 +216,9 @@ export function BadgeCatalog({
     allBadges: Badge[];
     userBadges: UserBadge[];
 }) {
-    const earnedMap = new Map(userBadges.map(ub => [ub.badgeId, ub]));
+    const pionnier = allBadges.find(b => b.code === 'pionnier_du_paddock') ?? null;
 
-    // Earned first, then locked; within each group, order by rarity desc
-    const sorted = [...allBadges].sort((a, b) => {
-        const aEarned = earnedMap.has(a.id) ? 0 : 1;
-        const bEarned = earnedMap.has(b.id) ? 0 : 1;
-        if (aEarned !== bEarned) return aEarned - bEarned;
-        const aRank = RARITY_ORDER.indexOf(a.rarity as BadgeRarity);
-        const bRank = RARITY_ORDER.indexOf(b.rarity as BadgeRarity);
-        return aRank - bRank;
-    });
-
-    const earnedCount = userBadges.length;
-
-    if (allBadges.length === 0) {
+    if (!pionnier) {
         return (
             <View style={g.empty}>
                 <Shield size={28} color="rgba(255,255,255,0.12)" />
@@ -307,89 +227,44 @@ export function BadgeCatalog({
         );
     }
 
-    return (
-        <View style={g.wrap}>
-            <Text style={g.counter}>
-                <Text style={g.counterVal}>{earnedCount}</Text>
-                <Text style={g.counterOf}> / {allBadges.length} obtenus</Text>
-            </Text>
+    const owned = userBadges.find(ub => ub.badgeId === pionnier.id) ?? null;
+    const pct = pionnier.ownedPct;
 
-            <FlatList
-                data={sorted}
-                keyExtractor={item => String(item.id)}
-                numColumns={3}
-                scrollEnabled={false}
-                columnWrapperStyle={g.row}
-                contentContainerStyle={g.list}
-                renderItem={({ item }) => (
-                    <BadgeTile
-                        badge={item}
-                        userBadge={earnedMap.get(item.id) ?? null}
-                    />
+    return (
+        <View style={g.showcase}>
+            <BadgeTileHero badge={pionnier} userBadge={owned} />
+            <View style={g.showcaseInfo}>
+                <Text style={g.showcaseName}>{pionnier.name}</Text>
+                <View style={[g.statusPill, owned ? g.statusOwned : g.statusLocked]}>
+                    <Text style={[g.statusText, { color: owned ? '#57C785' : 'rgba(255,255,255,0.4)' }]}>
+                        {owned ? 'Débloqué' : 'À débloquer'}
+                    </Text>
+                </View>
+                {pionnier.description && (
+                    <Text style={g.showcaseDesc} numberOfLines={4}>{pionnier.description}</Text>
                 )}
-            />
+                {pct != null && (
+                    <Text style={g.showcasePct}>Obtenu par {pct}% des utilisateurs</Text>
+                )}
+            </View>
         </View>
     );
 }
 
-/** Ancien composant conservé pour compatibilité (profil sans catalogue complet) */
-export function BadgeGrid({ userBadges }: { userBadges: UserBadge[] }) {
-    if (userBadges.length === 0) {
-        return (
-            <View style={g.empty}>
-                <Shield size={28} color="rgba(255,255,255,0.12)" />
-                <Text style={g.emptyText}>Aucun badge pour l'instant</Text>
-            </View>
-        );
-    }
-    const allBadges = userBadges.map(ub => ub.badge);
-    return (
-        <BadgeCatalog allBadges={allBadges} userBadges={userBadges} />
-    );
-}
-
 // ─── Styles ───────────────────────────────────────────────────────────────────
-const TILE_SIZE = 104;
-
-const t = StyleSheet.create({
-    tile: {
-        width: TILE_SIZE, alignItems: 'center', gap: 6,
-        backgroundColor: '#0c0c0f',
-        borderWidth: 1, borderRadius: 16,
-        paddingVertical: 14, paddingHorizontal: 6,
-        overflow: 'hidden',
-    },
-    imgWrap: {
-        width: 54, height: 54, borderRadius: 27,
-        borderWidth: 1.5,
-        alignItems: 'center', justifyContent: 'center',
-        backgroundColor: 'rgba(255,255,255,0.03)',
-        position: 'relative',
-    },
-    img:          { width: 42, height: 42 },
-    imgLocked:    { opacity: 0.55 },
-    imgWrapLocked: { backgroundColor: 'rgba(0,0,0,0.3)' },
-    lockOverlay: {
-        position: 'absolute', bottom: -2, right: -2,
-        width: 20, height: 20, borderRadius: 10,
-        backgroundColor: '#1a1a1e',
-        borderWidth: 1, borderColor: 'rgba(255,255,255,0.1)',
-        alignItems: 'center', justifyContent: 'center',
-    },
-    name:       { color: 'rgba(255,255,255,0.8)', fontSize: 10, fontWeight: '700', textAlign: 'center', lineHeight: 13 },
-    nameLocked: { color: 'rgba(255,255,255,0.25)' },
-    dot:        { width: 5, height: 5, borderRadius: 3 },
-});
 
 const g = StyleSheet.create({
-    wrap:       { gap: 10 },
-    counter:    { textAlign: 'center' },
-    counterVal: { color: '#fff', fontWeight: '900', fontSize: 15, fontStyle: 'italic' },
-    counterOf:  { color: 'rgba(255,255,255,0.3)', fontSize: 13, fontWeight: '600' },
-    list:       { gap: 8 },
-    row:        { gap: 8, justifyContent: 'flex-start' },
-    empty:      { alignItems: 'center', gap: 8, paddingVertical: 16 },
-    emptyText:  { color: 'rgba(255,255,255,0.2)', fontSize: 13, fontStyle: 'italic' },
+    showcase:      { flexDirection: 'row', alignItems: 'center', gap: 14 },
+    showcaseInfo:  { flex: 1, gap: 6 },
+    showcaseName:  { color: '#fff', fontSize: 16, fontWeight: '900', fontStyle: 'italic', textTransform: 'uppercase', letterSpacing: 0.3 },
+    showcaseDesc:  { color: 'rgba(255,255,255,0.55)', fontSize: 12, lineHeight: 17, fontStyle: 'italic' },
+    showcasePct:   { color: 'rgba(255,255,255,0.4)', fontSize: 11, fontWeight: '700', marginTop: 2 },
+    statusPill:    { alignSelf: 'flex-start', paddingHorizontal: 10, paddingVertical: 3, borderRadius: 10, borderWidth: 1 },
+    statusOwned:   { backgroundColor: 'rgba(87,199,133,0.12)', borderColor: 'rgba(87,199,133,0.4)' },
+    statusLocked:  { backgroundColor: 'rgba(255,255,255,0.04)', borderColor: 'rgba(255,255,255,0.1)' },
+    statusText:    { fontSize: 10, fontWeight: '800', textTransform: 'uppercase', letterSpacing: 0.5 },
+    empty:         { alignItems: 'center', gap: 8, paddingVertical: 16 },
+    emptyText:     { color: 'rgba(255,255,255,0.2)', fontSize: 13, fontStyle: 'italic' },
 });
 
 const m = StyleSheet.create({

@@ -12,7 +12,7 @@ import { LinearGradient } from 'expo-linear-gradient';
 import Animated, { FadeInDown } from 'react-native-reanimated';
 import {
     LogOut, Trash2, Edit2, Check, X, Shield, Star, Trophy,
-    ArrowRight, Users, Target, TrendingUp, Zap, Flag, ChevronDown, ChevronUp,
+    ArrowRight, Users, Target, TrendingUp, Zap, Flag,
 } from 'lucide-react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { getLatestSessionTeams, getLatestSessionDrivers, type OpenF1Team, type OpenF1Driver } from '@/lib/api/openf1';
@@ -20,7 +20,7 @@ import { fetchUserStats, type UserStats } from '@/lib/api/users';
 import { fetchFriends } from '@/lib/api/friends';
 import { ScreenHeader } from '@/components/ui/ScreenHeader';
 import { fetchMyBadges, fetchAllBadges, type UserBadge, type Badge } from '@/lib/api/badges';
-import { BadgeCatalog, BadgeTileHero } from '@/components/ui/badge-card';
+import { BadgeTileHero } from '@/components/ui/badge-card';
 import { GuestPrompt } from '@/components/ui/GuestPrompt';
 import { usePoleWinTour } from '@/hooks/usePoleWinTour';
 
@@ -86,7 +86,6 @@ export default function ProfileScreen() {
     const [friendCount, setFriendCount] = useState<number>(0);
     const [allBadges, setAllBadges] = useState<Badge[]>([]);
     const [userBadges, setUserBadges] = useState<UserBadge[]>([]);
-    const [badgesOpen, setBadgesOpen] = useState(false);
     const [refreshing, setRefreshing] = useState(false);
 
     useEffect(() => {
@@ -355,36 +354,45 @@ export default function ProfileScreen() {
                     </Animated.View>
                 )}
 
-                {/* ── Badges ── */}
+                {/* ── Badge Pionnier du Paddock ── */}
                 {!isEditing && (() => {
                     const pionnier = allBadges.find(b => b.code === 'pionnier_du_paddock') ?? null;
+                    if (!pionnier) return null;
+                    const owned = userBadges.find(ub => ub.badge.code === 'pionnier_du_paddock') ?? null;
+                    const pct = pionnier.ownedPct;
                     return (
                         <Animated.View entering={FadeInDown.delay(200).springify()} style={styles.badgeCard}>
-                            <Pressable style={styles.badgeHeader} onPress={() => setBadgesOpen(v => !v)}>
+                            <View style={styles.badgeHeader}>
                                 <View>
-                                    <Text style={styles.sectionLabel}>Badges</Text>
+                                    <Text style={styles.sectionLabel}>Badge</Text>
                                     <Text style={styles.badgeSubtitle}>
-                                        {userBadges.length} / {allBadges.length} débloqués
+                                        {owned ? 'Débloqué' : 'À débloquer'}
                                     </Text>
                                 </View>
-                                {badgesOpen
-                                    ? <ChevronUp size={18} color="rgba(255,255,255,0.3)" />
-                                    : <ChevronDown size={18} color="rgba(255,255,255,0.3)" />
-                                }
-                            </Pressable>
+                                {pct != null && (
+                                    <View style={styles.badgePctPill}>
+                                        <Text style={styles.badgePctVal}>{pct}%</Text>
+                                        <Text style={styles.badgePctLabel}>des pilotes</Text>
+                                    </View>
+                                )}
+                            </View>
 
-                            {badgesOpen ? (
-                                <BadgeCatalog allBadges={allBadges} userBadges={userBadges} />
-                            ) : (
-                                <View style={styles.badgePreview}>
-                                    {pionnier && <BadgeTileHero badge={pionnier} userBadge={null} />}
-                                    <Text style={styles.badgeMore}>
-                                        {allBadges.length > 1
-                                            ? `+${allBadges.length - 1} badges à découvrir →`
-                                            : 'Appuie pour voir tous les badges →'}
-                                    </Text>
+                            <View style={styles.badgePreview}>
+                                <BadgeTileHero badge={pionnier} userBadge={owned} />
+                                <View style={{ flex: 1, gap: 6 }}>
+                                    <Text style={styles.badgeShowcaseName}>{pionnier.name}</Text>
+                                    {pionnier.description && (
+                                        <Text style={styles.badgeShowcaseDesc} numberOfLines={4}>
+                                            {pionnier.description}
+                                        </Text>
+                                    )}
+                                    {pct != null && (
+                                        <Text style={styles.badgeShowcasePct}>
+                                            Obtenu par {pct}% des utilisateurs
+                                        </Text>
+                                    )}
                                 </View>
-                            )}
+                            </View>
                         </Animated.View>
                     );
                 })()}
@@ -560,9 +568,27 @@ const styles = StyleSheet.create({
     badgePreview: {
         flexDirection: 'row', alignItems: 'center', gap: 14,
     },
-    badgeMore: {
-        flex: 1, color: 'rgba(255,255,255,0.3)', fontSize: 12,
-        fontWeight: '700', fontStyle: 'italic',
+    badgePctPill: {
+        alignItems: 'center', paddingHorizontal: 12, paddingVertical: 6,
+        borderRadius: 14, backgroundColor: 'rgba(87,199,133,0.12)',
+        borderWidth: 1, borderColor: 'rgba(87,199,133,0.35)',
+    },
+    badgePctVal: {
+        color: '#57C785', fontSize: 16, fontWeight: '900', fontStyle: 'italic',
+    },
+    badgePctLabel: {
+        color: 'rgba(87,199,133,0.7)', fontSize: 9, fontWeight: '700',
+        textTransform: 'uppercase', letterSpacing: 0.5,
+    },
+    badgeShowcaseName: {
+        color: '#fff', fontSize: 16, fontWeight: '900', fontStyle: 'italic',
+        textTransform: 'uppercase', letterSpacing: 0.3,
+    },
+    badgeShowcaseDesc: {
+        color: 'rgba(255,255,255,0.55)', fontSize: 12, lineHeight: 17, fontStyle: 'italic',
+    },
+    badgeShowcasePct: {
+        color: 'rgba(255,255,255,0.4)', fontSize: 11, fontWeight: '700', marginTop: 2,
     },
 
     // Bio

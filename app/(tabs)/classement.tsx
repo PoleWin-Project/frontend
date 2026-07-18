@@ -30,13 +30,35 @@ const MEDAL: Record<number, { emoji: string; color: string; rgb: string }> = {
 // ─── Player Row ───────────────────────────────────────────────────────────────
 function PlayerRow({ item, index, isMe, sort }: { item: PlayerRank; index: number; isMe: boolean; sort: 'points' | 'winRate' | 'netGain' }) {
     const router = useRouter();
-    const medal = sort === 'points' ? MEDAL[item.rank] ?? null : null;
+    const medal = MEDAL[item.rank] ?? null;
     const isPodium = item.rank <= 3;
     const scale = useSharedValue(1);
 
     const animatedStyle = useAnimatedStyle(() => ({
         transform: [{ scale: scale.value }]
     }));
+
+    const netGain = item.netGain ?? 0;
+    const netGainStr = netGain > 0 ? `+${netGain.toLocaleString()}` : netGain.toLocaleString();
+    const netGainColor = netGain > 0 ? '#4ADE80' : netGain < 0 ? '#EF4444' : (isPodium && medal ? medal.color : (isMe ? '#E10600' : '#fff'));
+
+    let textColor: string | undefined;
+    if (sort === 'netGain') {
+        textColor = netGainColor;
+    } else if (isPodium && medal) {
+        textColor = medal.color;
+    } else if (isMe) {
+        textColor = '#E10600';
+    }
+
+    let bgColor: string | undefined;
+    if (sort === 'netGain' && netGain !== 0) {
+        bgColor = netGain > 0 ? 'rgba(74, 222, 128, 0.15)' : 'rgba(239, 68, 68, 0.15)';
+    } else if (isPodium && medal) {
+        bgColor = `rgba(${medal.rgb}, 0.15)`;
+    } else if (isMe) {
+        bgColor = 'rgba(225,6,0,0.15)';
+    }
 
     return (
         <AnimatedPressable
@@ -84,11 +106,11 @@ function PlayerRow({ item, index, isMe, sort }: { item: PlayerRank; index: numbe
                 </Text>
             </View>
 
-            <View style={[styles.pointsPill, isPodium && { backgroundColor: `rgba(${medal?.rgb ?? '255,255,255'}, 0.15)` }, isMe && !isPodium && { backgroundColor: 'rgba(225,6,0,0.15)' }]}>
-                <Text style={[styles.pointsText, isPodium && medal && { color: medal.color }, isMe && !isPodium && { color: '#E10600' }]}>
-                    {sort === 'points' ? item.points.toLocaleString() : sort === 'winRate' ? `${item.winRate ?? 0}%` : (item.netGain ?? 0).toLocaleString()}
+            <View style={[styles.pointsPill, bgColor && { backgroundColor: bgColor }]}>
+                <Text style={[styles.pointsText, textColor && { color: textColor }]}>
+                    {sort === 'points' ? item.points.toLocaleString() : sort === 'winRate' ? `${item.winRate ?? 0}%` : netGainStr}
                 </Text>
-                <Text style={[styles.pointsPts, isPodium && medal && { color: medal.color }, isMe && !isPodium && { color: '#E10600' }]}>
+                <Text style={[styles.pointsPts, textColor && { color: textColor }]}>
                     {sort === 'points' ? 'PTS' : sort === 'winRate' ? 'WIN' : 'PTS'}
                 </Text>
             </View>
@@ -108,9 +130,12 @@ export default function PlayerLeaderboardScreen() {
     const [visibleCount, setVisible] = useState(PAGE_SIZE);
     const [refreshing, setRefreshing] = useState(false);
 
+    const sortRef = React.useRef(sort);
+    sortRef.current = sort;
+
     useFocusEffect(
         useCallback(() => {
-            loadData();
+            loadData(false, sortRef.current);
         }, [])
     );
 
