@@ -3,7 +3,7 @@ import { View, ScrollView, Pressable, Image, TouchableOpacity, RefreshControl } 
 import { Stack, useRouter } from 'expo-router';
 import { BlurView } from 'expo-blur';
 import { LinearGradient } from 'expo-linear-gradient';
-import { ChevronLeft, Zap, Trophy, Timer, Settings2, ShieldCheck, ArrowRight } from 'lucide-react-native';
+import { ChevronLeft, Zap, Trophy, Timer, ShieldCheck, ArrowRight, Flag } from 'lucide-react-native';
 import { Text } from '@/components/ui/text';
 import { Icon } from '@/components/ui/icon';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -15,21 +15,35 @@ export default function GarageScreen() {
   const insets = useSafeAreaInsets();
   const { accessToken, user } = useAuth();
   const [reactionPlays, setReactionPlays] = useState<PlaysToday | null>(null);
+  const [driverDlePlays, setDriverDlePlays] = useState<PlaysToday | null>(null);
   const [refreshing, setRefreshing] = useState(false);
 
   useEffect(() => {
     if (!accessToken) return;
     fetchPlaysToday(accessToken, 'reaction').then(setReactionPlays);
+    fetchPlaysToday(accessToken, 'driver-dle').then(setDriverDlePlays);
   }, [accessToken]);
 
   async function onRefresh() {
     if (!accessToken) return;
     setRefreshing(true);
-    await fetchPlaysToday(accessToken, 'reaction').then(setReactionPlays).catch(() => {});
+    await Promise.all([
+      fetchPlaysToday(accessToken, 'reaction').then(setReactionPlays).catch(() => {}),
+      fetchPlaysToday(accessToken, 'driver-dle').then(setDriverDlePlays).catch(() => {}),
+    ]);
     setRefreshing(false);
   }
 
   const games = [
+    {
+      id: 'driver-dle',
+      title: 'Driver Guess',
+      subtitle: 'Devine le pilote du jour',
+      reward: 'Jusqu\'à 50 pts',
+      icon: Flag,
+      color: '#9B5DE5',
+      status: 'Disponible'
+    },
     {
       id: 'reaction',
       title: 'Reaction Test',
@@ -38,15 +52,6 @@ export default function GarageScreen() {
       icon: Timer,
       color: '#E10600',
       status: 'Disponible'
-    },
-    {
-      id: 'tyre',
-      title: 'Pit Stop Pro',
-      subtitle: 'Changement de pneus express',
-      reward: 'Jusqu\'à 30 pts',
-      icon: Settings2,
-      color: '#00D1FF',
-      status: 'Bientôt'
     },
     {
       id: 'quiz',
@@ -63,11 +68,19 @@ export default function GarageScreen() {
     ? reactionPlays.limit === null ? null : Math.max(0, reactionPlays.limit - reactionPlays.played)
     : undefined; // undefined = chargement
 
+  const driverDlePlaysLeft = driverDlePlays
+    ? driverDlePlays.limit === null ? null : Math.max(0, driverDlePlays.limit - driverDlePlays.played)
+    : undefined; // undefined = chargement
+
   function handleGamePress(id: string, status: string) {
     if (status !== 'Disponible') return;
     if (id === 'reaction') {
       if (reactionPlaysLeft === 0) return; // bloqué
       router.push('/games/reaction-test');
+    }
+    if (id === 'driver-dle') {
+      if (driverDlePlaysLeft === 0) return; // déjà joué aujourd'hui
+      router.push('/games/driver-dle');
     }
   }
 
@@ -177,7 +190,8 @@ export default function GarageScreen() {
 
                   <View style={{ width: 44, height: 44, alignItems: 'center', justifyContent: 'center' }}>
                     {game.status === 'Disponible' ? (
-                      game.id === 'reaction' && reactionPlaysLeft === 0 ? (
+                      (game.id === 'reaction' && reactionPlaysLeft === 0) ||
+                      (game.id === 'driver-dle' && driverDlePlaysLeft === 0) ? (
                         <View style={{ width: 44, height: 44, borderRadius: 22, backgroundColor: 'rgba(255,255,255,0.06)', borderWidth: 1, borderColor: 'rgba(255,255,255,0.1)', alignItems: 'center', justifyContent: 'center' }}>
                           <Icon as={Timer} size={18} color="rgba(255,255,255,0.2)" />
                         </View>
@@ -211,6 +225,12 @@ export default function GarageScreen() {
                       </View>
                     ) : (
                       <Text className="text-white/20 text-[9px] font-bold uppercase tracking-widest">Temps estimé: 1 min</Text>
+                    )
+                  ) : game.id === 'driver-dle' && game.status === 'Disponible' ? (
+                    driverDlePlaysLeft === 0 ? (
+                      <Text className="text-white/30 text-[9px] font-bold uppercase tracking-widest">Reviens demain</Text>
+                    ) : (
+                      <Text style={{ color: game.color }} className="text-[9px] font-bold uppercase tracking-widest">1 partie / jour · 6 essais</Text>
                     )
                   ) : (
                     <Text className="text-white/20 text-[9px] font-bold uppercase tracking-widest">Temps estimé: 1 min</Text>
