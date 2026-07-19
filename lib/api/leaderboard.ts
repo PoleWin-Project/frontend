@@ -17,6 +17,8 @@ export interface PlayerRank {
     displayName?: string;
     points: number;
     avatarUrl?: string;
+    winRate?: number;
+    netGain?: number;
 }
 
 export interface MyRank {
@@ -32,8 +34,8 @@ export interface LeaderboardResponse {
     limit?: number;
 }
 
-export async function fetchGlobalLeaderboard(limit = 100, page = 1): Promise<PlayerRank[]> {
-    const url = `${API_URL}/leaderboard?limit=${limit}&page=${page}`;
+export async function fetchGlobalLeaderboard(limit = 100, page = 1, sort: "points" | "winRate" | "netGain" = "points"): Promise<PlayerRank[]> {
+    const url = `${API_URL}/leaderboard?limit=${limit}&page=${page}&sort=${sort}`;
     const headers = await getHeaders();
 
     try {

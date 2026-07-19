@@ -95,6 +95,55 @@ const SCORE_ROWS = [
   { range: '> 500 ms',   pts: '2 pts',  color: '#EF4444' },
 ];
 
+function getNextFridayMidnightUTC(): Date {
+  const d = new Date();
+  d.setUTCHours(0, 0, 0, 0);
+  const day = d.getUTCDay();
+  const diff = (5 - day + 7) % 7 || 7; 
+  d.setUTCDate(d.getUTCDate() + diff);
+  return d;
+}
+
+function WeeklyCountdown() {
+  const [timeLeft, setTimeLeft] = useState('');
+
+  useEffect(() => {
+    function update() {
+      const now = new Date().getTime();
+      const target = getNextFridayMidnightUTC().getTime();
+      const diff = target - now;
+
+      if (diff <= 0) {
+        setTimeLeft('Reset...');
+        return;
+      }
+
+      const d = Math.floor(diff / (1000 * 60 * 60 * 24));
+      const h = Math.floor((diff / (1000 * 60 * 60)) % 24);
+      const m = Math.floor((diff / 1000 / 60) % 60);
+      const s = Math.floor((diff / 1000) % 60);
+
+      setTimeLeft(`${d}j ${h}h ${m}m ${s}s`);
+    }
+    
+    update();
+    const interval = setInterval(update, 1000);
+    return () => clearInterval(interval);
+  }, []);
+
+  return (
+    <View style={{ flexDirection: 'row', alignItems: 'center', backgroundColor: 'rgba(255,255,255,0.04)', paddingHorizontal: 12, paddingVertical: 8, marginHorizontal: 24, marginTop: 16, borderRadius: 12, gap: 8, borderWidth: 1, borderColor: 'rgba(255,255,255,0.06)' }}>
+      <Timer size={14} color="rgba(255,255,255,0.5)" />
+      <Text style={{ flex: 1, color: 'rgba(255,255,255,0.7)', fontSize: 12, fontWeight: '600' }}>
+        Prochain reset dans :
+      </Text>
+      <Text style={{ color: '#E10600', fontSize: 13, fontWeight: '800', fontVariant: ['tabular-nums'] }}>
+        {timeLeft}
+      </Text>
+    </View>
+  );
+}
+
 export default function ReactionTestScreen() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
@@ -692,6 +741,8 @@ export default function ReactionTestScreen() {
                 <Icon as={X} size={18} color="white" />
               </TouchableOpacity>
             </View>
+
+            <WeeklyCountdown />
 
             {leaderboardLoading ? (
               <View style={{ paddingVertical: 60, alignItems: 'center' }}>
