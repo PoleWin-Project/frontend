@@ -11,6 +11,7 @@ import {
   Dimensions,
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Stack, useRouter } from 'expo-router';
 import {
   ChevronLeft,
@@ -24,6 +25,7 @@ import {
   Zap,
   Timer,
   Flag,
+  HelpCircle,
 } from 'lucide-react-native';
 import { Text } from '@/components/ui/text';
 import { Icon } from '@/components/ui/icon';
@@ -189,6 +191,7 @@ export default function DriverDleScreen() {
   const [solution, setSolution] = useState<DriverDleRosterEntry | null>(null);
   const [pointsEarned, setPointsEarned] = useState<number | null>(null);
   const [resultVisible, setResultVisible] = useState(false);
+  const [rulesVisible, setRulesVisible] = useState(false);
 
   const [alreadyPlayed, setAlreadyPlayed] = useState(false);
   const [loading, setLoading] = useState(true);
@@ -199,6 +202,15 @@ export default function DriverDleScreen() {
   const [leaderboardLoading, setLeaderboardLoading] = useState(false);
 
   const resultAnim = useRef(new Animated.Value(0)).current;
+
+  useEffect(() => {
+    AsyncStorage.getItem('@polewin/driverdle_rules_seen').then((seen) => {
+      if (!seen) {
+        setRulesVisible(true);
+        AsyncStorage.setItem('@polewin/driverdle_rules_seen', '1').catch(() => {});
+      }
+    }).catch(() => {});
+  }, []);
 
   useEffect(() => {
     if (!accessToken) return;
@@ -276,22 +288,32 @@ export default function DriverDleScreen() {
   // ─── Header ────────────────────────────────────────────────────────────────
   const Header = (
     <View style={{ paddingTop: insets.top }} className="flex-row justify-between items-center px-6 py-4">
-      <TouchableOpacity
-        onPress={() => router.back()}
-        className="justify-center items-center bg-white/10 border border-white/20 rounded-full w-10 h-10"
-      >
-        <Icon as={ChevronLeft} size={20} className="text-white" />
-      </TouchableOpacity>
-      <View className="items-center">
+      <View style={{ flex: 1, alignItems: 'flex-start' }}>
+        <TouchableOpacity
+          onPress={() => router.back()}
+          className="justify-center items-center bg-white/10 border border-white/20 rounded-full w-10 h-10"
+        >
+          <Icon as={ChevronLeft} size={20} className="text-white" />
+        </TouchableOpacity>
+      </View>
+      <View style={{ flex: 2 }} className="items-center">
         <Text className="font-black text-[10px] text-primary uppercase tracking-[3px]">Driver Guess</Text>
         <Text className="font-black text-white text-xs italic uppercase">Le Garage</Text>
       </View>
-      <TouchableOpacity
-        onPress={openLeaderboard}
-        className="justify-center items-center bg-white/10 border border-white/20 rounded-full w-10 h-10"
-      >
-        <Icon as={Trophy} size={18} className="text-white" />
-      </TouchableOpacity>
+      <View style={{ flex: 1, flexDirection: 'row', justifyContent: 'flex-end', gap: 8 }}>
+        <TouchableOpacity
+          onPress={() => setRulesVisible(true)}
+          className="justify-center items-center bg-white/10 border border-white/20 rounded-full w-10 h-10"
+        >
+          <Icon as={HelpCircle} size={18} className="text-white" />
+        </TouchableOpacity>
+        <TouchableOpacity
+          onPress={openLeaderboard}
+          className="justify-center items-center bg-white/10 border border-white/20 rounded-full w-10 h-10"
+        >
+          <Icon as={Trophy} size={18} className="text-white" />
+        </TouchableOpacity>
+      </View>
     </View>
   );
 
@@ -486,6 +508,70 @@ export default function DriverDleScreen() {
               </TouchableOpacity>
             </View>
           </Animated.View>
+        </View>
+      </Modal>
+
+      {/* Modal Règles */}
+      <Modal visible={rulesVisible} transparent animationType="slide" statusBarTranslucent onRequestClose={() => setRulesVisible(false)}>
+        <View style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.92)', justifyContent: 'flex-end' }}>
+          <View style={{ maxHeight: '85%', backgroundColor: '#0c0c0f', borderTopLeftRadius: 28, borderTopRightRadius: 28, borderWidth: 1, borderColor: 'rgba(255,255,255,0.1)', overflow: 'hidden', paddingBottom: insets.bottom + 8 }}>
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 14, paddingHorizontal: 24, paddingTop: 22, paddingBottom: 18, borderBottomWidth: 1, borderBottomColor: 'rgba(255,255,255,0.07)' }}>
+              <View style={{ backgroundColor: 'rgba(255,255,255,0.1)', padding: 10, borderRadius: 14 }}>
+                <Icon as={HelpCircle} size={22} color="white" />
+              </View>
+              <View style={{ flex: 1 }}>
+                <Text style={{ color: 'white', fontWeight: '900', fontSize: 18, fontStyle: 'italic', textTransform: 'uppercase' }}>Comment jouer ?</Text>
+                <Text style={{ color: 'rgba(255,255,255,0.35)', fontSize: 10, fontWeight: '700', textTransform: 'uppercase', letterSpacing: 2 }}>Les règles de DriverDLE</Text>
+              </View>
+              <TouchableOpacity
+                onPress={() => setRulesVisible(false)}
+                style={{ width: 36, height: 36, borderRadius: 18, backgroundColor: 'rgba(255,255,255,0.08)', alignItems: 'center', justifyContent: 'center' }}
+              >
+                <Icon as={X} size={18} color="white" />
+              </TouchableOpacity>
+            </View>
+
+            <ScrollView contentContainerStyle={{ padding: 24, gap: 20 }}>
+              <Text style={{ color: 'rgba(255,255,255,0.8)', fontSize: 14, lineHeight: 22 }}>
+                Tu as <Text style={{ color: 'white', fontWeight: 'bold' }}>6 essais</Text> pour deviner le pilote de F1 du jour.
+              </Text>
+              
+              <Text style={{ color: 'rgba(255,255,255,0.8)', fontSize: 14, lineHeight: 22 }}>
+                À chaque essai, la grille te donne des indices sur les caractéristiques du pilote comparées à celles du pilote mystère.
+                <Text style={{ color: '#E10600', fontWeight: 'bold' }}> Attention : </Text>
+                les statistiques (victoires, podiums) correspondent à la <Text style={{ color: 'white', fontWeight: 'bold' }}>saison en cours</Text>, et non à l'ensemble de la carrière !
+              </Text>
+              
+              <View style={{ gap: 12 }}>
+                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
+                  <View style={{ width: 24, height: 24, borderRadius: 6, backgroundColor: GREEN, borderWidth: 1, borderColor: GREEN_BORDER, alignItems: 'center', justifyContent: 'center' }}>
+                    <Icon as={Check} size={12} color="white" />
+                  </View>
+                  <Text style={{ flex: 1, color: 'rgba(255,255,255,0.7)', fontSize: 13 }}>Vert : l'attribut est correct.</Text>
+                </View>
+                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
+                  <View style={{ width: 24, height: 24, borderRadius: 6, backgroundColor: RED, borderWidth: 1, borderColor: RED_BORDER }} />
+                  <Text style={{ flex: 1, color: 'rgba(255,255,255,0.7)', fontSize: 13 }}>Rouge : l'attribut est incorrect.</Text>
+                </View>
+                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
+                  <View style={{ width: 24, height: 24, borderRadius: 6, backgroundColor: RED, borderWidth: 1, borderColor: RED_BORDER, alignItems: 'center', justifyContent: 'center' }}>
+                    <Icon as={ChevronUp} size={14} color="white" />
+                  </View>
+                  <Text style={{ flex: 1, color: 'rgba(255,255,255,0.7)', fontSize: 13 }}>Flèche haut : la valeur du pilote mystère est <Text style={{ fontWeight: 'bold', color: 'white' }}>plus grande</Text>.</Text>
+                </View>
+                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
+                  <View style={{ width: 24, height: 24, borderRadius: 6, backgroundColor: RED, borderWidth: 1, borderColor: RED_BORDER, alignItems: 'center', justifyContent: 'center' }}>
+                    <Icon as={ChevronDown} size={14} color="white" />
+                  </View>
+                  <Text style={{ flex: 1, color: 'rgba(255,255,255,0.7)', fontSize: 13 }}>Flèche bas : la valeur du pilote mystère est <Text style={{ fontWeight: 'bold', color: 'white' }}>plus petite</Text>.</Text>
+                </View>
+              </View>
+
+              <Text style={{ color: 'rgba(255,255,255,0.8)', fontSize: 14, lineHeight: 22, marginTop: 8 }}>
+                Le pilote du jour change tous les soirs à minuit (UTC). Bonne chance !
+              </Text>
+            </ScrollView>
+          </View>
         </View>
       </Modal>
 
