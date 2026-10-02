@@ -2,7 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { View, ScrollView, RefreshControl, ActivityIndicator, TouchableOpacity, Image } from 'react-native';
 import { Text } from '@/components/ui/text';
 import { Calendar, MapPin, Info, ChevronDown, ChevronUp, CheckCircle2, XCircle, Clock } from 'lucide-react-native';
-import { fetchRaceSessions, RaceSession, fetchPredictions, Prediction, fetchMyPronostic, Pronostic, fetchDrivers, Driver, fetchMyPronosticsForSession, fetchMyPronosticsHistory, fetchMeetings, MeetingItem } from '@/lib/api/meetings';
+import { fetchRaceSessions, RaceSession, fetchPredictions, Prediction, fetchMyPronostic, Pronostic, fetchDrivers, Driver, fetchMyPronosticsForSession, fetchMyPronosticsHistory, fetchMeetings, fetchSessions, MeetingItem } from '@/lib/api/meetings';
 import { PredictionCard } from '@/components/game/PredictionCard';
 import { PronosticHistoryCard } from '@/components/game/PronosticHistoryCard';
 import { DemoModeCard } from '@/components/game/DemoModeCard';
@@ -31,7 +31,7 @@ export default function PronosticsScreen() {
     const [predictionsMap, setPredictionsMap] = useState<Record<number, Prediction[]>>({});
     const [pronosticsMap, setPronosticsMap] = useState<Record<number, Pronostic | null>>({});
     const [driversMap, setDriversMap] = useState<Record<number, Driver[]>>({});
-    const [meetings, setMeetings] = useState<MeetingItem[]>([]);
+    const [nextMeeting, setNextMeeting] = useState<MeetingItem | null>(null);
     const [activeTab, setActiveTab] = useState('upcoming');
     const [history, setHistory] = useState<Pronostic[]>([]);
     const [historyFilter, setHistoryFilter] = useState<'ALL' | 'WON' | 'LOST' | 'PENDING'>('ALL');
@@ -77,34 +77,29 @@ export default function PronosticsScreen() {
         }
         setLoading(true);
         try {
-            const sessions = await fetchRaceSessions(50, true);
-            const ALLOWED = ['Race', 'Qualifying', 'Sprint'];
-            // On dédoublonne par (vrai nom + dateStart) au cas où la DB aurait des rows redondants
-            const seen = new Set<string>();
-            const allNextSessions = sessions
-                .filter(s => ALLOWED.includes(realSessionName(s)))
+            const mtgs = await fetchMeetings();
+            const now = Date.now();
+            const nearest = mtgs
+                .filter(m => new Date(m.date_end).getTime() >= now)
+                .sort((a, b) => new Date(a.date_start).getTime() - new Date(b.date_start).getTime())[0] ?? null;
+            setNextMeeting(nearest);
+            const [sessions, calendarSessions] = nearest ? await Promise.all([
+                fetchRaceSessions(50, true),
+                fetchSessions(nearest.meeting_key, nearest.year),
+            ]) : [[], []];
+            const sessionKeys = new Set(calendarSessions.map(s => s.session_key));
+            const seen = new Set<number>();
+            const nextSessions = sessions
+                .filter(s => sessionKeys.has(s.idCourseExternal))
+                .filter(s => ['Race', 'Qualifying', 'Sprint'].includes(realSessionName(s)))
+                .filter(s => new Date(s.dateStart).getTime() > Date.now())
                 .filter(s => {
-                    const key = `${realSessionName(s)}|${s.dateStart}`;
-                    if (seen.has(key)) return false;
-                    seen.add(key);
+                    if (seen.has(s.idCourseExternal)) return false;
+                    seen.add(s.idCourseExternal);
                     return true;
-                });
-            
-            let nextSessions: RaceSession[] = [];
-            if (allNextSessions.length > 0) {
-                const firstSession = allNextSessions[0];
-                const gpName = firstSession.name ? firstSession.name.split(' - ')[0] : '';
-                const gpLocation = firstSession.location || '';
-                
-                nextSessions = allNextSessions
-                    .filter(s => {
-                        const sGpName = s.name ? s.name.split(' - ')[0] : '';
-                        const sLocation = s.location || '';
-                        return (!gpName || sGpName === gpName) && (!gpLocation || sLocation === gpLocation);
-                    })
-                    .slice(0, 3)
-                    .map(s => ({ ...s, type: realSessionName(s) }));
-            }
+                })
+                .sort((a, b) => new Date(a.dateStart).getTime() - new Date(b.dateStart).getTime())
+                .map(s => ({ ...s, type: realSessionName(s) }));
 
             setUpcomingSessions(nextSessions);
 
@@ -131,8 +126,6 @@ export default function PronosticsScreen() {
 
             const hist = await fetchMyPronosticsHistory();
             setHistory(hist);
-            const mtgs = await fetchMeetings();
-            setMeetings(mtgs);
             await refreshProfile().catch(() => {});
         } catch (error) {
             console.error('Failed to load game data:', error);
@@ -164,7 +157,7 @@ export default function PronosticsScreen() {
     }
 
     const nextGP = upcomingSessions[0];
-    const nextGPMeeting = nextGP ? meetings.find(m => m.location === nextGP.location || nextGP.name.includes(m.meeting_name)) : null;
+    const nextGPMeeting = nextMeeting;
     const track = nextGPMeeting ? getCircuitTrack(nextGPMeeting) : null;
     const circuitImage = nextGPMeeting?.circuit_image || '';
 
@@ -306,9 +299,9 @@ export default function PronosticsScreen() {
                                 <View className="w-16 h-16 bg-muted rounded-full items-center justify-center mb-4">
                                     <Info size={32} color="#9ca3af" />
                                 </View>
-                                <Text className="text-lg font-bold text-foreground mb-2 text-center">Pas d'événement détecté</Text>
+                                <Text className="text-lg font-bold text-foreground mb-2 text-center">{nextMeeting ? nextMeeting.meeting_name : 'Pas d’événement détecté'}</Text>
                                 <Text className="text-muted-foreground text-center text-sm">
-                                    Le calendrier F1 est en cours de mise à jour. Revenez bientôt !
+                                    {nextMeeting ? 'Les pronostics de ce Grand Prix ne sont pas encore disponibles. Revenez bientôt !' : 'Le calendrier F1 est en cours de mise à jour. Revenez bientôt !'}
                                 </Text>
                             </View>
                         )}
