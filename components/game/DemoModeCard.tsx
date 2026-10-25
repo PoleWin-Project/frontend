@@ -3,7 +3,7 @@ import { View, TouchableOpacity, ActivityIndicator } from 'react-native';
 import { Text } from '@/components/ui/text';
 import { useRouter } from 'expo-router';
 import { Zap, Flag, X, Clock } from 'lucide-react-native';
-import { useDemo, DEMO_SESSION_KEY, DEMO_RACE_DURATION_SEC, DEMO_PRE_RACE_SEC } from '@/context/DemoContext';
+import { useDemo, DEMO_SESSION_KEY, DEMO_RACE_DURATION_SEC, DEMO_PRE_RACE_SEC, DEMO_REWARD_POINTS } from '@/context/DemoContext';
 
 function formatCountdown(secs: number): string {
     const m = Math.floor(secs / 60);
@@ -100,12 +100,12 @@ export function DemoModeCard() {
                     <View className="items-end">
                         {demo.pick ? (
                             <>
-                                <Text className="text-white/60 text-[9px] font-bold uppercase tracking-widest">Votre pari</Text>
+                                <Text className="text-white/60 text-[9px] font-bold uppercase tracking-widest">Ton pronostic</Text>
                                 <View className="flex-row items-center mt-1">
                                     <Flag size={14} color="#fbbf24" />
                                     <Text className="text-white font-black text-lg ml-1">{demo.pick}</Text>
                                 </View>
-                                <Text className="text-amber-300/80 text-[10px] font-bold">{demo.stake} pts misés</Text>
+                                <Text className="text-amber-300/80 text-[10px] font-bold">{DEMO_REWARD_POINTS} pts si correct</Text>
                             </>
                         ) : (
                             <Text className="text-white/40 text-[10px] font-bold uppercase tracking-widest">

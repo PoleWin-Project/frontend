@@ -4,7 +4,7 @@ import {
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Text } from '@/components/ui/text';
-import { CheckCircle2, XCircle, Ban, Trophy, Coins, X } from 'lucide-react-native';
+import { CheckCircle2, XCircle, Ban, Trophy, X } from 'lucide-react-native';
 import type { Pronostic } from '@/lib/api/meetings';
 
 function formatType(type?: string) {
@@ -26,7 +26,7 @@ function ResultRow({ prono }: { prono: Pronostic }) {
     const icon = isWon
         ? <CheckCircle2 size={22} color="#22c55e" />
         : isLost
-            ? <XCircle size={22} color="#ef4444" />
+            ? <XCircle size={22} color="#9ca3af" />
             : <Ban size={22} color="#9ca3af" />;
 
     return (
@@ -41,11 +41,11 @@ function ResultRow({ prono }: { prono: Pronostic }) {
                 </Text>
             </View>
             <View style={s.rowRight}>
-                {isWon && <Text style={[s.rowPts, { color: '#22c55e' }]}>+{prono.pointsEarned}</Text>}
-                {isLost && <Text style={[s.rowPts, { color: '#ef4444' }]}>-{prono.pointsStaked}</Text>}
-                {isVoid && <Text style={[s.rowPts, { color: '#9ca3af' }]}>+{prono.pointsStaked}</Text>}
+                {/* Un pronostic incorrect rapporte 0 : aucun montant négatif n'est jamais affiché. */}
+                {isWon && <Text style={[s.rowPts, { color: '#22c55e' }]}>+{prono.championshipPointsAwarded ?? 0}</Text>}
+                {isLost && <Text style={[s.rowPts, { color: '#9ca3af' }]}>0</Text>}
                 <Text style={s.rowPtsLabel}>
-                    {isWon ? 'GAGNÉ' : isLost ? 'PERDU' : 'REMB.'}
+                    {isWon ? 'CORRECT' : isLost ? 'INCORRECT' : 'ANNULÉ'}
                 </Text>
             </View>
         </View>
@@ -64,18 +64,15 @@ export function PronoResultsPopup({
     onSeeAll?: () => void;
 }) {
     const wonCount = results.filter((p) => p.status === 'won').length;
-    const net = results.reduce((acc, p) => {
-        if (p.status === 'won') return acc + (p.pointsEarned || 0);
-        if (p.status === 'lost') return acc - (p.pointsStaked || 0);
-        return acc; // void = remboursé, net nul
-    }, 0);
+    // Total des points de championnat gagnés (somme de valeurs ≥ 0).
+    const earned = results.reduce((acc, p) => acc + (p.status === 'won' ? (p.championshipPointsAwarded ?? 0) : 0), 0);
 
-    const headerColor = wonCount > 0 ? '#22c55e' : '#ef4444';
+    const headerColor = wonCount > 0 ? '#22c55e' : '#9ca3af';
     const title = wonCount > 0
         ? (wonCount === results.length ? 'Tout est tombé !' : 'Tes pronos sont tombés !')
         : 'Résultats de tes pronos';
     const subtitle = wonCount > 0
-        ? `${wonCount} prono${wonCount > 1 ? 's' : ''} gagné${wonCount > 1 ? 's' : ''} sur ${results.length}`
+        ? `${wonCount} prono${wonCount > 1 ? 's' : ''} correct${wonCount > 1 ? 's' : ''} sur ${results.length}`
         : `${results.length} prono${results.length > 1 ? 's' : ''} résolu${results.length > 1 ? 's' : ''}`;
 
     return (
@@ -108,14 +105,14 @@ export function PronoResultsPopup({
                         {results.map((p) => <ResultRow key={p.id} prono={p} />)}
                     </ScrollView>
 
-                    {/* Total net */}
+                    {/* Points de championnat gagnés */}
                     <View style={s.totalRow}>
                         <View style={s.totalLeft}>
-                            <Coins size={16} color="rgba(255,255,255,0.6)" />
-                            <Text style={s.totalLabel}>Bilan</Text>
+                            <Trophy size={16} color="rgba(255,255,255,0.6)" />
+                            <Text style={s.totalLabel}>Points de championnat</Text>
                         </View>
-                        <Text style={[s.totalVal, { color: net > 0 ? '#22c55e' : net < 0 ? '#ef4444' : 'rgba(255,255,255,0.8)' }]}>
-                            {net > 0 ? '+' : ''}{net} pts
+                        <Text style={[s.totalVal, { color: earned > 0 ? '#22c55e' : 'rgba(255,255,255,0.8)' }]}>
+                            +{earned} pts
                         </Text>
                     </View>
 

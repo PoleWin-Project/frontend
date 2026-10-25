@@ -1,3 +1,4 @@
+import type { Appearance } from './paddock';
 import { API_URL } from '@/lib/config';
 
 export interface FriendProfile {
@@ -7,6 +8,7 @@ export interface FriendProfile {
 }
 
 export interface FriendUser {
+    cosmetics?: Appearance;
     id: number;
     username: string;
     profile?: FriendProfile | null;

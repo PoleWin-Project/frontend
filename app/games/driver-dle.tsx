@@ -1,3 +1,4 @@
+import { PilotAvatar } from '@/components/paddock/PilotAvatar';
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import {
   View,
@@ -10,7 +11,6 @@ import {
   Animated,
   Dimensions,
 } from 'react-native';
-import { LinearGradient } from 'expo-linear-gradient';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Stack, useRouter } from 'expo-router';
 import {
@@ -46,18 +46,6 @@ const GAME_ID = 'driver-dle';
 const MAX_ATTEMPTS = 6;
 const { width: SW } = Dimensions.get('window');
 
-// ─── Avatar helpers (cohérent avec le reaction-test) ────────────────────────
-const AVATAR_GRADIENTS: [string, string][] = [
-  ['#E10600', '#7B0200'], ['#FF6B35', '#CC4400'],
-  ['#0067FF', '#003B99'], ['#00B4D8', '#005F73'],
-  ['#9B5DE5', '#6A00BB'], ['#F72585', '#B5007A'],
-  ['#06D6A0', '#028A5A'], ['#FFB703', '#C07800'],
-];
-function avatarGradient(name: string): [string, string] {
-  let h = 0;
-  for (let i = 0; i < name.length; i++) h = name.charCodeAt(i) + ((h << 5) - h);
-  return AVATAR_GRADIENTS[Math.abs(h) % AVATAR_GRADIENTS.length];
-}
 const RANK_COLORS: Record<number, string> = { 1: '#FFD700', 2: '#C0C0C0', 3: '#CD7F32' };
 
 const GREEN = 'rgba(21,128,61,0.9)';
@@ -478,15 +466,15 @@ export default function DriverDleScreen() {
               </View>
             )}
 
-            {/* Points */}
+            {/* Récompense : jetons Paddock (cosmétiques), calculés par le serveur */}
             {found && pointsEarned != null && (
               <View style={{ marginHorizontal: 24, marginTop: 14, borderRadius: 20, backgroundColor: 'rgba(255,255,255,0.06)', borderWidth: 1, borderColor: 'rgba(255,255,255,0.14)', paddingVertical: 18, alignItems: 'center', gap: 4 }}>
                 <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
                   <Icon as={Trophy} size={16} color="#E10600" />
-                  <Text className="font-black text-[10px] text-white/60 uppercase" style={{ letterSpacing: 3 }}>Points gagnés</Text>
+                  <Text className="font-black text-[10px] text-white/60 uppercase" style={{ letterSpacing: 3 }}>Jetons Paddock</Text>
                 </View>
                 <Text className="font-black text-white text-4xl">+{pointsEarned}</Text>
-                <Text className="font-bold text-[10px] text-green-400 uppercase" style={{ letterSpacing: 1 }}>Crédités sur ton compte</Text>
+                <Text className="font-bold text-[10px] text-green-400 uppercase" style={{ letterSpacing: 1 }}>Ajoutés à ton compte</Text>
               </View>
             )}
 
@@ -612,7 +600,7 @@ export default function DriverDleScreen() {
               <ScrollView contentContainerStyle={{ paddingVertical: 8 }}>
                 {leaderboard.entries.map((e) => {
                   const name = e.displayName || `Pilote #${e.userId}`;
-                  const grad = avatarGradient(name);
+
                   const rankColor = RANK_COLORS[e.rank];
                   return (
                     <View
@@ -631,9 +619,7 @@ export default function DriverDleScreen() {
                           <Text style={{ color: 'rgba(255,255,255,0.5)', fontWeight: '900', fontSize: 15 }}>{e.rank}</Text>
                         )}
                       </View>
-                      <LinearGradient colors={grad} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={{ width: 38, height: 38, borderRadius: 19, alignItems: 'center', justifyContent: 'center' }}>
-                        <Text style={{ color: 'white', fontWeight: '900', fontSize: 16, fontStyle: 'italic' }}>{name[0]?.toUpperCase()}</Text>
-                      </LinearGradient>
+                      <PilotAvatar appearance={e.cosmetics} size={38} label={name} />
                       <Text numberOfLines={1} style={{ flex: 1, color: 'white', fontWeight: '800', fontSize: 14 }}>
                         {name}{e.isMe ? ' (toi)' : ''}
                       </Text>

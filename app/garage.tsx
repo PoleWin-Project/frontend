@@ -3,13 +3,20 @@ import { View, ScrollView, Pressable, Image, TouchableOpacity, RefreshControl } 
 import { Stack, useRouter } from 'expo-router';
 import { BlurView } from 'expo-blur';
 import { LinearGradient } from 'expo-linear-gradient';
-import { ChevronLeft, Zap, Trophy, Timer, ShieldCheck, ArrowRight, Flag } from 'lucide-react-native';
+import { ChevronLeft, Zap, Trophy, Timer, Wrench, ArrowRight, Flag } from 'lucide-react-native';
 import { Text } from '@/components/ui/text';
 import { Icon } from '@/components/ui/icon';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useAuth } from '@/context/AuthContext';
 import { fetchPlaysToday, type PlaysToday } from '@/lib/api/games';
+import { WeeklyChallenges } from '@/components/game/WeeklyChallenges';
 
+/**
+ * Le Garage : mini-jeux qui rapportent des JETONS PADDOCK, une monnaie cosmétique
+ * (avatars, cadres, thèmes… à venir). Les jetons n'ont aucun lien avec les
+ * pronostics ni avec le classement : ils ne peuvent pas être misés, ne rapportent
+ * pas de points de championnat et n'améliorent aucune chance.
+ */
 export default function GarageScreen() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
@@ -17,6 +24,7 @@ export default function GarageScreen() {
   const [reactionPlays, setReactionPlays] = useState<PlaysToday | null>(null);
   const [driverDlePlays, setDriverDlePlays] = useState<PlaysToday | null>(null);
   const [refreshing, setRefreshing] = useState(false);
+  const [challengeRefresh, setChallengeRefresh] = useState(0);
 
   useEffect(() => {
     if (!accessToken) return;
@@ -32,6 +40,7 @@ export default function GarageScreen() {
       fetchPlaysToday(accessToken, 'driver-dle').then(setDriverDlePlays).catch(() => {}),
     ]);
     setRefreshing(false);
+    setChallengeRefresh(value => value + 1);
   }
 
   const games = [
@@ -39,7 +48,7 @@ export default function GarageScreen() {
       id: 'driver-dle',
       title: 'Driver Guess',
       subtitle: 'Devine le pilote du jour',
-      reward: 'Jusqu\'à 50 pts',
+      reward: 'Jusqu\'à 50 jetons',
       icon: Flag,
       color: '#9B5DE5',
       status: 'Disponible'
@@ -48,7 +57,7 @@ export default function GarageScreen() {
       id: 'reaction',
       title: 'Reaction Test',
       subtitle: 'Réveillez le pilote en vous',
-      reward: 'Jusqu\'à 50 pts',
+      reward: 'Jusqu\'à 50 jetons',
       icon: Timer,
       color: '#E10600',
       status: 'Disponible'
@@ -57,7 +66,7 @@ export default function GarageScreen() {
       id: 'quiz',
       title: 'Quizz F1',
       subtitle: 'Testez vos connaissances',
-      reward: 'Points doublés',
+      reward: 'Bientôt disponible',
       icon: Trophy,
       color: '#FFD700',
       status: 'Bientôt'
@@ -126,25 +135,32 @@ export default function GarageScreen() {
           {/* Welcome Card */}
           <View className="mb-10">
             <Text className="text-white text-4xl font-black italic uppercase leading-none mb-2">
-              Besoin de <Text className="text-primary">Boost ?</Text>
+              Bienvenue au <Text className="text-primary">Garage</Text>
             </Text>
             <Text className="text-white/40 text-[11px] font-bold uppercase tracking-wider mb-8">
-              Transformez votre réactivité en points de prono.
+              Gagne des jetons pour personnaliser ton profil.
             </Text>
 
             <BlurView intensity={30} tint="dark" className="p-6 rounded-[32px] border border-white/10 overflow-hidden">
               <View className="flex-row items-center justify-between mb-4">
                 <View className="bg-primary/20 p-2 rounded-xl">
-                  <Icon as={ShieldCheck} size={20} className="text-primary" />
+                  <Icon as={Wrench} size={20} className="text-primary" />
                 </View>
-                <Text className="text-white/30 text-[10px] font-black uppercase">Points Disponibles</Text>
+                <Text className="text-white/30 text-[10px] font-black uppercase">Jetons Paddock</Text>
               </View>
               <Text className="text-white text-3xl font-black mb-1">
-                {user?.points ?? '—'} <Text className="text-white/30 text-lg font-bold">pts</Text>
+                {user?.garageCredits ?? 0} <Text className="text-white/30 text-lg font-bold">jetons</Text>
               </Text>
-              <Text className="text-white/40 text-[10px]">Jouez pour regonfler votre solde instantanément.</Text>
+              <Text className="text-white/40 text-[10px]">Monnaie cosmétique : aucun effet sur les pronostics ni sur le classement. Personnalise ton profil dans le Paddock.</Text>
             </BlurView>
           </View>
+
+          <Pressable accessibilityRole="button" onPress={() => router.push('/paddock')} className="bg-cyan-500/10 border border-cyan-500/20 rounded-2xl p-5 mb-6">
+            <Text className="text-white font-black text-lg">Entrer dans le Paddock →</Text>
+            <Text className="text-white/50 text-xs mt-2">Utilise tes jetons pour choisir ton cadre et ton titre de pilote.</Text>
+          </Pressable>
+
+          <WeeklyChallenges key={user?.id ?? "guest"} refreshKey={challengeRefresh} />
 
           {/* Game Selection */}
           <Text className="text-white/60 text-[11px] font-black uppercase tracking-[2px] mb-4">Unités de Production</Text>

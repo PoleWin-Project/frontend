@@ -1,3 +1,4 @@
+import type { Appearance } from './paddock';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
 import { API_URL } from '@/lib/config';
@@ -14,17 +15,23 @@ export interface PlayerRank {
     rank: number;       // calculé côté front (index + 1) si absent du backend
     userId?: number;
     username: string;
+    cosmetics?: Appearance;
     displayName?: string;
+    /** Points de championnat de la saison active. */
     points: number;
     avatarUrl?: string;
     winRate?: number;
-    netGain?: number;
+    correctCount?: number;
 }
+
+/** Tris disponibles (l'ancien tri « Bilan » gains − mises a été supprimé). */
+export type LeaderboardSort = "points" | "winRate";
 
 export interface MyRank {
     rank: number;
     points: number;
     username: string;
+    cosmetics?: Appearance;
 }
 
 export interface LeaderboardResponse {
@@ -34,7 +41,7 @@ export interface LeaderboardResponse {
     limit?: number;
 }
 
-export async function fetchGlobalLeaderboard(limit = 100, page = 1, sort: "points" | "winRate" | "netGain" = "points"): Promise<PlayerRank[]> {
+export async function fetchGlobalLeaderboard(limit = 100, page = 1, sort: LeaderboardSort = "points"): Promise<PlayerRank[]> {
     const url = `${API_URL}/leaderboard?limit=${limit}&page=${page}&sort=${sort}`;
     const headers = await getHeaders();
 

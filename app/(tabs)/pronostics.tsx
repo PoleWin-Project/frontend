@@ -145,7 +145,7 @@ export default function PronosticsScreen() {
     };
 
     if (!user) {
-        return <GuestPrompt title="Pronostics" description="Connecte-toi pour parier sur les prochaines courses et défier tes amis !" />;
+        return <GuestPrompt title="Pronostics" description="Connecte-toi pour pronostiquer les prochaines courses et défier tes amis !" />;
     }
 
     if (loading && !refreshing) {
@@ -163,7 +163,7 @@ export default function PronosticsScreen() {
 
     return (
         <View className="flex-1 bg-background">
-            <ScreenHeader title="Pronos Win" subtitle="Sessions & Paris" showPoints={true} />
+            <ScreenHeader title="Pronos Win" subtitle="Sessions & Pronostics" showPoints={true} />
 
             <Tabs value={activeTab} onValueChange={setActiveTab} className="flex-1">
                 <View className="mx-4 mt-4 mb-2">
@@ -184,7 +184,7 @@ export default function PronosticsScreen() {
                             tourKey="pronostics"
                             shape="rectangle"
                             style={{ flex: 1 }}
-                            text={tourStep(2, 2, 'Ton historique 📊', 'Onglet « Historique » : tes anciens pronos et les points gagnés.')}
+                            text={tourStep(2, 2, 'Ton historique 📊', 'Onglet « Historique » : tes anciens pronos et tes points de championnat.')}
                         >
                             <TabsTrigger value="history" className="flex-1">
                                 <Text>Historique</Text>
@@ -346,7 +346,7 @@ export default function PronosticsScreen() {
                                                 </View>
                                                 <View>
                                                     <Text className="text-base font-black text-white uppercase italic">{gpName}</Text>
-                                                    <Text className="text-xs text-muted-foreground font-bold uppercase">{pronos.length} paris • {wonCount} gagnés</Text>
+                                                    <Text className="text-xs text-muted-foreground font-bold uppercase">{pronos.length} pronos • {wonCount} corrects</Text>
                                                 </View>
                                             </View>
                                             {isExpanded ? <ChevronUp size={20} color="#9ca3af" /> : <ChevronDown size={20} color="#9ca3af" />}

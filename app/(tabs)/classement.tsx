@@ -1,3 +1,4 @@
+import { PilotAvatar } from '@/components/paddock/PilotAvatar';
 import React, { useState, useCallback } from 'react';
 import {
     View, FlatList, TextInput, TouchableOpacity,
@@ -12,7 +13,7 @@ import { ScreenHeader } from '@/components/ui/ScreenHeader';
 import { Search, ChevronDown, X, Users, Trophy } from 'lucide-react-native';
 import {
     fetchGlobalLeaderboard, fetchMyRank,
-    PlayerRank, MyRank,
+    PlayerRank, MyRank, LeaderboardSort,
 } from '@/lib/api/leaderboard';
 import { useAuth } from '@/context/AuthContext';
 
@@ -28,7 +29,12 @@ const MEDAL: Record<number, { emoji: string; color: string; rgb: string }> = {
 };
 
 // ─── Player Row ───────────────────────────────────────────────────────────────
-function PlayerRow({ item, index, isMe, sort }: { item: PlayerRank; index: number; isMe: boolean; sort: 'points' | 'winRate' | 'netGain' }) {
+/**
+ * Ligne du classement de championnat. Les valeurs affichées sont des points de
+ * championnat (jamais négatifs) ou un taux de réussite : l'ancien tri « Bilan »
+ * (gains − mises) a été supprimé.
+ */
+function PlayerRow({ item, index, isMe, sort }: { item: PlayerRank; index: number; isMe: boolean; sort: LeaderboardSort }) {
     const router = useRouter();
     const medal = MEDAL[item.rank] ?? null;
     const isPodium = item.rank <= 3;
@@ -38,23 +44,15 @@ function PlayerRow({ item, index, isMe, sort }: { item: PlayerRank; index: numbe
         transform: [{ scale: scale.value }]
     }));
 
-    const netGain = item.netGain ?? 0;
-    const netGainStr = netGain > 0 ? `+${netGain.toLocaleString()}` : netGain.toLocaleString();
-    const netGainColor = netGain > 0 ? '#4ADE80' : netGain < 0 ? '#EF4444' : (isPodium && medal ? medal.color : (isMe ? '#E10600' : '#fff'));
-
     let textColor: string | undefined;
-    if (sort === 'netGain') {
-        textColor = netGainColor;
-    } else if (isPodium && medal) {
+    if (isPodium && medal) {
         textColor = medal.color;
     } else if (isMe) {
         textColor = '#E10600';
     }
 
     let bgColor: string | undefined;
-    if (sort === 'netGain' && netGain !== 0) {
-        bgColor = netGain > 0 ? 'rgba(74, 222, 128, 0.15)' : 'rgba(239, 68, 68, 0.15)';
-    } else if (isPodium && medal) {
+    if (isPodium && medal) {
         bgColor = `rgba(${medal.rgb}, 0.15)`;
     } else if (isMe) {
         bgColor = 'rgba(225,6,0,0.15)';
@@ -62,6 +60,7 @@ function PlayerRow({ item, index, isMe, sort }: { item: PlayerRank; index: numbe
 
     return (
         <AnimatedPressable
+            accessible={false}
             entering={FadeInRight.delay(Math.min(index * 40, 500)).springify().damping(14).mass(0.9)}
             onPressIn={() => scale.value = withSpring(0.95)}
             onPressOut={() => scale.value = withSpring(1)}
@@ -97,21 +96,23 @@ function PlayerRow({ item, index, isMe, sort }: { item: PlayerRank; index: numbe
                 )}
             </View>
 
-            <View style={styles.rowInfo}>
-                <Text style={[styles.rowUsername, isMe && { color: '#E10600', fontWeight: '900' }]}>
+            <PilotAvatar appearance={item.cosmetics} size={44} label={item.username} />
+
+            <Pressable accessibilityRole="button" accessibilityLabel={`Voir le profil de ${item.username}`} onPress={event => { event.stopPropagation(); if (item.userId) router.push(`/user/${item.userId}` as any); }} style={styles.rowInfo}>
+                <Text numberOfLines={1} style={[styles.rowUsername, isMe && { color: '#E10600', fontWeight: '900' }]}>
                     {item.username}
                 </Text>
                 <Text style={styles.rowLabel}>
                     {item.rank === 1 ? 'Champion' : item.rank === 2 ? 'Vice-champion' : item.rank === 3 ? 'Podium' : 'Compétiteur'}
                 </Text>
-            </View>
+            </Pressable>
 
             <View style={[styles.pointsPill, bgColor && { backgroundColor: bgColor }]}>
                 <Text style={[styles.pointsText, textColor && { color: textColor }]}>
-                    {sort === 'points' ? item.points.toLocaleString() : sort === 'winRate' ? `${item.winRate ?? 0}%` : netGainStr}
+                    {sort === 'points' ? item.points.toLocaleString() : `${item.winRate ?? 0}%`}
                 </Text>
                 <Text style={[styles.pointsPts, textColor && { color: textColor }]}>
-                    {sort === 'points' ? 'PTS' : sort === 'winRate' ? 'WIN' : 'PTS'}
+                    {sort === 'points' ? 'PTS' : 'RÉUSSITE'}
                 </Text>
             </View>
         </AnimatedPressable>
@@ -126,7 +127,7 @@ export default function PlayerLeaderboardScreen() {
     const [myRank, setMyRank] = useState<MyRank | null>(null);
     const [search, setSearch] = useState('');
     const [focused, setFocused] = useState(false);
-    const [sort, setSort] = useState<"points" | "winRate" | "netGain">("points");
+    const [sort, setSort] = useState<LeaderboardSort>("points");
     const [visibleCount, setVisible] = useState(PAGE_SIZE);
     const [refreshing, setRefreshing] = useState(false);
 
@@ -225,7 +226,7 @@ export default function PlayerLeaderboardScreen() {
         <View style={styles.root}>
             <ScreenHeader
                 title="Classement"
-                subtitle="Le classement mondiale"
+                subtitle={user?.championshipSeason?.name ? `Championnat · ${user.championshipSeason.name}` : 'Le classement mondial'}
                 showPoints
             />
 
@@ -255,7 +256,7 @@ export default function PlayerLeaderboardScreen() {
                 </View>
                 
                 <View style={styles.sortContainer}>
-                    {(['points', 'winRate', 'netGain'] as const).map((s) => (
+                    {(['points', 'winRate'] as const).map((s) => (
                         <TouchableOpacity
                             key={s}
                             style={[styles.sortBtn, sort === s && styles.sortBtnActive]}
@@ -266,7 +267,7 @@ export default function PlayerLeaderboardScreen() {
                             }}
                         >
                             <Text style={[styles.sortText, sort === s && styles.sortTextActive]}>
-                                {s === 'points' ? 'Points' : s === 'winRate' ? 'Win Rate' : 'Bilan'}
+                                {s === 'points' ? 'Points' : 'Réussite'}
                             </Text>
                         </TouchableOpacity>
                     ))}
@@ -306,6 +307,7 @@ export default function PlayerLeaderboardScreen() {
                             start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }}
                             style={StyleSheet.absoluteFillObject}
                         />
+                        <PilotAvatar appearance={myRank.cosmetics ?? user?.cosmetics} size={44} label={user?.username ?? 'Mon avatar'} />
                         <View style={styles.myRankLeft}>
                             <Text style={styles.myRankLabel}>Votre Position</Text>
                             <Text style={styles.myRankUsername}>{user?.username ?? myRank.username}</Text>
@@ -379,7 +381,7 @@ const styles = StyleSheet.create({
     rankText: { color: 'rgba(255,255,255,0.7)', fontWeight: '800', fontSize: 15 },
     medalEmoji: { fontSize: 22 },
 
-    rowInfo: { flex: 1, justifyContent: 'center' },
+    rowInfo: { flex: 1, justifyContent: 'center', marginLeft: 10, marginRight: 8 },
     rowUsername: { color: '#fff', fontWeight: '700', fontSize: 16, marginBottom: 2 },
     rowLabel: { color: 'rgba(255,255,255,0.4)', fontSize: 12, fontWeight: '600' },
 
@@ -428,7 +430,7 @@ const styles = StyleSheet.create({
         flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
         padding: 20,
     },
-    myRankLeft: { flex: 1 },
+    myRankLeft: { flex: 1, marginLeft: 10 },
     myRankLabel: { color: 'rgba(255,255,255,0.6)', fontSize: 12, fontWeight: '700', textTransform: 'uppercase', letterSpacing: 1.5, marginBottom: 4 },
     myRankUsername: { color: '#fff', fontWeight: '800', fontSize: 18 },
     myRankRight: { alignItems: 'flex-end' },
@@ -440,4 +442,3 @@ const styles = StyleSheet.create({
     myRankPos: { color: '#E10600', fontWeight: '900', fontSize: 20 },
     myRankPts: { color: 'rgba(255,255,255,0.5)', fontSize: 12, fontWeight: '700' },
 });
-

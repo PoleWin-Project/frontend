@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import {
     View, Image, TouchableOpacity, Modal, StyleSheet,
-    Pressable,
+    Pressable, ScrollView, useWindowDimensions,
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Text } from '@/components/ui/text';
@@ -46,34 +46,35 @@ function BadgeModal({
     visible: boolean;
     onClose: () => void;
 }) {
+    const { width, height } = useWindowDimensions();
+    const imageSize = Math.min(width - 104, height * 0.36, 320);
     const rc = rarityConfig(badge.rarity);
     const uri = badgeImageUri(badge.imageUrl);
     const earned = !!userBadge;
 
     return (
         <Modal transparent animationType="fade" visible={visible} onRequestClose={onClose}>
-            <Pressable style={m.overlay} onPress={onClose}>
-                <Pressable style={m.sheet} onPress={e => e.stopPropagation()}>
+            <Pressable accessible={false} style={m.overlay} onPress={onClose}>
+                <Pressable accessible={false} accessibilityViewIsModal style={[m.sheet, { maxHeight: height - 100 }]} onPress={e => e.stopPropagation()}>
                     <LinearGradient
                         colors={[earned ? rc.glow : '#ffffff0a', 'transparent']}
                         style={StyleSheet.absoluteFillObject}
                         start={{ x: 0.5, y: 0 }} end={{ x: 0.5, y: 1 }}
                     />
 
-                    <TouchableOpacity style={m.closeBtn} onPress={onClose}>
-                        <X size={18} color="rgba(255,255,255,0.5)" />
-                    </TouchableOpacity>
 
+                  <ScrollView contentContainerStyle={{ alignItems: 'center', gap: 12, paddingTop: 36 }} showsVerticalScrollIndicator={false}>
                     {/* Image */}
                     <View style={[
                         m.imgWrap,
+                        { width: imageSize, height: imageSize, borderRadius: 20, overflow: 'hidden' },
                         { borderColor: earned ? rc.color + '55' : 'rgba(255,255,255,0.08)', shadowColor: rc.color },
                         !earned && m.imgWrapLocked,
                     ]}>
                         {uri ? (
                             <Image
                                 source={{ uri }}
-                                style={[m.imgLarge, !earned && m.imgLocked]}
+                                style={{ width: imageSize - 8, height: imageSize - 8, transform: [{ scale: badge.code === 'pionnier_du_paddock' ? 1.8 : 1 }] }}
                                 resizeMode="contain"
                             />
                         ) : (
@@ -116,6 +117,10 @@ function BadgeModal({
                             <Text style={m.prereqText}>{badge.description}</Text>
                         </View>
                     )}
+                  </ScrollView>
+                  <TouchableOpacity accessibilityRole="button" accessibilityLabel="Fermer le badge" style={m.closeBtn} onPress={onClose}>
+                    <X size={22} color="white" />
+                  </TouchableOpacity>
                 </Pressable>
             </Pressable>
         </Modal>
@@ -141,6 +146,8 @@ export function BadgeTileHero({
                 style={[h.tile, { borderColor: earned ? rc.color + '55' : 'rgba(255,255,255,0.12)' }]}
                 onPress={() => setOpen(true)}
                 activeOpacity={0.8}
+                accessibilityRole="button"
+                accessibilityLabel={`Agrandir le badge ${badge.name}`}
             >
                 {/* Full image */}
                 {uri ? (
@@ -274,13 +281,13 @@ const m = StyleSheet.create({
     },
     sheet: {
         width: '100%', backgroundColor: '#111114',
-        borderRadius: 28, padding: 28, alignItems: 'center', gap: 12,
+        borderRadius: 28, padding: 20, alignItems: 'center', gap: 12,
         borderWidth: 1, borderColor: 'rgba(255,255,255,0.08)',
         overflow: 'hidden',
     },
     closeBtn: {
         position: 'absolute', top: 16, right: 16,
-        width: 34, height: 34, borderRadius: 17,
+        width: 44, height: 44, borderRadius: 22, zIndex: 2,
         backgroundColor: 'rgba(255,255,255,0.06)',
         alignItems: 'center', justifyContent: 'center',
     },

@@ -1,3 +1,4 @@
+import { PilotAvatar } from '@/components/paddock/PilotAvatar';
 import React, { useCallback, useEffect, useState } from 'react';
 import {
     View, ScrollView, TouchableOpacity, ActivityIndicator, StyleSheet, RefreshControl,
@@ -22,6 +23,8 @@ import { fetchUserBadges, fetchAllBadges, UserBadge, Badge } from '@/lib/api/bad
 import { BadgeCatalog } from '@/components/ui/badge-card';
 
 import { API_URL } from '@/lib/config';
+import type { Appearance } from '@/lib/api/paddock';
+import type { BetaSeasonResult } from '@/lib/api/auth';
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 const AVATAR_GRADIENTS: [string, string][] = [
@@ -91,6 +94,9 @@ export default function UserProfileScreen() {
     const [userBadges,   setUserBadges]   = useState<UserBadge[]>([]);
     const [allBadges,    setAllBadges]    = useState<Badge[]>([]);
     const [refreshing,   setRefreshing]   = useState(false);
+    // Résultat figé du joueur dans la Saison Bêta (null s'il n'y a pas participé).
+    const [cosmetics, setCosmetics] = useState<Appearance | null>(null);
+    const [betaSeason,   setBetaSeason]   = useState<BetaSeasonResult | null>(null);
 
     const load = useCallback(async () => {
         if (!accessToken) return;
@@ -101,6 +107,8 @@ export default function UserProfileScreen() {
             fetchFriendStatus(userId, accessToken),
         ]);
         if (profileRes?.user) setProfile(profileRes.user);
+        setBetaSeason(profileRes?.betaSeason ?? null);
+        setCosmetics(profileRes?.cosmetics ?? null);
         setStatus(statusRes);
         setLoading(false);
 
@@ -216,14 +224,13 @@ export default function UserProfileScreen() {
                     {/* Avatar + nom */}
                     <View style={s.avatarRow}>
                         <View style={s.avatarWrap}>
-                            <LinearGradient colors={grad} style={s.avatarCircle} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }}>
-                                <Text style={s.avatarInitial}>{name[0]?.toUpperCase()}</Text>
-                            </LinearGradient>
-                            <View style={[s.avatarRing, { borderColor: r.color }]} />
+                            <PilotAvatar appearance={cosmetics} size={76} label={name} />
+                            <View pointerEvents="none" style={[s.avatarRing, { borderColor: cosmetics?.frame?.color ?? r.color }]} />
                         </View>
 
                         <View style={s.avatarInfo}>
                             <Text style={s.username}>{name}</Text>
+                            {cosmetics?.title && <Text style={{ color: "#00B4D8", fontSize: 12 }}>{cosmetics.title.name}</Text>}
                             {profile?.profile?.displayName && (
                                 <Text style={s.handle}>@{profile.username}</Text>
                             )}
@@ -343,6 +350,7 @@ export default function UserProfileScreen() {
                                 <Trophy size={12} color="#FFD700" />
                                 <Text style={s.rankStatVal}>{pts.toLocaleString()}</Text>
                             </View>
+                            {/* Points de championnat de la saison en cours */}
                             <Text style={s.rankStatLabel}>POINTS</Text>
                         </View>
 
@@ -354,6 +362,18 @@ export default function UserProfileScreen() {
                                         <Text style={s.rankStatHash}>#</Text>{globalRank}
                                     </Text>
                                     <Text style={s.rankStatLabel}>GLOBAL</Text>
+                                </View>
+                            </>
+                        )}
+
+                        {betaSeason && (
+                            <>
+                                <View style={s.rankStatSep} />
+                                <View style={s.rankStat}>
+                                    <Text style={s.rankStatVal}>
+                                        <Text style={s.rankStatHash}>#</Text>{betaSeason.rank}
+                                    </Text>
+                                    <Text style={s.rankStatLabel}>BÊTA</Text>
                                 </View>
                             </>
                         )}

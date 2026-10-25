@@ -1,3 +1,4 @@
+import { PilotAvatar } from '@/components/paddock/PilotAvatar';
 import React, { useEffect, useRef, useState, useCallback } from 'react';
 import {
     View,
@@ -111,10 +112,8 @@ export function LiveChat({ sessionKey }: LiveChatProps) {
         return (
             <View className={`flex-row mb-2 ${isOwn ? 'justify-end' : 'justify-start'}`}>
                 {!isOwn && (
-                    <View className="w-7 h-7 rounded-full bg-white/10 items-center justify-center mr-2 mt-1">
-                        <Text className="text-white text-[10px] font-black">
-                            {(item.sender?.username ?? '?')[0].toUpperCase()}
-                        </Text>
+                    <View className="items-center justify-center mr-2 mt-1">
+                        <PilotAvatar appearance={item.sender?.cosmetics} size={28} label={item.sender?.username ?? 'Pilote'} />
                     </View>
                 )}
                 <View className={`max-w-[75%] ${isOwn ? 'items-end' : 'items-start'}`}>

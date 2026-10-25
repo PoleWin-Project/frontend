@@ -7,18 +7,22 @@ export const DEMO_SESSION_KEY = 9523;            // OpenF1 Monaco GP 2024 Race
 export const DEMO_PRE_RACE_SEC = 60;             // 1 minute de pronos (réglable)
 export const DEMO_RACE_DURATION_SEC = 60;        // 1 minute de replay (réglable)
 export const DEMO_WINNER_ACRONYM = 'LEC';        // Leclerc a gagné Monaco 2024
+/**
+ * Récompense FICTIVE affichée pendant la démo (rien n'est crédité). Comme dans le vrai
+ * championnat, aucune mise : un bon pronostic rapporte des points, une erreur ne coûte rien.
+ */
+export const DEMO_REWARD_POINTS = 100;
 
 export interface DemoState {
     active: boolean;
     raceStartsAt: string | null;   // ISO quand la course "démarre"
-    pick: string | null;            // pilote parié (acronyme)
-    stake: number;                  // points misés
+    pick: string | null;            // pilote pronostiqué (acronyme)
 }
 
 interface DemoContextValue extends DemoState {
     startDemo: () => void;
     cancelDemo: () => void;
-    placeDemoPick: (driverAcronym: string, stake: number) => void;
+    placeDemoPick: (driverAcronym: string) => void;
     endDemo: () => { won: boolean; winner: string } | null;
 }
 
@@ -26,7 +30,6 @@ const initialState: DemoState = {
     active: false,
     raceStartsAt: null,
     pick: null,
-    stake: 0,
 };
 
 const DemoContext = createContext<DemoContextValue | null>(null);
@@ -36,7 +39,7 @@ export function DemoProvider({ children }: { children: React.ReactNode }) {
 
     const startDemo = useCallback(() => {
         const raceStartsAt = new Date(Date.now() + DEMO_PRE_RACE_SEC * 1000).toISOString();
-        setState({ active: true, raceStartsAt, pick: null, stake: 0 });
+        setState({ active: true, raceStartsAt, pick: null });
         // Warm up backend cache pour que les locations soient prêtes dans 5 min
         fetch(`${API_URL}/openf1/demo/${DEMO_SESSION_KEY}/warmup`).catch(() => undefined);
     }, []);
@@ -45,8 +48,8 @@ export function DemoProvider({ children }: { children: React.ReactNode }) {
         setState(initialState);
     }, []);
 
-    const placeDemoPick = useCallback((driverAcronym: string, stake: number) => {
-        setState(s => ({ ...s, pick: driverAcronym, stake }));
+    const placeDemoPick = useCallback((driverAcronym: string) => {
+        setState(s => ({ ...s, pick: driverAcronym }));
     }, []);
 
     const endDemo = useCallback(() => {
