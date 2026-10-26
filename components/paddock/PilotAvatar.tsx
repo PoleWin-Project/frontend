@@ -32,19 +32,21 @@ const assets: Record<string, ImageSourcePropType> = {
 };
 
 /** Les illustrations partagent le même canevas : fond, tenue puis casque. */
-function AvatarArtwork({ appearance, size = 72 }: { appearance?: Appearance | null; size?: number }) {
+type AvatarPresentation = 'round' | 'square' | 'driver';
+
+function AvatarArtwork({ appearance, size = 72, presentation = 'round' }: { appearance?: Appearance | null; size?: number; presentation?: AvatarPresentation }) {
   const helmet = assets[appearance?.helmet?.code ?? ''];
   const suit = assets[appearance?.suit?.code ?? ''];
   const background = assets[appearance?.background?.code ?? ''];
   const layer = { position: 'absolute' as const, width: size, height: size, top: 0, left: 0 };
   return (
-    <View accessible accessibilityLabel="Avatar de pilote" style={{ width: size, height: size, borderRadius: size / 2, overflow: 'hidden', backgroundColor: '#111820' }}>
-      {background ? <Image source={background} style={layer} resizeMode="contain" /> : (
+    <View accessible accessibilityLabel="Avatar de pilote" style={{ width: size, height: size, borderRadius: presentation === 'round' ? size / 2 : 10, overflow: 'hidden', backgroundColor: presentation === 'driver' ? 'transparent' : '#111820' }}>
+      {presentation !== 'driver' && (background ? <Image source={background} style={layer} resizeMode="contain" /> : (
         <Svg width={size} height={size} viewBox="0 0 100 100" style={layer}>
           <Circle cx="50" cy="50" r="46" fill="#202e3b" />
           <Path d="M0 85L85 0H100L15 100H0Z" fill="#293b49" />
         </Svg>
-      )}
+      ))}
       {/* Un seul rendu par emplacement. Les clés démontent aussi l'ancien
           composant natif lors d'un changement d'équipement. */}
       <View key={`suit:${appearance?.suit?.code ?? 'base'}`} style={layer}>
@@ -70,25 +72,25 @@ function AvatarArtwork({ appearance, size = 72 }: { appearance?: Appearance | nu
         </Svg>
       )}
       </View>
-      {appearance?.frame?.color && <View pointerEvents="none" style={{ ...layer, borderWidth: Math.max(2, size * 0.035), borderColor: appearance.frame.color, borderRadius: size / 2 }} />}
+      {presentation !== 'driver' && appearance?.frame?.color && <View pointerEvents="none" style={{ ...layer, borderWidth: Math.max(2, size * 0.035), borderColor: appearance.frame.color, borderRadius: presentation === 'round' ? size / 2 : 10 }} />}
     </View>
   );
 }
 
 
-export function PilotAvatar({ appearance, size = 72, label = 'Avatar de pilote', zoomable = true }: {
-  appearance?: Appearance | null; size?: number; label?: string; zoomable?: boolean;
+export function PilotAvatar({ appearance, size = 72, label = 'Avatar de pilote', zoomable = true, presentation = 'round' }: {
+  appearance?: Appearance | null; size?: number; label?: string; zoomable?: boolean; presentation?: AvatarPresentation;
 }) {
   const [open, setOpen] = useState(false);
   const { width, height } = useWindowDimensions();
   const expandedSize = Math.max(100, Math.min(width - 80, height - 220, 360));
-  if (!zoomable) return <AvatarArtwork appearance={appearance} size={size} />;
+  if (!zoomable) return <AvatarArtwork appearance={appearance} size={size} presentation={presentation} />;
   return (
     <>
       <Pressable accessibilityRole="button" accessibilityLabel={`Agrandir : ${label}`} accessibilityHint="Ouvre l’avatar en grand"
         onPress={event => { event.stopPropagation(); setOpen(true); }}
         style={{ minWidth: 44, minHeight: 44, alignItems: 'center', justifyContent: 'center' }}>
-        <AvatarArtwork appearance={appearance} size={size} />
+        <AvatarArtwork appearance={appearance} size={size} presentation={presentation} />
       </Pressable>
       {open && <Modal visible transparent animationType="fade" onRequestClose={() => setOpen(false)}>
         <Pressable accessible={false} onPress={() => setOpen(false)} style={{ flex: 1, backgroundColor: '#000000e8', alignItems: 'center', justifyContent: 'center', padding: 24 }}>

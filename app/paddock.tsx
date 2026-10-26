@@ -1,23 +1,35 @@
-import { PilotAvatar } from '@/components/paddock/PilotAvatar';
 import React, { useCallback, useEffect, useState } from 'react';
-import { ActivityIndicator, Alert, Pressable, RefreshControl, ScrollView, View, useWindowDimensions } from 'react-native';
+import { ActivityIndicator, Alert, Image, Pressable, RefreshControl, ScrollView, StyleSheet, View, useWindowDimensions } from 'react-native';
 import { Stack, useFocusEffect, useRouter } from 'expo-router';
-import { ChevronLeft, Flag, Check, Trophy, Radio, Gauge } from 'lucide-react-native';
+import { ChevronLeft, Database } from 'lucide-react-native';
 import { LinearGradient } from 'expo-linear-gradient';
+import { useFonts } from 'expo-font';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Text } from '@/components/ui/text';
+import { PilotAvatar } from '@/components/paddock/PilotAvatar';
+import { PaddockShopItem } from '@/components/paddock/PaddockShopItem';
 import { useAuth } from '@/context/AuthContext';
-import { buyCosmetic, equipCosmetic, fetchPaddock, type PaddockCatalog, type PaddockItem, type Appearance } from '@/lib/api/paddock';
+import { buyCosmetic, equipCosmetic, fetchPaddock, type PaddockCatalog, type PaddockItem, type CosmeticKind } from '@/lib/api/paddock';
 
-const kindLabels = { helmet: 'Casque', suit: 'Tenue', background: 'Fond', frame: 'Cadre', title: 'Titre' };
+const FILTERS: { kind: CosmeticKind | 'all'; label: string }[] = [
+  { kind: 'all', label: 'Tout' }, { kind: 'helmet', label: 'Casques' },
+  { kind: 'suit', label: 'Tenues' }, { kind: 'title', label: 'Titres' },
+  { kind: 'background', label: 'Fonds' }, { kind: 'frame', label: 'Cadres' },
+];
+const BOX = require('../assets/images/paddock/garage-box-2d.png');
+const CAR = require('../assets/images/paddock/garage-car-2d.png');
 
 export default function PaddockScreen() {
   const { user, accessToken, refreshProfile } = useAuth();
   const router = useRouter();
   const insets = useSafeAreaInsets();
-  const { width, fontScale } = useWindowDimensions();
-  const columns = width < 350 || fontScale > 1.3 ? 2 : 3;
-  const itemWidth = (width - 40 - (columns - 1) * 8) / columns;
+  const { width } = useWindowDimensions();
+  const [fontLoaded] = useFonts({ PaddockDisplay: require('@expo-google-fonts/montserrat/900Black_Italic/Montserrat_900Black_Italic.ttf') });
+  const display = { fontFamily: fontLoaded ? 'PaddockDisplay' : 'Montserrat_Bold_Italic' };
+  const pageWidth = Math.min(width, 820);
+  const padding = width < 375 ? 12 : 18;
+  const itemWidth = (pageWidth - padding * 2 - 26 - 10) / 2;
+  const [filter, setFilter] = useState<CosmeticKind | 'all'>('all');
   const [data, setData] = useState<PaddockCatalog | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState<string | null>(null);
@@ -64,93 +76,149 @@ export default function PaddockScreen() {
       try { setData(await fetchPaddock(accessToken)); await refreshProfile(); } catch { /* retry remains available */ }
     } finally { setBusy(null); }
   };
+  const appearance = data?.cosmetics ?? user?.cosmetics;
+  const visibleItems = data?.items.filter(item => (tab === 'shop' ? item.available : item.owned)
+    && (filter === 'all' || item.kind === filter)) ?? [];
+  const rotationDate = data ? new Date(data.rotation.refreshesAt).toLocaleDateString('fr-FR', {
+    day: 'numeric', month: 'short', timeZone: 'UTC',
+  }) : '';
+
   return (
-    <View className="flex-1 bg-[#08090b]" style={{ paddingTop: insets.top }}>
+    <View style={[styles.screen, { paddingTop: insets.top }]}>
       <Stack.Screen options={{ headerShown: false }} />
-      <View className="flex-row items-center gap-3 px-5 py-2">
-        <Pressable accessibilityRole="button" accessibilityLabel="Retour" onPress={() => router.back()} className="p-3 rounded-full bg-white/5">
-          <ChevronLeft color="white" size={20} />
-        </Pressable>
-        <View className="flex-1">
-          <Text className="text-white font-bold text-2xl">Le Paddock</Text>
-          <Text className="text-white/50 text-xs">La signature de ton pilote.</Text>
+      <ScrollView contentContainerStyle={{ paddingBottom: insets.bottom, alignItems: 'center' }}
+        refreshControl={<RefreshControl refreshing={refreshing} onRefresh={refresh} tintColor="#ff2536" />}>
+        <View style={{ width: pageWidth }}>
+          <View style={styles.intro}>
+            <Image accessible={false} source={BOX} style={styles.decorImage} resizeMode="cover" />
+            <LinearGradient pointerEvents="none" colors={['#07090bb0', '#07090b88', '#07090b']} style={StyleSheet.absoluteFillObject} />
+            <View style={{ paddingTop: 12, paddingHorizontal: padding }}>
+              <View style={styles.brandRow}>
+                <Pressable accessibilityRole="button" accessibilityLabel="Retour" onPress={() => router.back()} style={styles.back}>
+                  <ChevronLeft color="white" size={22} />
+                </Pressable>
+              </View>
+              <Text accessibilityRole="header" style={[styles.heading, display, { fontSize: pageWidth < 375 ? 32 : 39, lineHeight: pageWidth < 375 ? 44 : 52 }]}>LE PADDOCK<Text style={[styles.slashes, display]}> ///</Text></Text>
+              <Text style={styles.subtitle}>La signature de ton pilote.</Text>
+              {accessToken && <LinearGradient colors={['#151b1f', '#090c0f']} style={styles.pass}>
+                <PilotAvatar appearance={appearance} size={58} label={user?.username} />
+                <View style={styles.identity}>
+                  <Text style={styles.username}>{user?.username}</Text>
+                  <Text style={styles.signature}>{appearance?.title?.name ?? 'Choisis ta signature'}</Text>
+                </View>
+                <View style={styles.balance}>
+                  <View style={styles.balanceValue}><Database size={22} color="#ff2536" /><Text style={styles.amount}>{(data?.garageCredits ?? user?.garageCredits ?? 0).toLocaleString('fr-FR')}</Text></View>
+                  <Text style={styles.tokenLabel}>jetons</Text>
+                </View>
+              </LinearGradient>}
+            </View>
+          </View>
+
+          {!accessToken ? <View style={[styles.panel, { margin: padding }]}>
+            <Text style={styles.body}>Connecte-toi pour personnaliser ton profil.</Text>
+            <Pressable onPress={() => router.push('/sign-in')} accessibilityRole="button" style={styles.login}><Text style={styles.loginText}>Se connecter</Text></Pressable>
+          </View> : <>
+            <View accessibilityRole="tablist" style={[styles.tabs, { marginHorizontal: padding }]}>
+              {(['shop', 'collection'] as const).map(value => <Pressable key={value}
+                accessibilityRole="tab" accessibilityState={{ selected: tab === value }}
+                onPress={() => { setTab(value); setFilter('all'); }}
+                style={[styles.tab, tab === value && styles.tabSelected]}>
+                <Text style={[styles.tabText, display, tab === value && styles.tabTextSelected]}>{value === 'shop' ? 'BOUTIQUE' : 'MA COLLECTION'}</Text>
+              </Pressable>)}
+            </View>
+            <View style={[styles.box, { height: pageWidth < 375 ? 174 : 196 }]}>
+              <Image accessible={false} source={BOX} style={styles.decorImage} resizeMode="cover" />
+              <LinearGradient pointerEvents="none" colors={['#07090b00', '#07090b66', '#07090b']} style={StyleSheet.absoluteFillObject} />
+              <LinearGradient pointerEvents="none" colors={['#07090bbb', '#07090b00']} start={{ x: 0, y: 1 }} end={{ x: 1, y: 0 }} style={StyleSheet.absoluteFillObject} />
+              <View style={[styles.boxCopy, { left: padding + 12 }]}>
+                <Text style={[styles.boxTitle, display]}>TON BOX.{'\n'}TON STYLE.</Text>
+                <Text style={styles.boxSubtitle}>Prépare ton pilote.</Text>
+              </View>
+              <View pointerEvents="none" style={{ position: 'absolute', right: padding - 8, bottom: -12 }}>
+                <PilotAvatar appearance={appearance} size={pageWidth < 375 ? 178 : 206} presentation="driver" zoomable={false} />
+              </View>
+            </View>
+
+            <View style={[styles.panel, { marginHorizontal: padding }]}>
+              <Text accessibilityRole="header" style={[styles.sectionTitle, display]}>{tab === 'shop' ? 'LA SÉLECTION' : 'MA COLLECTION'}<Text style={[styles.sectionSlashes, display]}> ///</Text></Text>
+              <Text style={styles.rotation}>{tab === 'shop' ? data ? `Rotation le ${rotationDate} · 00 h UTC` : 'La sélection de la semaine' : 'Tes équipements, pour toutes les saisons.'}</Text>
+              {error && <View accessibilityRole="alert" style={styles.notice}><Text style={styles.body}>{error}</Text><Pressable accessibilityRole="button" onPress={() => setReload(n => n + 1)} style={styles.retry}><Text style={styles.retryText}>Réessayer</Text></Pressable></View>}
+              {!data && !error && <View style={styles.loading}><ActivityIndicator color="#ff2536" /><Text style={styles.rotation}>Ouverture du box…</Text></View>}
+              {data && <>
+                <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.filters}>
+                  {FILTERS.map(({ kind, label }) => <Pressable key={kind} accessibilityRole="button" accessibilityState={{ selected: filter === kind }}
+                    onPress={() => setFilter(kind)} style={[styles.filter, filter === kind && styles.filterSelected]}>
+                    <Text style={[styles.filterText, filter === kind && styles.filterTextSelected]}>{label}</Text>
+                  </Pressable>)}
+                </ScrollView>
+                {!data.enabled && <Text style={styles.noticeText}>Les achats ouvrent au lancement du championnat.</Text>}
+                {visibleItems.length === 0 && <Text style={styles.empty}>{tab === 'collection'
+                  ? filter === 'all' ? 'Ta collection est vide. Ton pilote de base est gratuit. Personnalise-le avec la sélection de la semaine.' : 'Tu ne possèdes pas encore d’équipement dans cette catégorie.'
+                  : 'Aucun article de cette catégorie cette semaine. Découvre les autres équipements.'}</Text>}
+                <View style={styles.grid}>
+                  {visibleItems.map(item => <PaddockShopItem key={item.code} item={item} appearance={data.cosmetics}
+                    balance={data.garageCredits} enabled={data.enabled} busy={busy} width={itemWidth} onAction={act} />)}
+                </View>
+              </>}
+              <View style={styles.footnote}><View style={styles.rule} /><Text style={styles.footnoteText}>Ton style en piste.{'\n'}Aucun effet sur le classement.</Text><View style={styles.rule} /></View>
+            </View>
+            <View pointerEvents="none" style={{ height: pageWidth * 0.57, marginTop: -1 }}>
+              <Image accessible={false} source={CAR} style={{ width: '100%', height: '100%' }} resizeMode="cover" />
+              <LinearGradient colors={['#07090b', '#07090b00']} style={{ position: 'absolute', top: 0, left: 0, right: 0, height: 40 }} />
+            </View>
+          </>}
         </View>
-      </View>
-      {!accessToken ? (
-        <View className="p-6"><Text className="text-white mb-4">Connecte-toi pour personnaliser ton profil.</Text><Pressable onPress={() => router.push('/sign-in')} accessibilityRole="button"><Text className="text-cyan-400">Se connecter</Text></Pressable></View>
-      ) : (
-        <ScrollView contentContainerStyle={{ paddingHorizontal: 20, paddingTop: 12, paddingBottom: insets.bottom + 12 }}
-          refreshControl={<RefreshControl refreshing={refreshing} onRefresh={refresh} tintColor="#00B4D8" />}>
-          <LinearGradient colors={['#18242c', '#101419', '#111317']} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={{ borderRadius: 20, padding: 16, borderWidth: 1, borderColor: '#ffffff12', marginBottom: 12 }}>
-            <View className="flex-row items-center justify-between mb-3">
-              <Text className="text-white/50 text-xs tracking-widest">PASS PADDOCK</Text>
-              <Flag size={14} color="#7e929f" />
-            </View>
-            <View className="flex-row items-center gap-3">
-              <PilotAvatar appearance={data?.cosmetics ?? user?.cosmetics} size={64} />
-              <View className="flex-1">
-                <Text numberOfLines={1} className="text-white font-bold text-sm">{user?.username}</Text>
-                <Text className="text-white/50 text-xs mt-1">{data?.cosmetics.title?.name ?? 'Choisis ta signature'}</Text>
-              </View>
-              <View className="items-end border-l border-white/10 pl-3">
-                <Text className="text-white font-bold text-2xl">{(data?.garageCredits ?? user?.garageCredits ?? 0).toLocaleString()}</Text>
-                <Text className="text-white/50 text-xs">jetons</Text>
-              </View>
-            </View>
-          </LinearGradient>
-          {error ? <Pressable accessibilityRole="button" onPress={() => setReload(n => n + 1)} className="p-4 mb-4"><Text className="text-white">{error}</Text><Text className="text-cyan-400 mt-2">Réessayer</Text></Pressable> : null}
-          {!data && !error ? <ActivityIndicator color="#00B4D8" /> : data ? (
-            <>
-              <View className="flex-row border-b border-white/10 mb-4">
-                {(['shop', 'collection'] as const).map(value => (
-                  <Pressable key={value} accessibilityRole="tab" accessibilityState={{ selected: tab === value }} onPress={() => setTab(value)} style={{ minHeight: 44 }} className={`flex-1 justify-center border-b-2 ${tab === value ? 'border-white' : 'border-transparent'}`}>
-                    <Text className={`text-center font-bold text-sm ${tab === value ? 'text-white' : 'text-white/40'}`}>{value === 'shop' ? 'Boutique' : 'Ma collection'}</Text>
-                  </Pressable>
-                ))}
-              </View>
-              {!data.enabled && <Text className="text-white/60 mb-4">Les achats ouvrent au lancement du championnat.</Text>}
-              {tab === 'collection' && !data.items.some(item => item.owned) && <Text className="text-white/50">Ta collection est vide. Ton pilote de base est gratuit. Personnalise-le avec la sélection de la semaine.</Text>}
-              <View className="mb-3">
-                <Text className="text-white font-bold text-sm">{tab === 'shop' ? 'La sélection de la semaine' : 'Tes personnalisations'}</Text>
-                <Text className="text-white/50 text-xs mt-1">{tab === 'shop'
-                  ? `Renouvellement le ${new Date(data.rotation.refreshesAt).toLocaleDateString('fr-FR', { day: 'numeric', month: 'long' })} · lundi à 00 h UTC`
-                  : 'Tes achats restent disponibles, même hors sélection.'}</Text>
-              </View>
-              <View className="flex-row flex-wrap mb-4" style={{ gap: 8 }}>
-                      {data.items.filter(item => tab === 'shop' ? item.available : item.owned).map(item => {
-                        const affordable = data.garageCredits >= item.price;
-                        const disabled = busy !== null || (!item.owned && (!data.enabled || !affordable));
-                        const preview: Appearance = { ...data.cosmetics, [item.kind]: { code: item.code, name: item.name, color: item.color } };
-                        const TitleIcon = item.code === 'title-strategist' ? Radio : item.code === 'title-late-braker' ? Gauge : Trophy;
-                        return (
-                          <View key={item.code} style={{ width: itemWidth, borderColor: item.equipped ? '#507579' : '#ffffff0c', borderWidth: 1, borderRadius: 16, overflow: 'hidden', backgroundColor: '#121519' }}>
-                            <LinearGradient colors={item.kind !== 'title' ? ['#20272f', '#121519'] : ['#28251f', '#121519']} style={{ height: 86, alignItems: 'center', justifyContent: 'center' }}>
-                              {item.kind !== 'title' ? (
-                                <PilotAvatar appearance={preview} size={78} />
-                              ) : (
-                                <View style={{ width: 54, height: 54, borderRadius: 16, backgroundColor: '#c6a8750c', borderWidth: 1, borderColor: '#c6a87525', alignItems: 'center', justifyContent: 'center', transform: [{ rotate: '-6deg' }] }}>
-                                  <TitleIcon color="#c6a875" size={26} strokeWidth={1.5} />
-                                </View>
-                              )}
-                              {item.equipped && <View accessibilityLabel="Équipé" style={{ position: 'absolute', right: 7, top: 7, backgroundColor: '#193136', padding: 3, borderRadius: 10 }}><Check color="#83ced0" size={12} /></View>}
-                            </LinearGradient>
-                            <View className="px-2 pb-2 flex-1">
-                              <Text className="text-white/40 text-center" style={{ fontSize: 10, marginBottom: 3 }}>{kindLabels[item.kind]}</Text>
-                              <Text style={{ minHeight: 34, lineHeight: 17, fontSize: 12, textAlign: 'center', color: '#e6e9ed', fontWeight: '600' }}>{item.name}</Text>
-                              <Pressable accessibilityRole="button" accessibilityLabel={`${item.owned ? item.equipped ? 'Retirer' : 'Équiper' : `Acheter pour ${item.price} jetons`} : ${item.name}`} accessibilityHint={!item.owned && !affordable ? `Il te manque ${item.price - data.garageCredits} jetons.` : undefined} accessibilityState={{ disabled, busy: busy === item.code }} disabled={disabled} onPress={() => act(item)}
-                                style={{ minHeight: 44, marginTop: 4, borderRadius: 10, alignItems: 'center', justifyContent: 'center', backgroundColor: item.equipped ? '#1a2c30' : disabled ? '#ffffff04' : '#ffffff0c' }}>
-                                {busy === item.code ? <ActivityIndicator color="#83ced0" /> : <Text style={{ fontSize: 12, fontWeight: '600', color: disabled ? '#727a85' : item.equipped ? '#83ced0' : '#e6e9ed' }}>{item.owned ? item.equipped ? 'Retirer' : 'Équiper' : `${item.price} jetons`}</Text>}
-                              </Pressable>
-                            </View>
-                          </View>
-                        );
-                      })}
-              </View>
-              <Text className="text-white/40 text-xs text-center">Ton style en piste. Aucun effet sur le classement.</Text>
-            </>
-          ) : null}
-        </ScrollView>
-      )}
+      </ScrollView>
     </View>
   );
 }
+
+const styles = StyleSheet.create({
+  decorImage: { position: 'absolute', top: 0, left: 0, width: '100%', height: '100%' },
+  screen: { flex: 1, backgroundColor: '#07090b' },
+  intro: { overflow: 'hidden', paddingBottom: 10 },
+  brandRow: { height: 44, flexDirection: 'row', alignItems: 'center' },
+  back: { width: 44, height: 44, alignItems: 'center', justifyContent: 'center', backgroundColor: '#080b0ecc', borderWidth: 1, borderColor: '#ffffff24', borderRadius: 22 },
+  heading: { color: '#fff', textAlign: 'center', letterSpacing: -1.9, marginTop: 7 },
+  slashes: { color: '#ff2536', fontSize: 34, lineHeight: 48, letterSpacing: -4 },
+  subtitle: { color: '#e0e3e5', fontSize: 15, textAlign: 'center', marginTop: 1, marginBottom: 18 },
+  pass: { padding: 12, borderWidth: 1, borderColor: '#596168', borderRadius: 10, flexDirection: 'row', alignItems: 'center', gap: 11 },
+  identity: { flex: 1 },
+  username: { color: '#fff', fontFamily: 'Inter_Bold', fontSize: 17 },
+  signature: { color: '#c0c6ca', fontSize: 11, marginTop: 4 },
+  balance: { borderLeftWidth: 1, borderColor: '#4a5259', paddingLeft: 12, alignItems: 'center' },
+  balanceValue: { flexDirection: 'row', gap: 5, alignItems: 'center' },
+  amount: { fontFamily: 'Inter_Bold', color: '#fff', fontSize: 25 },
+  tokenLabel: { color: '#c0c6ca', fontSize: 11 },
+  tabs: { flexDirection: 'row', borderWidth: 1, borderColor: '#444b50', backgroundColor: '#101518' },
+  tab: { flex: 1, minHeight: 52, alignItems: 'center', justifyContent: 'center', borderBottomWidth: 4, borderBottomColor: 'transparent', paddingHorizontal: 4 },
+  tabSelected: { borderBottomColor: '#ff2536', backgroundColor: '#ff25360a' },
+  tabText: { color: '#adb3b8', fontSize: 15, letterSpacing: -0.7 },
+  tabTextSelected: { color: '#ff2536' },
+  box: { overflow: 'hidden', borderTopWidth: 4, borderTopColor: '#30383c' },
+  boxCopy: { position: 'absolute', bottom: 25, zIndex: 1 },
+  boxTitle: { color: '#fff', fontSize: 26, lineHeight: 28, letterSpacing: -1.4 },
+  boxSubtitle: { color: '#cdd2d6', fontSize: 12, marginTop: 6 },
+  panel: { backgroundColor: '#0b0f12', borderWidth: 1, borderColor: '#596168', borderRadius: 10, padding: 12 },
+  sectionTitle: { color: '#fff', fontSize: 23, lineHeight: 34, letterSpacing: -1.1 },
+  sectionSlashes: { color: '#ff2536', fontSize: 25, lineHeight: 34, letterSpacing: -3 },
+  rotation: { color: '#b9c0c6', fontSize: 12, marginTop: 4 },
+  filters: { gap: 7, paddingVertical: 14 },
+  filter: { borderWidth: 1, borderColor: '#596168', borderRadius: 10, minHeight: 44, minWidth: 64, paddingHorizontal: 14, alignItems: 'center', justifyContent: 'center' },
+  filterSelected: { backgroundColor: '#f7192b', borderColor: '#f7192b' },
+  filterText: { color: '#d8dde0', fontSize: 12 },
+  filterTextSelected: { color: '#fff', fontFamily: 'Inter_Bold' },
+  grid: { flexDirection: 'row', flexWrap: 'wrap', gap: 10 },
+  footnote: { flexDirection: 'row', alignItems: 'center', gap: 12, paddingTop: 16, paddingBottom: 2 },
+  rule: { height: 1, backgroundColor: '#6d7479', flex: 1 },
+  footnoteText: { color: '#abb3ba', textAlign: 'center', fontSize: 10, lineHeight: 15 },
+  body: { color: '#d8dde0', fontSize: 14 },
+  empty: { color: '#c0c7cd', fontSize: 13, lineHeight: 20, paddingVertical: 20 },
+  loading: { padding: 30, gap: 10, alignItems: 'center' },
+  notice: { marginTop: 14, padding: 12, backgroundColor: '#301318', borderRadius: 8 },
+  noticeText: { color: '#dcc2c5', fontSize: 12, marginBottom: 14 },
+  retry: { minHeight: 44, justifyContent: 'center' },
+  retryText: { color: '#ff6470', fontFamily: 'Inter_Bold', fontSize: 14 },
+  login: { backgroundColor: '#f7192b', padding: 14, borderRadius: 10, marginTop: 16, alignItems: 'center' },
+  loginText: { color: '#fff', fontFamily: 'Inter_Bold' },
+});
