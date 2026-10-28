@@ -1,3 +1,4 @@
+import type { Appearance } from './paddock';
 import { API_URL } from '@/lib/config';
 
 export interface DmMessage {
@@ -7,12 +8,12 @@ export interface DmMessage {
     content: string;
     isRead: boolean;
     createdAt: string;
-    sender?: { id: number; username: string; profile?: { avatarUrl: string | null; displayName: string | null } | null };
+    sender?: { id: number; username: string; cosmetics?: Appearance; profile?: { avatarUrl: string | null; displayName: string | null } | null };
 }
 
 export interface Conversation {
     partnerId: number;
-    partner?: { id: number; username: string; profile?: { avatarUrl: string | null; displayName: string | null } | null };
+    partner?: { id: number; username: string; cosmetics?: Appearance; profile?: { avatarUrl: string | null; displayName: string | null } | null };
     lastMessage: DmMessage;
 }
 

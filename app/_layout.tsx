@@ -24,6 +24,7 @@ import { useAuth } from '@/context/AuthContext';
 import { useSegments, useRouter } from 'expo-router';
 import { PushRegistrar } from '@/components/PushRegistrar';
 import { PronoResultsNotifier } from '@/components/game/PronoResultsNotifier';
+import { SeasonLaunchNotice } from '@/components/game/SeasonLaunchNotice';
 import { TourGuideProvider } from 'rn-tourguide';
 import { PoleWinTourProvider } from '@/hooks/usePoleWinTour';
 import { PoleWinTooltip } from '@/components/onboarding/PoleWinTooltip';
@@ -110,6 +111,8 @@ export default function RootLayout() {
                   <StatusBar style="auto" />
                   <PushRegistrar />
                   <PronoResultsNotifier />
+                  {/* Annonce unique du passage au championnat (anciens joueurs de la bêta) */}
+                  <SeasonLaunchNotice />
                   <Stack>
                     <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
                     <Stack.Screen name="(auth)" options={{ headerShown: false }} />

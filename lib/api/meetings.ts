@@ -189,25 +189,72 @@ export async function fetchRaceSessions(limit: number = 50, upcomingOnly = true)
     }
 }
 
+/**
+ * Récompense d'une option de prédiction : nombre de points de championnat gagnés
+ * SI le pronostic est correct. Ce n'est pas une cote : rien n'est engagé.
+ * `value = '*'` = valeur par défaut (pilote sans récompense dédiée).
+ */
+export interface RewardOption {
+    value: string;
+    rewardPoints: number;
+    /** PODIUM : les 3 bons pilotes dans le désordre. */
+    partialRewardPoints: number | null;
+}
+
 export interface Prediction {
     id: number;
     sessionId: number;
     type: string;
     closesAt: string;
     winningValue?: string;
+    rewardOptions?: RewardOption[];
 }
 
 export interface Pronostic {
     id: number;
     predictionId: number;
-    pointsStaked: number;
-    pointsEarned: number;
     status: string;
+    /** 'fixed_reward' = pronostic du championnat ; 'legacy_stake' = ancienne Saison Bêta. */
+    scoringModel?: 'fixed_reward' | 'legacy_stake';
+    /** Récompense figée au moment de la validation. */
+    rewardPointsSnapshot?: number | null;
+    partialRewardPointsSnapshot?: number | null;
+    /** Points de championnat obtenus (0 si incorrect — jamais négatif). */
+    championshipPointsAwarded?: number;
     detail?: {
         value: string;
-        multiplier: number;
     };
     prediction?: any;
+}
+
+/** Récompense affichée pour une valeur donnée (option dédiée, sinon option par défaut). */
+export function rewardFor(prediction: Prediction, value: string | null | undefined): number | null {
+    const options = prediction.rewardOptions ?? [];
+    const key = prediction.type === 'PODIUM' ? '*' : value?.toUpperCase();
+    const option = options.find((o) => o.value === key) ?? options.find((o) => o.value === '*');
+    return option?.rewardPoints ?? null;
+}
+
+/** Fourchette de récompenses d'une prédiction (pour l'en-tête de carte). */
+export function rewardRange(prediction: Prediction): { min: number; max: number } | null {
+    const values = (prediction.rewardOptions ?? []).map((o) => o.rewardPoints);
+    if (!values.length) return null;
+    return { min: Math.min(...values), max: Math.max(...values) };
+}
+
+/** Erreur API lisible (le backend renvoie { status: 'error', message, code }). */
+export class ApiError extends Error {
+    constructor(public status: number, message: string, public code?: string) {
+        super(message);
+    }
+}
+
+async function parseOrThrow(response: Response) {
+    const data = await response.json().catch(() => ({}));
+    if (!response.ok) {
+        throw new ApiError(response.status, data?.message ?? 'Erreur inattendue', data?.code);
+    }
+    return data;
 }
 
 export interface Driver {
@@ -282,54 +329,40 @@ export async function fetchDrivers(sessionKey: number): Promise<Driver[]> {
     }
 }
 
-export async function placePronostic(predictionId: number, pointsStaked: number, value: string): Promise<any> {
+/**
+ * Valide un pronostic. AUCUN montant n'est envoyé : la récompense est calculée
+ * et figée par le serveur.
+ */
+export async function placePronostic(predictionId: number, value: string): Promise<Pronostic> {
     const url = `${API_URL}/predictions/${predictionId}/pronostic`;
     const headers = await getHeaders();
-
-    try {
-        const response = await fetch(url, {
-            method: 'POST',
-            headers,
-            body: JSON.stringify({ pointsStaked, value }),
-        });
-        return await response.json();
-    } catch (error) {
-        console.error(`Failed to place pronostic for prediction ${predictionId}:`, error);
-        throw error;
-    }
+    const response = await fetch(url, {
+        method: 'POST',
+        headers,
+        body: JSON.stringify({ value }),
+    });
+    const data = await parseOrThrow(response);
+    return data.pronostic;
 }
 
-export async function updatePronostic(predictionId: number, pointsStaked: number, value: string): Promise<any> {
+/** Modifie le choix d'un pronostic (avant la clôture). */
+export async function updatePronostic(predictionId: number, value: string): Promise<Pronostic> {
     const url = `${API_URL}/predictions/${predictionId}/pronostic`;
     const headers = await getHeaders();
-
-    try {
-        const response = await fetch(url, {
-            method: 'PATCH',
-            headers,
-            body: JSON.stringify({ pointsStaked, value }),
-        });
-        return await response.json();
-    } catch (error) {
-        console.error(`Failed to update pronostic for prediction ${predictionId}:`, error);
-        throw error;
-    }
+    const response = await fetch(url, {
+        method: 'PATCH',
+        headers,
+        body: JSON.stringify({ value }),
+    });
+    const data = await parseOrThrow(response);
+    return data.pronostic;
 }
 
-export async function deletePronostic(predictionId: number): Promise<any> {
+export async function deletePronostic(predictionId: number): Promise<void> {
     const url = `${API_URL}/predictions/${predictionId}/pronostic`;
     const headers = await getHeaders();
-
-    try {
-        const response = await fetch(url, {
-            method: 'DELETE',
-            headers,
-        });
-        return await response.json();
-    } catch (error) {
-        console.error(`Failed to delete pronostic for prediction ${predictionId}:`, error);
-        throw error;
-    }
+    const response = await fetch(url, { method: 'DELETE', headers });
+    await parseOrThrow(response);
 }
 
 export async function fetchMyPronosticsHistory(limit = 50, offset = 0): Promise<Pronostic[]> {

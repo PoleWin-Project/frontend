@@ -1,5 +1,7 @@
+import { useAuth } from '@/context/AuthContext';
+import { PilotAvatar } from '@/components/paddock/PilotAvatar';
 import { Tabs } from 'expo-router';
-import { Home, User, Newspaper, Trophy, Medal } from 'lucide-react-native';
+import { Home, Newspaper, Trophy, Medal } from 'lucide-react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { PlatformPressable } from '@react-navigation/elements';
 import { TourGuideZone } from 'rn-tourguide';
@@ -35,11 +37,12 @@ function makeTabButton(zone: number, title: string, body: string) {
 const AccueilTabButton = makeTabButton(7, 'Accueil 🏠', "L'accueil : ton tableau de bord — actus, prochain GP et raccourcis.");
 const ChampionnatTabButton = makeTabButton(8, 'Championnat 🏆', 'Le championnat : calendrier des GP et classements pilotes & écuries.');
 const ClassementTabButton = makeTabButton(9, 'Classement 🥇', 'Le classement : ta position face aux autres joueurs.');
-const PronosTabButton = makeTabButton(10, 'Pronos 🎯', 'Les pronos : parie sur le Top 3 avant chaque course.');
+const PronosTabButton = makeTabButton(10, 'Pronos 🎯', 'Les pronos : devine le vainqueur avant chaque course et marque des points.');
 const ProfilTabButton = makeTabButton(11, 'Profil 👤', 'Ton profil : badges, statistiques et réglages.');
 
 export default function TabLayout() {
     const insets = useSafeAreaInsets();
+    const { user } = useAuth();
     return (
         <Tabs screenOptions={{
             headerShown: false,
@@ -94,7 +97,7 @@ export default function TabLayout() {
                 name="profile"
                 options={{
                     title: 'Profil',
-                    tabBarIcon: ({ color }) => <User color={color} size={24} />,
+                    tabBarIcon: () => <PilotAvatar appearance={user?.cosmetics} size={26} zoomable={false} />,
                     tabBarButton: ProfilTabButton,
                 }}
             />

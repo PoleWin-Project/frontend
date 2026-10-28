@@ -1,6 +1,8 @@
+import type { Appearance } from './paddock';
 import { API_URL } from '@/lib/config';
 
 export interface SearchUser {
+  cosmetics?: Appearance;
   id: number;
   username: string;
   profile?: {
@@ -87,15 +89,22 @@ export async function deleteUserAccount(
   }
 }
 
+/**
+ * Statistiques de pronostics (modèle championnat : plus aucune notion de mise
+ * ni de gain net). `won` / `lost` / `winRate` restent renvoyés en alias.
+ */
 export type UserStats = {
   total: number;
+  correct: number;
+  incorrect: number;
+  pending: number;
+  /** Pourcentage de pronostics corrects parmi les pronostics résolus. */
+  accuracy: number;
+  championshipPoints: number;
+  season?: { id: number; code: string; name: string } | null;
   won: number;
   lost: number;
-  pending: number;
   winRate: number;
-  totalStaked: number;
-  totalEarned: number;
-  netGain: number;
 };
 
 export async function fetchUserStats(

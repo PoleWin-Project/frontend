@@ -1,3 +1,4 @@
+import { PilotAvatar } from '@/components/paddock/PilotAvatar';
 import React, { useEffect, useState } from 'react';
 import { View, FlatList, StyleSheet, ActivityIndicator, Pressable, RefreshControl } from 'react-native';
 import { Text } from '@/components/ui/text';
@@ -5,28 +6,13 @@ import { ScreenHeader } from '@/components/ui/ScreenHeader';
 import { useAuth } from '@/context/AuthContext';
 import { fetchFriends, FriendRequest, FriendUser } from '@/lib/api/friends';
 import { useRouter } from 'expo-router';
-import { LinearGradient } from 'expo-linear-gradient';
 import Animated, { FadeInDown, FadeInRight } from 'react-native-reanimated';
 import { Users, ChevronRight } from 'lucide-react-native';
 
 const AnimatedPressable = Animated.createAnimatedComponent(Pressable);
 
-const AVATAR_GRADIENTS: [string, string][] = [
-    ['#E10600', '#7B0200'], ['#FF6B35', '#CC4400'],
-    ['#0067FF', '#003B99'], ['#00B4D8', '#005F73'],
-    ['#9B5DE5', '#6A00BB'], ['#F72585', '#B5007A'],
-    ['#06D6A0', '#028A5A'], ['#FFB703', '#C07800'],
-];
-
-function getAvatarGradient(name: string): [string, string] {
-    let hash = 0;
-    for (let i = 0; i < name.length; i++) hash = name.charCodeAt(i) + ((hash << 5) - hash);
-    return AVATAR_GRADIENTS[Math.abs(hash) % AVATAR_GRADIENTS.length];
-}
-
 function FriendRow({ friend, index }: { friend: FriendUser; index: number }) {
     const router = useRouter();
-    const avatarGradient = getAvatarGradient(friend.username);
     
     return (
         <AnimatedPressable
@@ -34,9 +20,7 @@ function FriendRow({ friend, index }: { friend: FriendUser; index: number }) {
             style={styles.rowCard}
             onPress={() => router.push(`/user/${friend.id}` as any)}
         >
-            <LinearGradient colors={avatarGradient} style={styles.avatarWrap} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }}>
-                <Text style={styles.avatarInitial}>{friend.username[0]?.toUpperCase()}</Text>
-            </LinearGradient>
+            <PilotAvatar appearance={friend.cosmetics} size={48} label={friend.username} />
             
             <View style={styles.rowInfo}>
                 <Text style={styles.rowUsername}>{friend.username}</Text>

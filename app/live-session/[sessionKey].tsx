@@ -8,7 +8,7 @@ import { LiveCircuitMap } from '@/components/live/LiveCircuitMap';
 import { LiveChat } from '@/components/live/LiveChat';
 import { LeaderboardSheet } from '@/components/live/LeaderboardSheet';
 import { fetchDrivers, Driver } from '@/lib/api/meetings';
-import { useDemo, DEMO_RACE_DURATION_SEC } from '@/context/DemoContext';
+import { useDemo, DEMO_RACE_DURATION_SEC, DEMO_REWARD_POINTS } from '@/context/DemoContext';
 
 import { API_URL } from '@/lib/config';
 const { height: SCREEN_HEIGHT, width: SCREEN_WIDTH } = Dimensions.get('window');
@@ -78,10 +78,11 @@ export default function LiveSessionScreen() {
                 const result = demo.endDemo();
                 if (result) {
                     Alert.alert(
-                        result.won ? '🏆 Bravo !' : '😢 Perdu !',
+                        result.won ? '🏆 Bravo !' : 'Course terminée',
+                        // Démo : points fictifs, jamais crédités. Un pronostic incorrect ne coûte rien.
                         result.won
-                            ? `${result.winner} a gagné Monaco 2024 — comme tu l'avais prédit ! +${demo.stake * 2} pts`
-                            : `Le vainqueur est ${result.winner} (Leclerc). Mise perdue : ${demo.stake} pts.`,
+                            ? `${result.winner} a gagné Monaco 2024 — comme tu l'avais prédit ! +${DEMO_REWARD_POINTS} pts (démo)`
+                            : `Le vainqueur est ${result.winner} (Leclerc). Pas de points cette fois.`,
                         [{ text: 'OK', onPress: () => router.back() }],
                     );
                 } else {

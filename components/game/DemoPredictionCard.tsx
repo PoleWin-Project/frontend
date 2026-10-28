@@ -3,16 +3,20 @@ import { View, TouchableOpacity, Modal, ScrollView } from 'react-native';
 import { Text } from '@/components/ui/text';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Trophy, Coins } from 'lucide-react-native';
+import { Trophy } from 'lucide-react-native';
 import { fetchDrivers, Driver } from '@/lib/api/meetings';
-import { useDemo, DEMO_SESSION_KEY } from '@/context/DemoContext';
+import { useDemo, DEMO_SESSION_KEY, DEMO_REWARD_POINTS } from '@/context/DemoContext';
 
+/**
+ * Carte de pronostic du mode démo (replay Monaco 2024). Même modèle que le vrai
+ * championnat : aucun montant engagé, une récompense fixe si le pronostic est correct.
+ * Les points de la démo sont fictifs et ne sont jamais crédités.
+ */
 export function DemoPredictionCard() {
     const demo = useDemo();
     const [drivers, setDrivers] = useState<Driver[]>([]);
     const [pickerOpen, setPickerOpen] = useState(false);
     const [selected, setSelected] = useState<Driver | null>(null);
-    const [stake, setStake] = useState('50');
 
     useEffect(() => {
         if (!demo.active) return;
@@ -30,7 +34,7 @@ export function DemoPredictionCard() {
 
     const confirm = () => {
         if (!selected) return;
-        demo.placeDemoPick(selected.name_acronym, parseInt(stake, 10) || 0);
+        demo.placeDemoPick(selected.name_acronym);
         setPickerOpen(false);
     };
 
@@ -59,18 +63,13 @@ export function DemoPredictionCard() {
                                     className="w-1 h-8 rounded-full mr-3"
                                 />
                                 <View>
-                                    <Text className="text-xs text-muted-foreground font-medium">Votre pronostic</Text>
+                                    <Text className="text-xs text-muted-foreground font-medium">Ton pronostic</Text>
                                     <Text className="text-base font-bold text-foreground">{selected.full_name}</Text>
                                 </View>
                             </View>
-                            <View className="items-end">
-                                <View className="flex-row items-center bg-amber-400/20 px-2 py-1 rounded-md mb-1">
-                                    <Coins size={14} color="#fbbf24" />
-                                    <Text className="text-sm font-bold text-amber-300 ml-1">{demo.stake}</Text>
-                                </View>
-                                <Text className="text-[10px] text-green-500 font-bold uppercase">
-                                    Gain : +{demo.stake * 2} pts (x2)
-                                </Text>
+                            <View className="flex-row items-center bg-amber-400/20 px-2 py-1 rounded-md">
+                                <Trophy size={12} color="#fbbf24" />
+                                <Text className="text-xs font-bold text-amber-300 ml-1">{DEMO_REWARD_POINTS} pts si correct</Text>
                             </View>
                         </View>
                         <Button
@@ -78,24 +77,18 @@ export function DemoPredictionCard() {
                             onPress={() => setPickerOpen(true)}
                             className="w-full mt-3 h-8 border-amber-400/30 bg-transparent"
                         >
-                            <Text className="text-amber-300 text-xs font-bold uppercase">Modifier mon pari</Text>
+                            <Text className="text-amber-300 text-xs font-bold uppercase">Modifier mon pronostic</Text>
                         </Button>
                     </View>
                 ) : (
                     <View className="bg-muted/30 border border-border/50 rounded-xl p-4">
-                        <View className="flex-row justify-between items-center mb-4">
-                            <View>
-                                <Text className="text-muted-foreground text-[10px] font-bold uppercase tracking-wider">Cote</Text>
-                                <Text className="text-xl font-black text-foreground italic">x2.0</Text>
-                            </View>
-                            <View className="items-end">
-                                <Text className="text-muted-foreground text-[10px] font-bold uppercase tracking-wider">Gain potentiel</Text>
-                                <Text className="text-xl font-black text-green-500 italic">+{parseInt(stake, 10) * 2} pts</Text>
-                            </View>
+                        <View className="mb-4">
+                            <Text className="text-muted-foreground text-[10px] font-bold uppercase tracking-wider">Points possibles</Text>
+                            <Text className="text-base font-black text-foreground">{DEMO_REWARD_POINTS} points si correct (démo)</Text>
                         </View>
                         <Button onPress={() => setPickerOpen(true)} className="w-full bg-foreground h-10">
                             <Text className="text-background font-bold uppercase tracking-widest text-xs">
-                                Parier {stake} pts
+                                Faire mon prono
                             </Text>
                         </Button>
                     </View>
@@ -144,27 +137,8 @@ export function DemoPredictionCard() {
                             </View>
                         </ScrollView>
 
-                        <View className="mb-6">
-                            <Text className="text-sm font-bold text-muted-foreground uppercase mb-3">Mise (Points)</Text>
-                            <View className="flex-row items-center gap-3">
-                                {['10', '50', '100', '250', '500'].map(p => (
-                                    <TouchableOpacity
-                                        key={p}
-                                        onPress={() => setStake(p)}
-                                        className={`px-4 py-2 rounded-lg border ${
-                                            stake === p ? 'border-amber-400 bg-amber-400/10' : 'border-border/50'
-                                        }`}
-                                    >
-                                        <Text className={`font-bold ${stake === p ? 'text-amber-300' : 'text-muted-foreground'}`}>
-                                            {p}
-                                        </Text>
-                                    </TouchableOpacity>
-                                ))}
-                            </View>
-                        </View>
-
                         <Button onPress={confirm} disabled={!selected} className="w-full bg-amber-400 h-14 rounded-2xl">
-                            <Text className="text-black text-lg font-bold">Confirmer le Prono</Text>
+                            <Text className="text-black text-lg font-bold">Faire mon prono</Text>
                         </Button>
                     </View>
                 </View>

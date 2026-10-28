@@ -58,7 +58,11 @@ export interface NewResolvedResult {
  * on se contente d'enregistrer l'existant pour ne pas déballer tout l'historique.
  */
 export async function computeNewResolved(history: Pronostic[]): Promise<NewResolvedResult> {
-    const resolved = history.filter(isResolved);
+    // Les anciens pronostics de la Saison Bêta (annulés lors de la bascule) ne sont jamais
+    // annoncés : ils sont marqués « vus » silencieusement.
+    const legacy = history.filter((p) => isResolved(p) && p.scoringModel === 'legacy_stake');
+    if (legacy.length) await markResolvedSeen(legacy.map((p) => p.id));
+    const resolved = history.filter((p) => isResolved(p) && p.scoringModel !== 'legacy_stake');
     const baselineExists = await hasSeenBaseline();
 
     if (!baselineExists) {

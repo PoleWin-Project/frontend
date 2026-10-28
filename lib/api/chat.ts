@@ -1,3 +1,4 @@
+import type { Appearance } from './paddock';
 import { API_URL } from '@/lib/config';
 
 export interface ChatChannel {
@@ -12,7 +13,7 @@ export interface ChatMessage {
     senderId: number;
     content: string;
     createdAt: string;
-    sender?: { id: number; username: string } | null;
+    sender?: { id: number; username: string; cosmetics?: Appearance } | null;
 }
 
 export async function fetchSessionChatChannel(sessionKey: number): Promise<ChatChannel | null> {

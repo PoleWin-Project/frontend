@@ -1,10 +1,20 @@
 import React, { useState } from 'react';
-import { View, TouchableOpacity, Modal, ScrollView, TextInput, ActivityIndicator, Alert } from 'react-native';
+import { View, TouchableOpacity, Modal, ScrollView, ActivityIndicator, Alert } from 'react-native';
 import { Text } from '@/components/ui/text';
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Trophy, Clock, CheckCircle2, Lock, User, Coins, Trash2, HelpCircle, X } from 'lucide-react-native';
-import { Prediction, Pronostic, Driver, placePronostic, updatePronostic, deletePronostic } from '@/lib/api/meetings';
+import { Trophy, Clock, Lock, Trash2, HelpCircle, X, Flag } from 'lucide-react-native';
+import {
+    ApiError,
+    Prediction,
+    Pronostic,
+    Driver,
+    placePronostic,
+    updatePronostic,
+    deletePronostic,
+    rewardFor,
+    rewardRange,
+} from '@/lib/api/meetings';
 import { useAuth } from '@/context/AuthContext';
 
 interface PredictionCardProps {
@@ -14,6 +24,14 @@ interface PredictionCardProps {
     onRefresh: () => void;
 }
 
+/**
+ * Carte de pronostic — modèle « championnat » (aucune mise).
+ *
+ * Le joueur choisit seulement une réponse. Chaque choix affiche le nombre de
+ * points de championnat qu'il rapporte S'IL EST CORRECT (valeur calculée et figée
+ * par le serveur). Un pronostic incorrect rapporte 0 point et ne retire rien.
+ * ⚠️ Ne jamais réintroduire ici de vocabulaire de pari (mise, cote, gain potentiel…).
+ */
 export function PredictionCard({ prediction, initialPronostic, drivers, onRefresh }: PredictionCardProps) {
     const { refreshProfile } = useAuth();
     const isPodium = prediction.type === 'PODIUM';
@@ -22,12 +40,11 @@ export function PredictionCard({ prediction, initialPronostic, drivers, onRefres
     const [selectedDriver, setSelectedDriver] = useState<Driver | null>(null);
     const [podiumDrivers, setPodiumDrivers] = useState<(Driver | null)[]>([null, null, null]);
     const [selectedOption, setSelectedOption] = useState<string | null>(null);
-    const [points, setPoints] = useState(initialPronostic?.pointsStaked.toString() || '10');
     const [loading, setLoading] = useState(false);
     const [infoModalVisible, setInfoModalVisible] = useState(false);
     const [infoContent, setInfoContent] = useState<{ title: string, message: string } | null>(null);
 
-    // Sync state when props change (important for refresh after placing a prono)
+    // Resynchronise la sélection quand le pronostic change (après validation / refresh).
     React.useEffect(() => {
         if (initialPronostic) {
             if (isPodium) {
@@ -43,49 +60,54 @@ export function PredictionCard({ prediction, initialPronostic, drivers, onRefres
                 const driver = drivers.find(d => d.name_acronym === initialPronostic.detail?.value);
                 if (driver) setSelectedDriver(driver);
             }
-            setPoints(initialPronostic.pointsStaked.toString());
         } else {
             setSelectedDriver(null);
             setPodiumDrivers([null, null, null]);
             setSelectedOption(null);
-            setPoints('10');
         }
     }, [initialPronostic, drivers, isPodium, isSafetyCar]);
 
     const isLocked = new Date(prediction.closesAt).getTime() < Date.now();
-    const hasBet = !!initialPronostic;
+    const hasPronostic = !!initialPronostic;
+    const isResolved = initialPronostic?.status === 'won' || initialPronostic?.status === 'lost';
+    const range = rewardRange(prediction);
 
-    const handlePlaceBet = async () => {
-        let valueToSubmit: string | undefined;
-        if (isPodium) {
-            if (podiumDrivers.includes(null)) return;
-            valueToSubmit = podiumDrivers.map(d => d?.name_acronym).join(',');
-        } else if (isSafetyCar) {
-            if (!selectedOption) return;
-            valueToSubmit = selectedOption;
-        } else {
-            if (!selectedDriver) return;
-            valueToSubmit = selectedDriver.name_acronym;
-        }
+    /** Valeur actuellement sélectionnée dans la modale (format attendu par l'API). */
+    const currentValue = (): string | null => {
+        if (isPodium) return podiumDrivers.includes(null) ? null : podiumDrivers.map(d => d!.name_acronym).join(',');
+        if (isSafetyCar) return selectedOption;
+        return selectedDriver?.name_acronym ?? null;
+    };
+
+    /** Récompense indicative de la sélection en cours (la valeur définitive est fixée par le serveur). */
+    const selectionReward = (() => {
+        const value = currentValue();
+        return value ? rewardFor(prediction, value) : null;
+    })();
+
+    const handleSubmit = async () => {
+        const value = currentValue();
+        if (!value) return;
 
         setLoading(true);
         try {
-            if (hasBet) {
-                await updatePronostic(prediction.id, parseInt(points), valueToSubmit!);
+            if (hasPronostic) {
+                await updatePronostic(prediction.id, value);
             } else {
-                await placePronostic(prediction.id, parseInt(points), valueToSubmit!);
+                await placePronostic(prediction.id, value);
             }
             setPickerVisible(false);
             onRefresh();
-            refreshProfile(); // Call refreshProfile after onRefresh
+            refreshProfile();
         } catch (error) {
-            console.error(error);
+            const message = error instanceof ApiError ? error.message : 'Impossible d’enregistrer le pronostic.';
+            Alert.alert('Pronostic non enregistré', message);
         } finally {
             setLoading(false);
         }
     };
 
-    const handleDeleteBet = async () => {
+    const handleDelete = async () => {
         setLoading(true);
         try {
             await deletePronostic(prediction.id);
@@ -93,7 +115,8 @@ export function PredictionCard({ prediction, initialPronostic, drivers, onRefres
             onRefresh();
             refreshProfile();
         } catch (error) {
-            console.error(error);
+            const message = error instanceof ApiError ? error.message : 'Impossible de retirer le pronostic.';
+            Alert.alert('Erreur', message);
         } finally {
             setLoading(false);
         }
@@ -113,22 +136,25 @@ export function PredictionCard({ prediction, initialPronostic, drivers, onRefres
     };
 
     const showExplanation = (type: string) => {
+        const podiumFull = prediction.rewardOptions?.find(o => o.value === '*');
         const explanations: Record<string, { title: string, message: string }> = {
             'PODIUM': {
                 title: 'Podium',
-                message: 'Choisissez les 3 pilotes du podium. Gain de x4 si l\'ordre exact est trouvé, ou x2 si vous avez les 3 bons pilotes dans le désordre.'
+                message: podiumFull
+                    ? `Choisis les 3 pilotes du podium. ${podiumFull.rewardPoints} points si l'ordre exact est trouvé, ${podiumFull.partialRewardPoints ?? 0} points si les 3 pilotes sont bons dans le désordre.`
+                    : 'Choisis les 3 pilotes du podium. L’ordre exact rapporte le plus de points.',
             },
             'SAFETY_CAR': {
                 title: 'Safety Car',
-                message: 'Pronostiquez si la voiture de sécurité (Safety Car) sortira sur la piste pendant la course (Virtual Safety Car non incluse).'
+                message: 'Pronostique si la voiture de sécurité (Safety Car) sortira sur la piste pendant la course (Virtual Safety Car non incluse).'
             },
             'DNF': {
                 title: 'Abandon (DNF)',
-                message: 'Choisissez un pilote qui n\'arrivera pas à terminer la course (abandon, crash ou disqualification).'
+                message: 'Choisis un pilote qui n\'arrivera pas à terminer la course (abandon, crash ou disqualification).'
             },
             'FASTEST_LAP': {
                 title: 'Meilleur Tour',
-                message: 'Pronostiquez le pilote qui réalisera le meilleur tour absolu sur l\'ensemble de la course (souvent réalisé dans les derniers tours).'
+                message: 'Pronostique le pilote qui réalisera le meilleur tour absolu sur l\'ensemble de la course.'
             }
         };
         const info = explanations[type];
@@ -138,14 +164,20 @@ export function PredictionCard({ prediction, initialPronostic, drivers, onRefres
         }
     };
 
+    const showRewardsInfo = () => {
+        setInfoContent({
+            title: 'Points de championnat',
+            message: 'Chaque choix indique les points qu’il rapporte s’il est correct : un pronostic audacieux rapporte plus qu’un pronostic évident. Un pronostic incorrect ne coûte rien.',
+        });
+        setInfoModalVisible(true);
+    };
+
     const handleDriverSelect = (driver: Driver) => {
         if (isPodium) {
             if (podiumDrivers.find(d => d?.driver_number === driver.driver_number)) {
-                // Remove it
                 setPodiumDrivers(prev => prev.map(d => d?.driver_number === driver.driver_number ? null : d));
                 return;
             }
-            // Add to first available slot
             const emptyIndex = podiumDrivers.findIndex(d => d === null);
             if (emptyIndex !== -1) {
                 setPodiumDrivers(prev => {
@@ -158,6 +190,10 @@ export function PredictionCard({ prediction, initialPronostic, drivers, onRefres
             setSelectedDriver(driver);
         }
     };
+
+    const rewardLabel = range
+        ? (range.min === range.max ? `${range.max} points si correct` : `De ${range.min} à ${range.max} points si correct`)
+        : 'Points de championnat si correct';
 
     return (
         <Card className="border-border/40 shadow-sm bg-card/80 overflow-hidden">
@@ -181,15 +217,11 @@ export function PredictionCard({ prediction, initialPronostic, drivers, onRefres
                         </Text>
                     </View>
                 </View>
-                {isLocked ? (
-                    <Lock size={20} color="#9ca3af" />
-                ) : (
-                    <Trophy size={20} color="#ef4444" />
-                )}
+                {isLocked ? <Lock size={20} color="#9ca3af" /> : <Flag size={20} color="#ef4444" />}
             </CardHeader>
 
             <CardContent className="pt-2">
-                {hasBet ? (
+                {hasPronostic ? (
                     <View className="bg-primary/5 border border-primary/20 rounded-xl p-3">
                         <View className="flex-row items-center justify-between">
                             <View className="flex-row items-center flex-1 pr-2">
@@ -200,7 +232,7 @@ export function PredictionCard({ prediction, initialPronostic, drivers, onRefres
                                             className="w-1 h-8 rounded-full mr-3"
                                         />
                                         <View>
-                                            <Text className="text-xs text-muted-foreground font-medium">Votre pronostic</Text>
+                                            <Text className="text-xs text-muted-foreground font-medium">Ton pronostic</Text>
                                             <Text className="text-base font-bold text-foreground">
                                                 {selectedDriver?.full_name || initialPronostic?.detail?.value}
                                             </Text>
@@ -209,7 +241,7 @@ export function PredictionCard({ prediction, initialPronostic, drivers, onRefres
                                 )}
                                 {isSafetyCar && (
                                     <View>
-                                        <Text className="text-xs text-muted-foreground font-medium">Votre pronostic</Text>
+                                        <Text className="text-xs text-muted-foreground font-medium">Ton pronostic</Text>
                                         <Text className="text-base font-bold text-foreground">
                                             {selectedOption === 'YES' ? 'OUI' : selectedOption === 'NO' ? 'NON' : initialPronostic?.detail?.value}
                                         </Text>
@@ -217,7 +249,7 @@ export function PredictionCard({ prediction, initialPronostic, drivers, onRefres
                                 )}
                                 {isPodium && (
                                     <View>
-                                        <Text className="text-xs text-muted-foreground font-medium mb-1">Votre podium</Text>
+                                        <Text className="text-xs text-muted-foreground font-medium mb-1">Ton podium</Text>
                                         <View className="flex-row items-center gap-1.5 flex-wrap">
                                             {podiumDrivers.map((d, i) => (
                                                 <View key={i} className="bg-background/50 px-1.5 py-0.5 rounded border border-border/50">
@@ -231,14 +263,20 @@ export function PredictionCard({ prediction, initialPronostic, drivers, onRefres
                                 )}
                             </View>
                             <View className="items-end">
-                                <View className="flex-row items-center bg-primary/20 px-2 py-1 rounded-md mb-1">
-                                    <Coins size={14} color="#ef4444" />
-                                    <Text className="text-sm font-bold text-primary ml-1">{initialPronostic?.pointsStaked}</Text>
-                                </View>
-                                <View className="flex-row items-center mt-0.5">
-                                    <Text className="text-[10px] text-green-500 font-bold uppercase">+{Math.floor((initialPronostic?.pointsStaked || 0) * (initialPronostic?.detail?.multiplier || 2))} pts</Text>
-                                    <Text className="text-[9px] text-muted-foreground font-bold ml-1 uppercase">(x{(initialPronostic?.detail?.multiplier || 2).toFixed(1)})</Text>
-                                </View>
+                                {isResolved ? (
+                                    <Text className={`text-sm font-bold ${initialPronostic?.status === 'won' ? 'text-green-500' : 'text-muted-foreground'}`}>
+                                        {initialPronostic?.status === 'won'
+                                            ? `+${initialPronostic?.championshipPointsAwarded ?? 0} pts`
+                                            : '0 pt'}
+                                    </Text>
+                                ) : (
+                                    <View className="flex-row items-center bg-primary/15 px-2 py-1 rounded-md">
+                                        <Trophy size={12} color="#ef4444" />
+                                        <Text className="text-xs font-bold text-primary ml-1">
+                                            {initialPronostic?.rewardPointsSnapshot ?? '—'} pts si correct
+                                        </Text>
+                                    </View>
+                                )}
                             </View>
                         </View>
                         {!isLocked && (
@@ -248,11 +286,11 @@ export function PredictionCard({ prediction, initialPronostic, drivers, onRefres
                                     onPress={() => setPickerVisible(true)}
                                     className="flex-1 h-8 border-primary/20 bg-transparent"
                                 >
-                                    <Text className="text-primary text-xs font-bold uppercase">Modifier mon pari</Text>
+                                    <Text className="text-primary text-xs font-bold uppercase">Modifier mon pronostic</Text>
                                 </Button>
                                 <Button
                                     variant="outline"
-                                    onPress={handleDeleteBet}
+                                    onPress={handleDelete}
                                     disabled={loading}
                                     className="px-4 h-8 border-red-500/20 bg-red-500/10"
                                 >
@@ -263,28 +301,27 @@ export function PredictionCard({ prediction, initialPronostic, drivers, onRefres
                     </View>
                 ) : (
                     <View className="bg-muted/30 border border-border/50 rounded-xl p-4">
-                        <View className="flex-row justify-between items-center mb-4">
-                            <View>
-                                <Text className="text-muted-foreground text-[10px] font-bold uppercase tracking-wider">Cote Standard</Text>
-                                <Text className="text-xl font-black text-foreground italic">{isPodium ? 'x4.0' : 'x2.0'}</Text>
+                        <TouchableOpacity onPress={showRewardsInfo} className="flex-row items-center justify-between mb-4">
+                            <View className="flex-1 pr-2">
+                                <Text className="text-muted-foreground text-[10px] font-bold uppercase tracking-wider">Points possibles</Text>
+                                <Text className="text-base font-black text-foreground">{rewardLabel}</Text>
                             </View>
-                            <View className="items-end">
-                                <Text className="text-muted-foreground text-[10px] font-bold uppercase tracking-wider"> Gain Potentiel max</Text>
-                                <Text className="text-xl font-black text-green-500 italic">+{parseInt(points) * (isPodium ? 4 : 2)} pts</Text>
-                            </View>
-                        </View>
+                            <HelpCircle size={16} color="#9ca3af" />
+                        </TouchableOpacity>
                         <Button
                             onPress={() => !isLocked && setPickerVisible(true)}
                             disabled={isLocked}
                             className="w-full bg-foreground h-10"
                         >
-                            <Text className="text-background font-bold uppercase tracking-widest text-xs">Parier {points} pts</Text>
+                            <Text className="text-background font-bold uppercase tracking-widest text-xs">
+                                {isLocked ? 'Pronostics fermés' : 'Faire mon prono'}
+                            </Text>
                         </Button>
                     </View>
                 )}
             </CardContent>
 
-            {/* Picker Modal */}
+            {/* Modale de choix */}
             <Modal
                 animationType="slide"
                 transparent={true}
@@ -294,7 +331,7 @@ export function PredictionCard({ prediction, initialPronostic, drivers, onRefres
                 <View className="flex-1 justify-end bg-black/60">
                     <View className="bg-card rounded-t-3xl p-6 h-[80%] border-t border-border/50">
                         <View className="flex-row justify-between items-center mb-6">
-                            <Text className="text-2xl font-bold text-foreground">{hasBet ? "Modifier le Prono" : "Faire son Prono"}</Text>
+                            <Text className="text-2xl font-bold text-foreground">{hasPronostic ? "Modifier le prono" : "Faire son prono"}</Text>
                             <TouchableOpacity onPress={() => setPickerVisible(false)}>
                                 <Text className="text-primary font-bold">Annuler</Text>
                             </TouchableOpacity>
@@ -315,28 +352,31 @@ export function PredictionCard({ prediction, initialPronostic, drivers, onRefres
 
                         {isSafetyCar ? (
                             <View className="flex-row justify-between mb-6 gap-4">
-                                <TouchableOpacity
-                                    onPress={() => setSelectedOption('YES')}
-                                    className={`flex-1 p-4 rounded-xl border items-center justify-center ${selectedOption === 'YES' ? 'border-primary bg-primary/10' : 'border-border/50 bg-muted/20'}`}
-                                >
-                                    <Text className="text-lg font-black text-foreground">OUI</Text>
-                                </TouchableOpacity>
-                                <TouchableOpacity
-                                    onPress={() => setSelectedOption('NO')}
-                                    className={`flex-1 p-4 rounded-xl border items-center justify-center ${selectedOption === 'NO' ? 'border-primary bg-primary/10' : 'border-border/50 bg-muted/20'}`}
-                                >
-                                    <Text className="text-lg font-black text-foreground">NON</Text>
-                                </TouchableOpacity>
+                                {(['YES', 'NO'] as const).map((option) => (
+                                    <TouchableOpacity
+                                        key={option}
+                                        onPress={() => setSelectedOption(option)}
+                                        className={`flex-1 p-4 rounded-xl border items-center justify-center ${selectedOption === option ? 'border-primary bg-primary/10' : 'border-border/50 bg-muted/20'}`}
+                                    >
+                                        <Text className="text-lg font-black text-foreground">{option === 'YES' ? 'OUI' : 'NON'}</Text>
+                                        {rewardFor(prediction, option) !== null && (
+                                            <Text className="text-[10px] font-bold text-muted-foreground mt-1">
+                                                {rewardFor(prediction, option)} pts si correct
+                                            </Text>
+                                        )}
+                                    </TouchableOpacity>
+                                ))}
                             </View>
                         ) : (
                             <>
                                 <Text className="text-sm font-bold text-muted-foreground uppercase mb-3">Choisir un pilote</Text>
-                                <ScrollView className="flex-1 mb-6" showsVerticalScrollIndicator={false}>
+                                <ScrollView className="flex-1 mb-4" showsVerticalScrollIndicator={false}>
                                     <View className="flex-row flex-wrap gap-2">
                                         {drivers.map((driver) => {
                                             const isSelected = isPodium
                                                 ? podiumDrivers.some(d => d?.driver_number === driver.driver_number)
                                                 : selectedDriver?.driver_number === driver.driver_number;
+                                            const reward = isPodium ? null : rewardFor(prediction, driver.name_acronym);
 
                                             return (
                                                 <TouchableOpacity
@@ -356,6 +396,9 @@ export function PredictionCard({ prediction, initialPronostic, drivers, onRefres
                                                         <Text className="text-sm font-bold text-foreground" numberOfLines={1}>
                                                             {driver.full_name.split(' ').pop()}
                                                         </Text>
+                                                        {reward !== null && (
+                                                            <Text className="text-[10px] font-bold text-muted-foreground">{reward} pts si correct</Text>
+                                                        )}
                                                     </View>
                                                     {isPodium && isSelected && (
                                                         <View className="bg-primary px-1.5 rounded">
@@ -372,38 +415,34 @@ export function PredictionCard({ prediction, initialPronostic, drivers, onRefres
                             </>
                         )}
 
-                        <View className="mb-6">
-                            <Text className="text-sm font-bold text-muted-foreground uppercase mb-3">Mise (Points)</Text>
-                            <View className="flex-row items-center gap-4">
-                                {['10', '50', '100', '250', '500'].map((p) => (
-                                    <TouchableOpacity
-                                        key={p}
-                                        onPress={() => setPoints(p)}
-                                        className={`px-4 py-2 rounded-lg border ${points === p ? 'border-primary bg-primary/10' : 'border-border/50'
-                                            }`}
-                                    >
-                                        <Text className={`font-bold ${points === p ? 'text-primary' : 'text-muted-foreground'}`}>{p}</Text>
-                                    </TouchableOpacity>
-                                ))}
-                            </View>
+                        {/* Récapitulatif : points si correct, et rappel qu'une erreur ne coûte rien */}
+                        <View className="mb-4 p-3 rounded-xl bg-muted/30 border border-border/50">
+                            <Text className="text-sm font-bold text-foreground">
+                                {selectionReward !== null
+                                    ? `${selectionReward} points de championnat si correct`
+                                    : 'Choisis ta réponse'}
+                            </Text>
+                            <Text className="text-[11px] text-muted-foreground mt-0.5">
+                                Un pronostic incorrect ne coûte rien.
+                            </Text>
                         </View>
 
                         <Button
-                            onPress={handlePlaceBet}
-                            disabled={(isPodium ? podiumDrivers.includes(null) : isSafetyCar ? !selectedOption : !selectedDriver) || loading}
+                            onPress={handleSubmit}
+                            disabled={!currentValue() || loading}
                             className="w-full bg-primary h-14 rounded-2xl"
                         >
                             {loading ? (
                                 <ActivityIndicator color="white" />
                             ) : (
-                                <Text className="text-white text-lg font-bold">Confirmer le Prono</Text>
+                                <Text className="text-white text-lg font-bold">Faire mon prono</Text>
                             )}
                         </Button>
                     </View>
                 </View>
             </Modal>
 
-            {/* Info Modal */}
+            {/* Modale d'information */}
             <Modal
                 animationType="fade"
                 transparent={true}

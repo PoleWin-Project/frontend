@@ -1,3 +1,4 @@
+import type { Appearance } from './paddock';
 import { API_URL } from '@/lib/config';
 
 export interface PlaysToday {
@@ -17,12 +18,27 @@ export async function fetchPlaysToday(accessToken: string, gameId: string): Prom
   }
 }
 
+export interface RewardResult {
+  status: string;
+  /** Crédits Garage gagnés, calculés par le serveur. */
+  rewarded?: number;
+  /** Nouveau solde de crédits Garage. */
+  newTotal?: number;
+  currency?: 'garage_credits' | 'legacy_points';
+  playsToday?: number;
+  playsLeft?: number | null;
+  message?: string;
+}
+
+/**
+ * Déclare la fin d'une partie de mini-jeu. Le client n'envoie que son résultat
+ * (`metricMs`) : le montant de la récompense est calculé par le serveur.
+ */
 export async function rewardUser(
     accessToken: string,
-    points: number,
     gameId: string,
-    metricMs?: number,
-) {
+    metricMs: number,
+): Promise<RewardResult> {
     try {
         const res = await fetch(`${API_URL}/games/reward`, {
             method: 'POST',
@@ -30,7 +46,7 @@ export async function rewardUser(
                 'Content-Type': 'application/json',
                 'Authorization': `Bearer ${accessToken}`
             },
-            body: JSON.stringify({ points, gameId, metricMs })
+            body: JSON.stringify({ gameId, metricMs })
         });
         return await res.json();
     } catch (e) {
@@ -57,6 +73,7 @@ export async function recordFalseStart(accessToken: string, gameId: string) {
 }
 
 export interface LeaderboardEntry {
+    cosmetics?: Appearance;
     rank: number;
     userId: number;
     displayName: string | null;

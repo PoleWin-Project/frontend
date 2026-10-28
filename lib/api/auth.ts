@@ -1,3 +1,4 @@
+import type { Appearance } from './paddock';
 import { API_URL } from '@/lib/config';
 
 export interface AuthUser {
@@ -6,13 +7,39 @@ export interface AuthUser {
   username: string;
   roles: string[];
   isEmailVerified?: boolean;
-  points: number;
+  /**
+   * DÉPRÉCIÉ — alias renvoyé par le backend pour les anciennes versions de l'app.
+   * Utiliser `championshipPoints` (classement) ou `garageCredits` (cosmétique).
+   */
+  points?: number;
+  /** Points de championnat de la saison active : servent UNIQUEMENT au classement. */
+  championshipPoints?: number;
+  championshipSeason?: { id: number; code: string; name: string } | null;
+  /** Crédits Garage : monnaie cosmétique, sans lien avec les pronostics ni le classement. */
+  garageCredits?: number;
+  /** Badge « Pionnier du Paddock » (inscrit pendant la Saison Bêta). */
+  isPioneer?: boolean;
+  cosmetics?: Appearance;
+  /** Résultat figé de la Saison Bêta (null si le joueur n'y a pas participé). */
+  betaSeason?: BetaSeasonResult | null;
+  /** Saisons terminées auxquelles le joueur a participé, de la plus récente à la plus ancienne. */
+  seasonHistory?: SeasonHistoryResult[];
   profile?: {
     favoriteTeamCode?: string | null;
     favoriteDriverCode?: string | null;
     bio?: string | null;
   };
 }
+
+export interface SeasonHistoryResult {
+  seasonCode: string;
+  seasonName: string;
+  rank: number | null;
+  participants: number | null;
+  stats?: { correct?: number; incorrect?: number; resolved?: number };
+}
+
+export type BetaSeasonResult = SeasonHistoryResult;
 
 export interface AuthTokens {
   accessToken: string;
