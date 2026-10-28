@@ -1,3 +1,4 @@
+import { PilotAvatar } from '@/components/paddock/PilotAvatar';
 import React, { useEffect, useState, useCallback } from 'react';
 import { View, FlatList, TouchableOpacity, ActivityIndicator, RefreshControl } from 'react-native';
 import { useRouter, useFocusEffect } from 'expo-router';
@@ -49,7 +50,7 @@ export default function MessagesScreen() {
         setIncoming(prev => prev.filter(r => r.id !== req.id));
     };
 
-    const getAvatar = (username: string) => username[0].toUpperCase();
+
 
     const formatTime = (dateStr: string) => {
         const d = new Date(dateStr);
@@ -70,7 +71,7 @@ export default function MessagesScreen() {
                 activeOpacity={0.7}
             >
                 <View className="w-12 h-12 rounded-full bg-primary/20 items-center justify-center mr-3">
-                    <Text className="text-primary font-black text-lg">{getAvatar(item.partner?.username ?? '?')}</Text>
+                    <PilotAvatar appearance={item.partner?.cosmetics} size={48} label={name} />
                 </View>
                 <View className="flex-1">
                     <View className="flex-row items-center justify-between mb-0.5">
@@ -100,7 +101,7 @@ export default function MessagesScreen() {
                     onPress={() => router.push(`/user/${item.senderId}` as any)}
                     className="w-12 h-12 rounded-full bg-white/10 items-center justify-center mr-3"
                 >
-                    <Text className="text-white font-black text-lg">{getAvatar(sender?.username ?? '?')}</Text>
+                    <PilotAvatar appearance={sender?.cosmetics} size={48} label={name} />
                 </TouchableOpacity>
                 <View className="flex-1">
                     <Text className="text-white font-bold text-sm">{name}</Text>

@@ -1,3 +1,4 @@
+import { PilotAvatar } from '@/components/paddock/PilotAvatar';
 import React, { useState, useEffect } from 'react';
 import {
     View, ScrollView, Pressable, ActivityIndicator, Alert, StyleSheet, RefreshControl,
@@ -12,7 +13,7 @@ import { LinearGradient } from 'expo-linear-gradient';
 import Animated, { FadeInDown } from 'react-native-reanimated';
 import {
     LogOut, Trash2, Edit2, Check, X, Shield, Star, Trophy,
-    ArrowRight, Users, Target, TrendingUp, Zap, Flag,
+    ArrowRight, Users, Target, TrendingUp, Zap, Flag, Wrench, History,
 } from 'lucide-react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { getLatestSessionTeams, getLatestSessionDrivers, type OpenF1Team, type OpenF1Driver } from '@/lib/api/openf1';
@@ -62,7 +63,7 @@ function StatCard({ icon, label, value, sub, color, valueColor, delay = 0 }: {
 
 // ─── Main ──────────────────────────────────────────────────────────────────
 export default function ProfileScreen() {
-    const { user, logout, deleteAccount, updateUserProfile, accessToken, isLoading: isAuthLoading } = useAuth();
+    const { user, logout, deleteAccount, updateUserProfile, refreshProfile, accessToken, isLoading: isAuthLoading } = useAuth();
     const insets = useSafeAreaInsets();
     const router = useRouter();
     const { replayTour } = usePoleWinTour();
@@ -137,7 +138,7 @@ export default function ProfileScreen() {
 
     async function onRefresh() {
         setRefreshing(true);
-        await Promise.all([loadStats(), loadFriendCount(), loadBadges()]).catch(() => {});
+        await Promise.all([loadStats(), loadFriendCount(), loadBadges(), refreshProfile()]).catch(() => {});
         setRefreshing(false);
     }
 
@@ -170,7 +171,10 @@ export default function ProfileScreen() {
         return <GuestPrompt title="Mon Profil" description="Crée ton profil pilote, suis tes statistiques et débloque des badges exclusifs !" />;
     }
 
-    const points = user.points ?? 0;
+    // Points de championnat de la saison active (servent uniquement au classement).
+    // Les jetons Paddock, monnaie cosmétique, sont affichés à part (jamais additionnés).
+    const points = user.championshipPoints ?? 0;
+    const garageCredits = user.garageCredits ?? 0;
     const rank = getRankLabel(points);
     const avatarGradient = getAvatarGradient(user.username);
     const rankProgress = Math.min(
@@ -201,15 +205,14 @@ export default function ProfileScreen() {
                     <View style={styles.heroTop}>
                         {/* Avatar */}
                         <View style={styles.avatarWrap}>
-                            <LinearGradient colors={avatarGradient} style={styles.avatarGradient} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }}>
-                                <Text style={styles.avatarInitial}>{user.username[0]?.toUpperCase()}</Text>
-                            </LinearGradient>
-                            <View style={[styles.rankRing, { borderColor: rank.color }]} />
+                            <PilotAvatar appearance={user.cosmetics} size={72} label={user.username} />
+                            <View pointerEvents="none" style={[styles.rankRing, { borderColor: user.cosmetics?.frame?.color ?? rank.color }]} />
                         </View>
 
                         {/* Info */}
                         <View style={styles.heroInfo}>
                             <Text style={styles.heroUsername}>{user.username}</Text>
+                            {user.cosmetics?.title && <Text style={{ color: "#00B4D8", fontSize: 12 }}>{user.cosmetics.title.name}</Text>}
                             <Text style={styles.heroEmail}>{user.email}</Text>
                             <View style={[styles.rankBadge, { backgroundColor: rank.color + '20', borderColor: rank.color + '40' }]}>
                                 <Star size={10} color={rank.color} />
@@ -397,6 +400,67 @@ export default function ProfileScreen() {
                     );
                 })()}
 
+                {/* ── Historique des saisons terminées ── */}
+                {!isEditing && (
+                    <Animated.View entering={FadeInDown.delay(210).springify()} style={styles.badgeCard}>
+                        <View style={styles.badgeHeader}>
+                            <View>
+                                <Text style={styles.sectionLabel}>Historique des saisons</Text>
+                                <Text style={styles.badgeSubtitle}>Tes résultats en fin de saison</Text>
+                            </View>
+                            <History size={20} color="#00B4D8" />
+                        </View>
+                        {(user.seasonHistory ?? (user.betaSeason ? [user.betaSeason] : [])).length === 0 ? (
+                            <Text style={styles.badgeSubtitle}>Tes statistiques apparaîtront ici à la fin de ta première saison.</Text>
+                        ) : (user.seasonHistory ?? (user.betaSeason ? [user.betaSeason] : [])).map(season => {
+                            const correct = season.stats?.correct;
+                            const incorrect = season.stats?.incorrect;
+                            const resolved = season.stats?.resolved ?? (correct != null && incorrect != null ? correct + incorrect : undefined);
+                            const successRate = resolved != null && resolved > 0 && correct != null
+                                ? `${Math.round(correct / resolved * 100)} %` : '—';
+                            return (
+                                <View key={season.seasonCode} style={styles.seasonEntry}>
+                                    <View style={styles.badgeHeader}>
+                                        <Text style={styles.seasonName}>{season.seasonName}</Text>
+                                        <Text style={styles.seasonStatus}>Terminée</Text>
+                                    </View>
+                                    <View style={styles.seasonRanking}>
+                                        <Trophy size={18} color="#FFD700" />
+                                        <Text style={styles.historyStatValue}>{season.rank == null ? 'Non classé' : `#${season.rank}`}</Text>
+                                        <Text style={styles.historyStatLabel}>{season.rank == null ? 'Statistiques personnelles' : `sur ${season.participants} pilotes`}</Text>
+                                    </View>
+                                    <View style={styles.historyRow}>
+                                        {[
+                                            { label: 'Pronos résolus', value: resolved ?? '—' },
+                                            { label: 'Pronos corrects', value: correct ?? '—' },
+                                            { label: 'Pronos incorrects', value: incorrect ?? '—' },
+                                            { label: 'Réussite', value: successRate },
+                                        ].map(stat => (
+                                            <View key={stat.label} style={styles.historyStat}>
+                                                <Text style={styles.historyStatValue}>{stat.value}</Text>
+                                                <Text style={styles.historyStatLabel}>{stat.label}</Text>
+                                            </View>
+                                        ))}
+                                    </View>
+                                </View>
+                            );
+                        })}
+                    </Animated.View>
+                )}
+
+                {/* ── Jetons Paddock : monnaie cosmétique, séparée des points de championnat ── */}
+                {!isEditing && (
+                    <Animated.View entering={FadeInDown.delay(220).springify()} style={styles.garageCard}>
+                        <View style={[styles.statCardIcon, { backgroundColor: '#00B4D818' }]}>
+                            <Wrench size={18} color="#00B4D8" />
+                        </View>
+                        <View style={{ flex: 1 }}>
+                            <Text style={styles.garageValue}>{garageCredits.toLocaleString()} jetons Paddock</Text>
+                            <Text style={styles.garageHint}>Pour personnaliser ton profil. Sans effet sur le classement.</Text>
+                        </View>
+                    </Animated.View>
+                )}
+
                 <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-end', marginBottom: 4 }}>
                     <Text style={styles.sectionTitle}>Statistiques</Text>
                     <Pressable onPress={() => router.push('/user/friends' as any)}>
@@ -406,7 +470,7 @@ export default function ProfileScreen() {
                 <View style={styles.statsGrid}>
                     <StatCard
                         icon={<Trophy size={18} color="#FFD700" />}
-                        label="Points" value={points.toLocaleString()}
+                        label="Points championnat" value={points.toLocaleString()}
                         color="#FFD700" delay={200}
                     />
                     <StatCard
@@ -416,28 +480,19 @@ export default function ProfileScreen() {
                     />
                     <StatCard
                         icon={<Target size={18} color="#06D6A0" />}
-                        label="Victoires" value={stats?.won ?? 0}
+                        label="Pronos corrects" value={stats?.correct ?? stats?.won ?? 0}
                         sub={stats ? `sur ${stats.total}` : undefined}
                         color="#06D6A0" delay={240}
                     />
                     <StatCard
                         icon={<TrendingUp size={18} color="#9B5DE5" />}
-                        label="Win Rate" value={stats ? `${stats.winRate}%` : '—'}
+                        label="Réussite" value={stats ? `${stats.accuracy ?? stats.winRate}%` : '—'}
                         color="#9B5DE5" delay={260}
                     />
                     <StatCard
                         icon={<Zap size={18} color="#FFB703" />}
                         label="Pronostics" value={stats?.total ?? 0}
                         color="#FFB703" delay={280}
-                    />
-                    <StatCard
-                        icon={<Star size={18} color={stats && stats.netGain < 0 ? '#ef4444' : '#22c55e'} />}
-                        label="Bilan paris"
-                        sub="gains − mises"
-                        value={stats ? `${stats.netGain >= 0 ? '+' : ''}${stats.netGain} pts` : '—'}
-                        valueColor={stats ? (stats.netGain < 0 ? '#ef4444' : stats.netGain > 0 ? '#22c55e' : '#fff') : '#fff'}
-                        color={stats && stats.netGain < 0 ? '#ef4444' : '#22c55e'}
-                        delay={300}
                     />
                 </View>
 
@@ -604,6 +659,23 @@ const styles = StyleSheet.create({
 
     // Stats grid
     statsGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 10 },
+    seasonEntry: { borderTopWidth: 1, borderTopColor: 'rgba(255,255,255,0.08)', paddingTop: 14, marginTop: 4 },
+    seasonName: { color: '#fff', fontSize: 16, fontWeight: '800', flex: 1 },
+    seasonStatus: { color: 'rgba(255,255,255,0.45)', fontSize: 11 },
+    seasonRanking: { flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 12 },
+    historyRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
+    historyStat: {
+        flexGrow: 1, flexBasis: '45%', padding: 12, borderRadius: 14,
+        backgroundColor: 'rgba(255,255,255,0.04)', borderWidth: 1, borderColor: 'rgba(255,255,255,0.06)',
+    },
+    historyStatValue: { color: '#fff', fontSize: 20, fontWeight: '900' },
+    historyStatLabel: { color: 'rgba(255,255,255,0.45)', fontSize: 11, fontWeight: '600', marginTop: 2 },
+    garageCard: {
+        flexDirection: 'row', alignItems: 'center', gap: 12, padding: 14, borderRadius: 18, marginBottom: 16,
+        backgroundColor: 'rgba(0,180,216,0.06)', borderWidth: 1, borderColor: 'rgba(0,180,216,0.2)',
+    },
+    garageValue: { color: '#fff', fontSize: 15, fontWeight: '800' },
+    garageHint: { color: 'rgba(255,255,255,0.45)', fontSize: 11, marginTop: 2 },
     statCard: {
         width: '30.5%', backgroundColor: '#0c0c0f',
         borderWidth: 1, borderColor: 'rgba(255,255,255,0.06)',

@@ -1,3 +1,5 @@
+import type { Appearance } from '@/lib/api/paddock';
+import { PilotAvatar } from '@/components/paddock/PilotAvatar';
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import {
     View, FlatList, TextInput, TouchableOpacity,
@@ -26,6 +28,7 @@ export default function ConversationScreen() {
     const [loading, setLoading]     = useState(true);
     const [sending, setSending]     = useState(false);
     const [otherUsername, setOtherUsername] = useState<string>(`User #${otherId}`);
+    const [otherCosmetics, setOtherCosmetics] = useState<Appearance | null>(null);
     const flatRef = useRef<FlatList>(null);
 
     const loadMessages = useCallback(async () => {
@@ -34,7 +37,7 @@ export default function ConversationScreen() {
         setMessages(msgs);
         if (msgs[0]?.sender?.username) {
             const other = msgs.find(m => m.senderId === otherId);
-            if (other?.sender?.username) setOtherUsername(other.sender.username);
+            if (other?.sender?.username) { setOtherUsername(other.sender.username); setOtherCosmetics(other.sender.cosmetics ?? null); }
         }
         setLoading(false);
         setTimeout(() => flatRef.current?.scrollToEnd({ animated: false }), 100);
@@ -42,17 +45,25 @@ export default function ConversationScreen() {
 
     useEffect(() => { loadMessages(); }, [loadMessages]);
 
-    // Fetch username if no messages
+    // Load the partner even when the conversation contains only our messages.
     useEffect(() => {
-        if (!loading && messages.length === 0) {
-            fetch(`${API_URL}/users/${otherId}/public`, {
-                headers: { Authorization: `Bearer ${accessToken}` },
+        if (!accessToken) return;
+        const controller = new AbortController();
+        setOtherUsername(`User #${otherId}`);
+        setOtherCosmetics(null);
+        fetch(`${API_URL}/users/${otherId}/public`, {
+            headers: { Authorization: `Bearer ${accessToken}` },
+            signal: controller.signal,
+        })
+            .then(r => { if (!r.ok) throw new Error('Profile unavailable'); return r.json(); })
+            .then(d => {
+                if (controller.signal.aborted) return;
+                if (d.user?.username) setOtherUsername(d.user.username);
+                setOtherCosmetics(d.cosmetics ?? null);
             })
-                .then(r => r.json())
-                .then(d => { if (d.user?.username) setOtherUsername(d.user.username); })
-                .catch(() => {});
-        }
-    }, [loading, messages.length, otherId, accessToken]);
+            .catch(() => {});
+        return () => controller.abort();
+    }, [otherId, accessToken]);
 
     // WebSocket: listen for incoming DMs
     useEffect(() => {
@@ -135,7 +146,7 @@ export default function ConversationScreen() {
                     onPress={() => router.push(`/user/${otherId}` as any)}
                     className="w-9 h-9 rounded-full bg-primary/20 items-center justify-center"
                 >
-                    <Text className="text-primary font-black">{otherUsername[0]?.toUpperCase()}</Text>
+                    <PilotAvatar appearance={otherCosmetics} size={36} label={otherUsername} />
                 </TouchableOpacity>
                 <View className="flex-1">
                     <Text className="text-white font-bold">{otherUsername}</Text>

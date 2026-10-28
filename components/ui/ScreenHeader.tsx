@@ -42,11 +42,12 @@ export function ScreenHeader({ title, subtitle, showPoints = false, showBack = f
                     )}
                 </View>
 
+                {/* Pastille : points de CHAMPIONNAT (classement). Ce n'est pas un solde à dépenser. */}
                 {showPoints && (
                     <View className="flex-row items-center bg-primary/10 px-3 py-1.5 rounded-full border border-primary/20 flex-shrink-0">
                         <Trophy size={14} color="#ef4444" />
                         <Text className="text-sm font-bold text-primary ml-2 tracking-tight">
-                            {user?.points?.toLocaleString() || '0'} pts
+                            {(user?.championshipPoints ?? 0).toLocaleString()} pts
                         </Text>
                     </View>
                 )}

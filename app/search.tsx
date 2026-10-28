@@ -1,3 +1,4 @@
+import { PilotAvatar } from '@/components/paddock/PilotAvatar';
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import {
     View, TextInput, FlatList, TouchableOpacity,
@@ -121,9 +122,7 @@ export default function SearchScreen() {
             >
                 {/* Avatar */}
                 <View className="w-11 h-11 rounded-full bg-primary/20 items-center justify-center mr-3">
-                    <Text className="text-primary font-black text-lg">
-                        {item.username[0].toUpperCase()}
-                    </Text>
+                    <PilotAvatar appearance={item.cosmetics} size={44} label={item.username} />
                 </View>
 
                 {/* Info */}

@@ -71,6 +71,14 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
               AsyncStorage.setItem(REFRESH_TOKEN_KEY, result.refreshToken),
             ]);
             setState((s) => ({ ...s, accessToken: result.accessToken }));
+
+            // Recharge le profil : le cache local peut dater d'avant le passage au
+            // championnat (ancien champ `points`, sans championshipPoints / garageCredits).
+            const me = await fetchCurrentUser(result.accessToken);
+            if (me.ok) {
+              await AsyncStorage.setItem(USER_KEY, JSON.stringify(me.user));
+              setState((s) => ({ ...s, user: me.user }));
+            }
           } else {
             // On ne déconnecte l'utilisateur QUE si la session est vraiment invalide/expirée.
             // Si c'est un problème de réseau ou le serveur Render en veille (erreur_reseau ou serveur_veille), 

@@ -1,31 +1,38 @@
 import React from 'react';
 import { View } from 'react-native';
 import { Text } from '@/components/ui/text';
-import { CheckCircle2, Clock, XCircle, Trophy, Coins, Ban } from 'lucide-react-native';
+import { CheckCircle2, Clock, XCircle, Ban } from 'lucide-react-native';
 import { Pronostic } from '@/lib/api/meetings';
 
+/**
+ * Ligne d'historique d'un pronostic.
+ * - Championnat : « +N pts » si correct, « 0 pt » sinon (jamais de montant négatif).
+ * - Ancien pronostic de la Saison Bêta (`legacy_stake`) : seuls le choix et le résultat
+ *   sont affichés, sans aucun montant (l'ancienne mécanique à mises n'est plus montrée).
+ */
 export function PronosticHistoryCard({ pronostic }: { pronostic: Pronostic }) {
+    const isBeta = pronostic.scoringModel === 'legacy_stake';
     const isWon = pronostic.status === 'won';
     const isLost = pronostic.status === 'lost';
     const isVoid = pronostic.status === 'void';
 
     const getStatusIcon = () => {
         if (isWon) return <CheckCircle2 size={24} color="#22c55e" />;
-        if (isLost) return <XCircle size={24} color="#ef4444" />;
+        if (isLost) return <XCircle size={24} color="#9ca3af" />;
         if (isVoid) return <Ban size={24} color="#9ca3af" />;
         return <Clock size={24} color="#f59e0b" />;
     };
 
     const getStatusText = () => {
-        if (isWon) return 'Gagné';
-        if (isLost) return 'Perdu';
-        if (isVoid) return 'Annulé · remboursé';
+        if (isWon) return 'Correct';
+        if (isLost) return 'Incorrect';
+        if (isVoid) return 'Annulé';
         return 'En attente';
     };
 
     const getStatusColor = () => {
         if (isWon) return 'text-green-500';
-        if (isLost) return 'text-red-500';
+        if (isLost) return 'text-muted-foreground';
         if (isVoid) return 'text-muted-foreground';
         return 'text-amber-500';
     };
@@ -94,18 +101,16 @@ export function PronosticHistoryCard({ pronostic }: { pronostic: Pronostic }) {
                 </View>
             </View>
             <View className="items-end">
-                <View className="flex-row items-center mb-1">
-                    <Coins size={14} color="#ef4444" />
-                    <Text className="text-foreground font-bold ml-1">{pronostic.pointsStaked} pts</Text>
-                </View>
-                {isWon && (
-                    <Text className="text-green-500 font-bold text-xs uppercase">+{pronostic.pointsEarned}</Text>
-                )}
-                {isLost && (
-                    <Text className="text-red-500 font-bold text-xs uppercase">-{pronostic.pointsStaked}</Text>
-                )}
-                {isVoid && (
-                    <Text className="text-muted-foreground font-bold text-xs uppercase">+{pronostic.pointsStaked} remb.</Text>
+                {isBeta ? (
+                    <Text className="text-muted-foreground font-bold text-[10px] uppercase">Saison Bêta</Text>
+                ) : isWon ? (
+                    <Text className="text-green-500 font-bold text-sm">+{pronostic.championshipPointsAwarded ?? 0} pts</Text>
+                ) : isLost ? (
+                    <Text className="text-muted-foreground font-bold text-sm">0 pt</Text>
+                ) : isVoid ? null : (
+                    <Text className="text-muted-foreground font-bold text-xs">
+                        {pronostic.rewardPointsSnapshot ?? '—'} pts si correct
+                    </Text>
                 )}
             </View>
         </View>

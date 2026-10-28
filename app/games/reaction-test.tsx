@@ -1,3 +1,4 @@
+import { PilotAvatar } from '@/components/paddock/PilotAvatar';
 import React, { useState, useRef, useEffect } from 'react';
 import {
   View,
@@ -11,7 +12,6 @@ import {
   ActivityIndicator,
 } from 'react-native';
 import Svg, { Circle as SvgCircle, Defs, Pattern as SvgPattern, Rect } from 'react-native-svg';
-import { LinearGradient } from 'expo-linear-gradient';
 import { Stack, useRouter } from 'expo-router';
 import { ChevronLeft, Timer, Trophy, AlertTriangle, RotateCcw, Zap, X, Crown } from 'lucide-react-native';
 import { Text } from '@/components/ui/text';
@@ -29,18 +29,6 @@ import {
 
 const { width: SW, height: SH } = Dimensions.get('window');
 
-// ─── Avatar helpers (cohérent avec la fiche profil) ─────────────────────────
-const AVATAR_GRADIENTS: [string, string][] = [
-  ['#E10600', '#7B0200'], ['#FF6B35', '#CC4400'],
-  ['#0067FF', '#003B99'], ['#00B4D8', '#005F73'],
-  ['#9B5DE5', '#6A00BB'], ['#F72585', '#B5007A'],
-  ['#06D6A0', '#028A5A'], ['#FFB703', '#C07800'],
-];
-function avatarGradient(name: string): [string, string] {
-  let h = 0;
-  for (let i = 0; i < name.length; i++) h = name.charCodeAt(i) + ((h << 5) - h);
-  return AVATAR_GRADIENTS[Math.abs(h) % AVATAR_GRADIENTS.length];
-}
 const RANK_COLORS: Record<number, string> = { 1: '#FFD700', 2: '#C0C0C0', 3: '#CD7F32' };
 const RIPPLE_MAX = 300;
 const NUM_RIPPLES = 4;
@@ -48,6 +36,11 @@ const RIPPLE_DUR = 1600;
 
 type GameState = 'idle' | 'holding' | 'flash' | 'false-start' | 'result';
 
+/**
+ * Estimation affichée immédiatement à l'écran. La valeur DÉFINITIVE est calculée par
+ * le serveur (même barème, cf. backend games.service reactionPointsFor) et remplace
+ * cette estimation dès la réponse : le client n'envoie plus jamais de montant.
+ */
 function getPoints(ms: number): number {
   const keyframes: [number, number][] = [
     [0,   50],
@@ -87,12 +80,12 @@ const RULES = [
 ];
 
 const SCORE_ROWS = [
-  { range: '< 50 ms',    pts: '50 pts', color: '#FFD700' },
-  { range: '50–100 ms',  pts: '35 pts', color: '#00D1FF' },
-  { range: '100–200 ms', pts: '20 pts', color: '#4ADE80' },
-  { range: '200–300 ms', pts: '10 pts', color: '#FACC15' },
-  { range: '300–500 ms', pts: '5 pts',  color: '#FB923C' },
-  { range: '> 500 ms',   pts: '2 pts',  color: '#EF4444' },
+  { range: '< 50 ms',    pts: '50 jetons', color: '#FFD700' },
+  { range: '50–100 ms',  pts: '35 jetons', color: '#00D1FF' },
+  { range: '100–200 ms', pts: '20 jetons', color: '#4ADE80' },
+  { range: '200–300 ms', pts: '10 jetons', color: '#FACC15' },
+  { range: '300–500 ms', pts: '5 jetons',  color: '#FB923C' },
+  { range: '> 500 ms',   pts: '2 jetons',  color: '#EF4444' },
 ];
 
 function getNextFridayMidnightUTC(): Date {
@@ -405,7 +398,8 @@ export default function ReactionTestScreen() {
           const token = accessTokenRef.current;
           if (token) {
             try {
-              await rewardUser(token, pts, 'reaction', elapsed);
+              const result = await rewardUser(token, 'reaction', elapsed);
+              if (typeof result.rewarded === 'number') setEarnedPoints(result.rewarded);
               await refreshProfileRef.current();
               setRewarded(true);
             } catch { /* silent */ }
@@ -673,11 +667,11 @@ export default function ReactionTestScreen() {
             <View style={{ width: '100%', borderRadius: 24, backgroundColor: 'rgba(255,255,255,0.08)', borderWidth: 1, borderColor: 'rgba(255,255,255,0.18)', padding: 24, alignItems: 'center', gap: 8 }}>
               <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 4 }}>
                 <Icon as={Trophy} size={18} color="#E10600" />
-                <Text className="font-black text-[10px] text-white/60 uppercase" style={{ letterSpacing: 3 }}>Points gagnés</Text>
+                <Text className="font-black text-[10px] text-white/60 uppercase" style={{ letterSpacing: 3 }}>Jetons Paddock</Text>
               </View>
               <Text className="font-black text-white text-5xl">+{earnedPoints}</Text>
               {rewarded && (
-                <Text className="font-bold text-[10px] text-green-400 uppercase" style={{ letterSpacing: 1 }}>Crédités sur ton compte</Text>
+                <Text className="font-bold text-[10px] text-green-400 uppercase" style={{ letterSpacing: 1 }}>Ajoutés à ton compte</Text>
               )}
             </View>
 
@@ -759,7 +753,7 @@ export default function ReactionTestScreen() {
               <ScrollView contentContainerStyle={{ paddingVertical: 8 }}>
                 {leaderboard.entries.map((e) => {
                   const name = e.displayName || `Pilote #${e.userId}`;
-                  const grad = avatarGradient(name);
+
                   const rankColor = RANK_COLORS[e.rank];
                   return (
                     <View
@@ -780,9 +774,7 @@ export default function ReactionTestScreen() {
                         )}
                       </View>
                       {/* Avatar */}
-                      <LinearGradient colors={grad} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={{ width: 38, height: 38, borderRadius: 19, alignItems: 'center', justifyContent: 'center' }}>
-                        <Text style={{ color: 'white', fontWeight: '900', fontSize: 16, fontStyle: 'italic' }}>{name[0]?.toUpperCase()}</Text>
-                      </LinearGradient>
+                      <PilotAvatar appearance={e.cosmetics} size={38} label={name} />
                       {/* Name */}
                       <Text numberOfLines={1} style={{ flex: 1, color: 'white', fontWeight: '800', fontSize: 14 }}>
                         {name}{e.isMe ? ' (toi)' : ''}

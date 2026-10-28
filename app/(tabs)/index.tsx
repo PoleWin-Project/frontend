@@ -1,3 +1,4 @@
+import { PilotAvatar } from '@/components/paddock/PilotAvatar';
 import { Button } from '@/components/ui/button';
 import { Icon } from '@/components/ui/icon';
 import { Text } from '@/components/ui/text';
@@ -16,6 +17,7 @@ import { F1Loader } from '@/components/ui/F1Loader';
 import { useAuth } from '@/context/AuthContext';
 import { useSocket } from '@/context/SocketContext';
 import { PitStopWidget } from '@/components/home/PitStopWidget';
+import { WeeklyChallenges } from '@/components/game/WeeklyChallenges';
 import { fetchUnreadCount } from '@/lib/api/dms';
 import { fetchIncomingRequests } from '@/lib/api/friends';
 import { TourGuideZone } from 'rn-tourguide';
@@ -184,12 +186,12 @@ export default function Screen() {
         </ImageBackground>
 
         <View className="px-4 mt-10">
-          {/* User Points Card */}
+          {/* Carte joueur : points de championnat de la saison (classement uniquement) */}
           {user && (
             <View className="bg-card border border-white/5 p-4 rounded-3xl mb-6 flex-row items-center justify-between shadow-sm">
               <View className="flex-row items-center">
                 <View className="w-12 h-12 rounded-full bg-primary/20 items-center justify-center mr-4">
-                  <User size={24} className="text-primary" />
+                  <PilotAvatar appearance={user.cosmetics} size={48} label={user.username} />
                 </View>
                 <View>
                   <Text className="text-muted-foreground text-[10px] font-bold uppercase tracking-wider">Pilote</Text>
@@ -199,7 +201,7 @@ export default function Screen() {
               <View className="bg-primary/10 px-4 py-2 rounded-2xl border border-primary/20 flex-row items-center">
                 <Trophy size={16} color="#ef4444" />
                 <Text className="text-primary font-black ml-2 text-lg">
-                  {user.points?.toLocaleString() || '0'} <Text className="text-[10px] uppercase opacity-70">pts</Text>
+                  {(user.championshipPoints ?? 0).toLocaleString()} <Text className="text-[10px] uppercase opacity-70">pts</Text>
                 </Text>
               </View>
             </View>
@@ -210,10 +212,21 @@ export default function Screen() {
             zone={3}
             tourKey="home"
             shape="rectangle"
-            text={tourStep(3, 11, 'Le Garage 🛠️', 'Accède aux mini-jeux du Garage pour gagner des points entre deux courses.')}
+            text={tourStep(3, 11, 'Le Garage 🛠️', 'Accède aux mini-jeux du Garage pour gagner des jetons et personnaliser ton profil.')}
           >
             <PitStopWidget key={`pit-${refreshKey}`} />
           </TourGuideZone>
+
+          {user && (
+            <TouchableOpacity accessibilityRole="button" onPress={() => router.push('/paddock')} className="bg-cyan-500/10 border border-cyan-500/20 p-4 rounded-2xl mb-6">
+              <Text className="text-white font-black text-lg">Mon Paddock →</Text>
+              <Text className="text-cyan-400 text-xs mt-1">{user.garageCredits ?? 0} jetons · Personnaliser mon profil</Text>
+            </TouchableOpacity>
+          )}
+
+          {user && (
+            <WeeklyChallenges key={`challenges-${user.id}`} refreshKey={refreshKey} />
+          )}
 
           {/* Prochain Grand Prix (Sessions) — la zone 3 du tour est définie
               dans le widget lui-même (sur son en-tête compact). */}
@@ -274,6 +287,5 @@ export default function Screen() {
     </>
   );
 }
-
 
 

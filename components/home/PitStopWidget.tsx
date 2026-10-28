@@ -42,7 +42,7 @@ export function PitStopWidget() {
 
               </View>
               <Text className="text-white font-black text-lg italic uppercase" numberOfLines={1} adjustsFontSizeToFit>Entrer aux stands</Text>
-              <Text className="text-white/40 text-[10px] font-bold">Gagnez des points via les mini-jeux</Text>
+              <Text className="text-white/40 text-[10px] font-bold">Gagne des jetons Paddock via les mini-jeux</Text>
             </View>
           </View>
 
