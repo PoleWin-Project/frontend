@@ -283,16 +283,25 @@ export function PredictionCard({ prediction, initialPronostic, drivers, onRefres
                             <View className="flex-row gap-2 mt-3">
                                 <Button
                                     variant="outline"
+                                    size="sm"
                                     onPress={() => setPickerVisible(true)}
-                                    className="flex-1 h-8 border-primary/20 bg-transparent"
+                                    className="flex-1 min-w-0 h-9 px-2 border-primary/20 bg-transparent"
                                 >
-                                    <Text className="text-primary text-xs font-bold uppercase">Modifier mon pronostic</Text>
+                                    <Text
+                                        numberOfLines={1}
+                                        adjustsFontSizeToFit
+                                        minimumFontScale={0.75}
+                                        className="text-primary text-xs font-bold uppercase text-center"
+                                    >
+                                        Modifier mon pronostic
+                                    </Text>
                                 </Button>
                                 <Button
                                     variant="outline"
+                                    size="sm"
                                     onPress={handleDelete}
                                     disabled={loading}
-                                    className="px-4 h-8 border-red-500/20 bg-red-500/10"
+                                    className="px-3 h-9 border-red-500/20 bg-red-500/10"
                                 >
                                     {loading ? <ActivityIndicator size="small" color="#ef4444" /> : <Trash2 size={16} color="#ef4444" />}
                                 </Button>
