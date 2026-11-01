@@ -103,18 +103,32 @@ export default function PronosticsScreen() {
 
             setUpcomingSessions(nextSessions);
 
+            const previousSessionKey = calendarSessions
+                .filter(s => new Date(s.date_start).getTime() <= now)
+                .sort((a, b) => new Date(b.date_start).getTime() - new Date(a.date_start).getTime())[0]
+                ?.session_key;
+
             const preds: Record<number, Prediction[]> = {};
             const prons: Record<number, Pronostic | null> = {};
             const drvs: Record<number, Driver[]> = {};
 
-            for (const session of nextSessions) {
-                const sessionPredictions = await fetchPredictions(session.id);
+            // L'historique et le profil ne doivent pas bloquer l'affichage des
+            // pronostics à venir. Ils se mettent à jour en arrière-plan.
+            void fetchMyPronosticsHistory().then(setHistory).catch(() => setHistory([]));
+            void refreshProfile().catch(() => {});
+
+            const sessionData = await Promise.all(nextSessions.map(async (session) => {
+                const [sessionPredictions, drivers, myPronostics] = await Promise.all([
+                    fetchPredictions(session.id),
+                    fetchDrivers(session.idCourseExternal, nearest?.year, previousSessionKey),
+                    fetchMyPronosticsForSession(session.id),
+                ]);
+                return { session, sessionPredictions, drivers, myPronostics };
+            }));
+
+            for (const { session, sessionPredictions, drivers, myPronostics } of sessionData) {
                 preds[session.id] = sessionPredictions;
-
-                const drivers = await fetchDrivers(session.idCourseExternal);
                 drvs[session.id] = drivers;
-
-                const myPronostics = await fetchMyPronosticsForSession(session.id);
                 for (const p of myPronostics) {
                     prons[p.predictionId] = p;
                 }
@@ -123,10 +137,6 @@ export default function PronosticsScreen() {
             setPredictionsMap(preds);
             setPronosticsMap(prons);
             setDriversMap(drvs);
-
-            const hist = await fetchMyPronosticsHistory();
-            setHistory(hist);
-            await refreshProfile().catch(() => {});
         } catch (error) {
             console.error('Failed to load game data:', error);
         } finally {
