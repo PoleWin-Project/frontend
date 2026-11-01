@@ -123,7 +123,14 @@ export default function PaddockScreen() {
                 accessibilityRole="tab" accessibilityState={{ selected: tab === value }}
                 onPress={() => { setTab(value); setFilter('all'); }}
                 style={[styles.tab, tab === value && styles.tabSelected]}>
-                <Text style={[styles.tabText, display, tab === value && styles.tabTextSelected]}>{value === 'shop' ? 'BOUTIQUE' : 'MA COLLECTION'}</Text>
+                <Text
+                  numberOfLines={1}
+                  adjustsFontSizeToFit
+                  minimumFontScale={0.75}
+                  style={[styles.tabText, display, tab === value && styles.tabTextSelected]}
+                >
+                  {value === 'shop' ? 'BOUTIQUE' : 'MA COLLECTION'}
+                </Text>
               </Pressable>)}
             </View>
             <View style={[styles.box, { height: pageWidth < 375 ? 174 : 196 }]}>
@@ -140,7 +147,18 @@ export default function PaddockScreen() {
             </View>
 
             <View style={[styles.panel, { marginHorizontal: padding }]}>
-              <Text accessibilityRole="header" style={[styles.sectionTitle, display]}>{tab === 'shop' ? 'LA SÉLECTION' : 'MA COLLECTION'}<Text style={[styles.sectionSlashes, display]}> ///</Text></Text>
+              <View style={styles.sectionHeadingRow}>
+                <Text
+                  accessibilityRole="header"
+                  numberOfLines={1}
+                  adjustsFontSizeToFit
+                  minimumFontScale={0.78}
+                  style={[styles.sectionTitle, display]}
+                >
+                  {tab === 'shop' ? 'LA SÉLECTION' : 'MA COLLECTION'}
+                </Text>
+                <Text style={[styles.sectionSlashes, display]}>///</Text>
+              </View>
               <Text style={styles.rotation}>{tab === 'shop' ? data ? `Rotation le ${rotationDate} · 00 h UTC` : 'La sélection de la semaine' : 'Tes équipements, pour toutes les saisons.'}</Text>
               {error && <View accessibilityRole="alert" style={styles.notice}><Text style={styles.body}>{error}</Text><Pressable accessibilityRole="button" onPress={() => setReload(n => n + 1)} style={styles.retry}><Text style={styles.retryText}>Réessayer</Text></Pressable></View>}
               {!data && !error && <View style={styles.loading}><ActivityIndicator color="#ff2536" /><Text style={styles.rotation}>Ouverture du box…</Text></View>}
@@ -193,14 +211,15 @@ const styles = StyleSheet.create({
   tabs: { flexDirection: 'row', borderWidth: 1, borderColor: '#444b50', backgroundColor: '#101518' },
   tab: { flex: 1, minHeight: 52, alignItems: 'center', justifyContent: 'center', borderBottomWidth: 4, borderBottomColor: 'transparent', paddingHorizontal: 4 },
   tabSelected: { borderBottomColor: '#ff2536', backgroundColor: '#ff25360a' },
-  tabText: { color: '#adb3b8', fontSize: 15, letterSpacing: -0.7 },
+  tabText: { width: '100%', color: '#adb3b8', fontSize: 15, letterSpacing: -0.7, textAlign: 'center' },
   tabTextSelected: { color: '#ff2536' },
   box: { overflow: 'hidden', borderTopWidth: 4, borderTopColor: '#30383c' },
   boxCopy: { position: 'absolute', bottom: 25, zIndex: 1 },
   boxTitle: { color: '#fff', fontSize: 26, lineHeight: 28, letterSpacing: -1.4 },
   boxSubtitle: { color: '#cdd2d6', fontSize: 12, marginTop: 6 },
   panel: { backgroundColor: '#0b0f12', borderWidth: 1, borderColor: '#596168', borderRadius: 10, padding: 12 },
-  sectionTitle: { color: '#fff', fontSize: 23, lineHeight: 34, letterSpacing: -1.1 },
+  sectionHeadingRow: { flexDirection: 'row', alignItems: 'center', gap: 5 },
+  sectionTitle: { flexShrink: 1, color: '#fff', fontSize: 23, lineHeight: 34, letterSpacing: -1.1 },
   sectionSlashes: { color: '#ff2536', fontSize: 25, lineHeight: 34, letterSpacing: -3 },
   rotation: { color: '#b9c0c6', fontSize: 12, marginTop: 4 },
   filters: { gap: 7, paddingVertical: 14 },
