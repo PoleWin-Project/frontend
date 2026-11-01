@@ -114,7 +114,8 @@ export async function fetchSessionResults(sessionKey: number): Promise<SessionRe
 }
 
 export interface DriverStanding {
-    driver_number: number;
+    /** Certains pilotes classés n'ont pas de numéro permanent publié. */
+    driver_number: number | null;
     position: number;
     points: number;
     wins: number;
@@ -265,6 +266,61 @@ export interface Driver {
     team_colour: string;
 }
 
+const DRIVER_STANDINGS_CACHE_MS = 5 * 60 * 1000;
+const driverStandingsCache = new Map<number, { expiresAt: number; promise: Promise<Driver[]> }>();
+
+function driversFromStandings(standings: any[]): Driver[] {
+    const teamColors: Record<string, string> = {
+        'Ferrari': 'E8002D',
+        'McLaren': 'FF8000',
+        'Mercedes': '27F4D2',
+        'Red Bull': '3671C6',
+        'Red Bull Racing': '3671C6',
+        'Aston Martin': '229971',
+        'Alpine': 'FF87BC',
+        'Alpine F1 Team': 'FF87BC',
+        'Williams': '64C4FF',
+        'Haas F1 Team': 'B6BABD',
+        'RB F1 Team': '6692FF',
+        'Audi': 'E3000F',
+        'Cadillac F1 Team': 'C0A060',
+        'Kick Sauber': '52E252',
+    };
+
+    return standings
+        .map((standing: any) => ({
+            driver_number: standing.driver_number,
+            full_name: standing.driver?.full_name || '',
+            name_acronym: standing.driver?.name_acronym || '',
+            team_name: standing.driver?.team_name || '',
+            team_colour: standing.driver?.team_colour || teamColors[standing.driver?.team_name] || 'ffffff',
+        }))
+        .filter((driver: Driver) => driver.name_acronym);
+}
+
+async function fetchDriversFromStandings(year: number): Promise<Driver[]> {
+    const cached = driverStandingsCache.get(year);
+    if (cached && cached.expiresAt > Date.now()) return cached.promise;
+
+    const promise = (async () => {
+        const response = await fetchWithRetry(`${API_URL}/openf1/standings/drivers?year=${year}`);
+        const data = await response.json();
+        return driversFromStandings(data.standings || []);
+    })();
+
+    driverStandingsCache.set(year, {
+        expiresAt: Date.now() + DRIVER_STANDINGS_CACHE_MS,
+        promise,
+    });
+
+    try {
+        return await promise;
+    } catch (error) {
+        driverStandingsCache.delete(year);
+        throw error;
+    }
+}
+
 export async function fetchPredictions(sessionId: number): Promise<Prediction[]> {
     const url = `${API_URL}/predictions/sessions/${sessionId}/predictions`;
     try {
@@ -277,54 +333,45 @@ export async function fetchPredictions(sessionId: number): Promise<Prediction[]>
     }
 }
 
-export async function fetchDrivers(sessionKey: number): Promise<Driver[]> {
+export async function fetchDrivers(
+    sessionKey: number,
+    year = new Date().getFullYear(),
+    previousSessionKey?: number,
+): Promise<Driver[]> {
     const url = `${API_URL}/openf1/sessions/${sessionKey}/drivers`;
     try {
-        const response = await fetchWithRetry(url);
+        // Une session future peut répondre 500 tant qu'OpenF1 n'a pas encore
+        // publié sa liste. Réessayer la même requête ajoute plusieurs secondes
+        // sans pouvoir changer le résultat, donc on bascule immédiatement.
+        const response = await fetchWithRetry(url, 0);
         const data = await response.json();
 
         if (data.drivers && data.drivers.length > 0) {
             return data.drivers;
         }
-
-        // Fallback: si aucun pilote n'est dispo pour cette session (ex: événement futur),
-        // on récupère les pilotes via le classement de l'année en cours.
-        const year = new Date().getFullYear();
-        const standingsUrl = `${API_URL}/openf1/standings/drivers?year=${year}`;
-        const standingsResponse = await fetchWithRetry(standingsUrl);
-        const standingsData = await standingsResponse.json();
-
-        if (standingsData.standings && standingsData.standings.length > 0) {
-            const teamColors: Record<string, string> = {
-                'Ferrari': 'E8002D',
-                'McLaren': 'FF8000',
-                'Mercedes': '27F4D2',
-                'Red Bull': '3671C6',
-                'Red Bull Racing': '3671C6',
-                'Aston Martin': '229971',
-                'Alpine': 'FF87BC',
-                'Alpine F1 Team': 'FF87BC',
-                'Williams': '64C4FF',
-                'Haas F1 Team': 'B6BABD',
-                'RB F1 Team': '6692FF',
-                'Audi': 'E3000F',
-                'Cadillac F1 Team': 'C0A060',
-                'Kick Sauber': '52E252'
-            };
-            return standingsData.standings
-                .map((s: any) => ({
-                    driver_number: s.driver_number,
-                    full_name: s.driver?.full_name || '',
-                    name_acronym: s.driver?.name_acronym || '',
-                    team_name: s.driver?.team_name || '',
-                    team_colour: s.driver?.team_colour || teamColors[s.driver?.team_name] || 'ffffff',
-                }))
-                .filter((d: Driver) => d.name_acronym);
-        }
-
-        return [];
     } catch (error) {
-        console.warn(`Failed to fetch drivers for session ${sessionKey}:`, error);
+        console.warn(`Session drivers unavailable for ${sessionKey}, using standings fallback:`, error);
+    }
+
+    // En cas de remplacement en cours de week-end, la dernière session déjà
+    // disputée contient la grille exacte (contrairement au classement saison).
+    if (previousSessionKey && previousSessionKey !== sessionKey) {
+        try {
+            const response = await fetchWithRetry(
+                `${API_URL}/openf1/sessions/${previousSessionKey}/drivers`,
+                0,
+            );
+            const data = await response.json();
+            if (data.drivers?.length > 0) return data.drivers;
+        } catch (error) {
+            console.warn(`Previous-session drivers unavailable for ${previousSessionKey}:`, error);
+        }
+    }
+
+    try {
+        return await fetchDriversFromStandings(year);
+    } catch (error) {
+        console.warn(`Failed to fetch fallback drivers for ${sessionKey}:`, error);
         return [];
     }
 }

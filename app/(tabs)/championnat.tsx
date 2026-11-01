@@ -220,7 +220,11 @@ export default function ChampionshipScreen() {
                         subTab === 'drivers' ? (
                             <FlatList
                                 data={driverStandings}
-                                keyExtractor={(item) => item.driver_number.toString()}
+                                keyExtractor={(item) =>
+                                    item.driver?.driver_id
+                                    || item.driver?.name_acronym
+                                    || (item.driver_number != null ? String(item.driver_number) : `position-${item.position}`)
+                                }
                                 contentContainerStyle={{ padding: 16, paddingBottom: 100 }}
                                 refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor="#ef1f14" />}
                                 renderItem={({ item }) => {
