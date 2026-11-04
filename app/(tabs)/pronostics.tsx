@@ -1,8 +1,8 @@
 import React, { useEffect, useState } from 'react';
-import { View, ScrollView, RefreshControl, ActivityIndicator, TouchableOpacity, Image } from 'react-native';
+import { View, ScrollView, RefreshControl, TouchableOpacity, Image } from 'react-native';
 import { Text } from '@/components/ui/text';
-import { Calendar, MapPin, Info, ChevronDown, ChevronUp, CheckCircle2, XCircle, Clock } from 'lucide-react-native';
-import { fetchRaceSessions, RaceSession, fetchPredictions, Prediction, fetchMyPronostic, Pronostic, fetchDrivers, Driver, fetchMyPronosticsForSession, fetchMyPronosticsHistory, fetchMeetings, fetchSessions, MeetingItem } from '@/lib/api/meetings';
+import { Calendar, MapPin, Info, ChevronDown, ChevronUp } from 'lucide-react-native';
+import { fetchCurrentWeekend, RaceSession, Prediction, Pronostic, fetchDrivers, Driver, fetchMyPronosticsHistory, fetchMeetings, MeetingItem } from '@/lib/api/meetings';
 import { PredictionCard } from '@/components/game/PredictionCard';
 import { PronosticHistoryCard } from '@/components/game/PronosticHistoryCard';
 import { DemoModeCard } from '@/components/game/DemoModeCard';
@@ -18,6 +18,7 @@ import { GuestPrompt } from '@/components/ui/GuestPrompt';
 import { TourGuideZone } from 'rn-tourguide';
 import { useScreenTour } from '@/hooks/usePoleWinTour';
 import { tourStep } from '@/lib/onboarding';
+import { useFocusEffect } from '@react-navigation/native';
 
 export default function PronosticsScreen() {
     const { user, refreshProfile } = useAuth();
@@ -69,74 +70,84 @@ export default function PronosticsScreen() {
         return s.type;
     };
 
-    const loadData = async () => {
+    const refreshDrivers = React.useCallback(async (
+        sessions: RaceSession[],
+        seasonYear?: number,
+        forceRefresh = false,
+    ) => {
+        // Si l'écran reste ouvert entre deux sessions, cibler automatiquement la
+        // prochaine à venir (par exemple la Course après les Qualifications).
+        const targetSession = sessions.find(
+            session => new Date(session.dateStart).getTime() > Date.now(),
+        ) ?? sessions[sessions.length - 1];
+        if (!targetSession?.idCourseExternal) return;
+
+        const drivers = await fetchDrivers(targetSession.idCourseExternal, seasonYear, forceRefresh);
+        // En cas de panne OpenF1, conserver la dernière grille connue plutôt que
+        // de vider une modale déjà utilisable.
+        if (!drivers.length) return;
+
+        setDriversMap(Object.fromEntries(
+            sessions.map(session => [session.id, drivers]),
+        ));
+    }, []);
+
+    const loadData = async (showInitialLoader = false, forceDriversRefresh = false) => {
         if (!user) {
             setLoading(false);
             setRefreshing(false);
             return;
         }
-        setLoading(true);
+        if (showInitialLoader) setLoading(true);
         try {
-            const mtgs = await fetchMeetings();
-            const now = Date.now();
-            const nearest = mtgs
-                .filter(m => new Date(m.date_end).getTime() >= now)
-                .sort((a, b) => new Date(a.date_start).getTime() - new Date(b.date_start).getTime())[0] ?? null;
-            setNextMeeting(nearest);
-            const [sessions, calendarSessions] = nearest ? await Promise.all([
-                fetchRaceSessions(50, true),
-                fetchSessions(nearest.meeting_key, nearest.year),
-            ]) : [[], []];
-            const sessionKeys = new Set(calendarSessions.map(s => s.session_key));
-            const seen = new Set<number>();
-            const nextSessions = sessions
-                .filter(s => sessionKeys.has(s.idCourseExternal))
-                .filter(s => ['Race', 'Qualifying', 'Sprint'].includes(realSessionName(s)))
-                .filter(s => new Date(s.dateStart).getTime() > Date.now())
-                .filter(s => {
-                    if (seen.has(s.idCourseExternal)) return false;
-                    seen.add(s.idCourseExternal);
-                    return true;
-                })
-                .sort((a, b) => new Date(a.dateStart).getTime() - new Date(b.dateStart).getTime())
-                .map(s => ({ ...s, type: realSessionName(s) }));
-
+            // Une seule requête locale remplace la cascade calendrier → sessions
+            // → prédictions → pronostics. Elle suffit pour retirer le loader.
+            const weekend = await fetchCurrentWeekend();
+            const nextSessions = (weekend?.sessions ?? []).map(session => ({
+                ...session,
+                type: realSessionName(session),
+            }));
             setUpcomingSessions(nextSessions);
-
-            const previousSessionKey = calendarSessions
-                .filter(s => new Date(s.date_start).getTime() <= now)
-                .sort((a, b) => new Date(b.date_start).getTime() - new Date(a.date_start).getTime())[0]
-                ?.session_key;
 
             const preds: Record<number, Prediction[]> = {};
             const prons: Record<number, Pronostic | null> = {};
-            const drvs: Record<number, Driver[]> = {};
-
-            // L'historique et le profil ne doivent pas bloquer l'affichage des
-            // pronostics à venir. Ils se mettent à jour en arrière-plan.
-            void fetchMyPronosticsHistory().then(setHistory).catch(() => setHistory([]));
-            void refreshProfile().catch(() => {});
-
-            const sessionData = await Promise.all(nextSessions.map(async (session) => {
-                const [sessionPredictions, drivers, myPronostics] = await Promise.all([
-                    fetchPredictions(session.id),
-                    fetchDrivers(session.idCourseExternal, nearest?.year, previousSessionKey),
-                    fetchMyPronosticsForSession(session.id),
-                ]);
-                return { session, sessionPredictions, drivers, myPronostics };
-            }));
-
-            for (const { session, sessionPredictions, drivers, myPronostics } of sessionData) {
-                preds[session.id] = sessionPredictions;
-                drvs[session.id] = drivers;
-                for (const p of myPronostics) {
-                    prons[p.predictionId] = p;
+            for (const session of weekend?.sessions ?? []) {
+                preds[session.id] = session.predictions;
+                for (const prediction of session.predictions) {
+                    prons[prediction.id] = prediction.pronostic;
                 }
             }
-
             setPredictionsMap(preds);
             setPronosticsMap(prons);
-            setDriversMap(drvs);
+
+            // Ces données enrichissent l'écran, mais ne doivent plus retarder son
+            // affichage. Une seule liste de pilotes est partagée par les sessions
+            // d'un même week-end (Sprint, Qualifications et Course).
+            if (nextSessions.length > 0) {
+                void refreshDrivers(nextSessions, weekend?.seasonYear, forceDriversRefresh);
+            } else {
+                setDriversMap({});
+            }
+
+            // Le calendrier OpenF1 ne sert plus qu'aux informations visuelles du
+            // bandeau (tracé et image du circuit). Il arrive sans bloquer les cartes.
+            void fetchMeetings()
+                .then(meetings => {
+                    const now = Date.now();
+                    const futureMeetings = meetings
+                        .filter(meeting => new Date(meeting.date_end).getTime() >= now)
+                        .sort((a, b) => new Date(a.date_start).getTime() - new Date(b.date_start).getTime());
+                    const location = weekend?.location?.toLocaleLowerCase('fr-FR');
+                    const matching = location
+                        ? futureMeetings.find(meeting => meeting.location.toLocaleLowerCase('fr-FR') === location)
+                        : undefined;
+                    setNextMeeting(matching ?? futureMeetings[0] ?? null);
+                })
+                .catch(() => setNextMeeting(null));
+
+            // L'historique et le profil sont indépendants des cartes à venir.
+            void fetchMyPronosticsHistory().then(setHistory).catch(() => setHistory([]));
+            void refreshProfile().catch(() => {});
         } catch (error) {
             console.error('Failed to load game data:', error);
         } finally {
@@ -146,12 +157,29 @@ export default function PronosticsScreen() {
     };
 
     useEffect(() => {
-        loadData();
+        void loadData(true);
     }, []);
+
+    useFocusEffect(
+        React.useCallback(() => {
+            if (!user || upcomingSessions.length === 0) return undefined;
+
+            // Tant que l'écran reste visible, une grille plus récente est demandée
+            // toutes les 30 secondes. La valeur connue reste affichée pendant l'appel.
+            const timer = setInterval(() => {
+                const seasonYear = new Date(upcomingSessions[0].dateStart).getFullYear();
+                void refreshDrivers(upcomingSessions, seasonYear);
+            }, 30_000);
+
+            return () => clearInterval(timer);
+        }, [refreshDrivers, upcomingSessions, user]),
+    );
 
     const onRefresh = () => {
         setRefreshing(true);
-        loadData();
+        // Le geste manuel contourne le cache court pour vérifier immédiatement
+        // si OpenF1 a publié un changement de pilote.
+        void loadData(false, true);
     };
 
     if (!user) {

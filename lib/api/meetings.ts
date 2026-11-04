@@ -228,6 +228,30 @@ export interface Pronostic {
     prediction?: any;
 }
 
+export interface CurrentWeekendSession extends RaceSession {
+    predictions: Array<Prediction & { pronostic: Pronostic | null }>;
+}
+
+export interface CurrentWeekend {
+    name: string;
+    location?: string | null;
+    seasonYear: number;
+    sessions: CurrentWeekendSession[];
+}
+
+/**
+ * Charge en une requête les données indispensables à l'écran des pronostics.
+ * Le backend répond depuis PostgreSQL : aucun appel OpenF1 ne doit bloquer cette
+ * lecture. Les informations décoratives et la liste des pilotes arrivent ensuite.
+ */
+export async function fetchCurrentWeekend(): Promise<CurrentWeekend | null> {
+    const url = `${API_URL}/predictions/current-weekend`;
+    const headers = await getHeaders();
+    const response = await fetch(url, { headers });
+    const data = await parseOrThrow(response);
+    return data.weekend ?? null;
+}
+
 /** Récompense affichée pour une valeur donnée (option dédiée, sinon option par défaut). */
 export function rewardFor(prediction: Prediction, value: string | null | undefined): number | null {
     const options = prediction.rewardOptions ?? [];
@@ -298,9 +322,9 @@ function driversFromStandings(standings: any[]): Driver[] {
         .filter((driver: Driver) => driver.name_acronym);
 }
 
-async function fetchDriversFromStandings(year: number): Promise<Driver[]> {
+async function fetchDriversFromStandings(year: number, forceRefresh = false): Promise<Driver[]> {
     const cached = driverStandingsCache.get(year);
-    if (cached && cached.expiresAt > Date.now()) return cached.promise;
+    if (!forceRefresh && cached && cached.expiresAt > Date.now()) return cached.promise;
 
     const promise = (async () => {
         const response = await fetchWithRetry(`${API_URL}/openf1/standings/drivers?year=${year}`);
@@ -336,9 +360,10 @@ export async function fetchPredictions(sessionId: number): Promise<Prediction[]>
 export async function fetchDrivers(
     sessionKey: number,
     year = new Date().getFullYear(),
-    previousSessionKey?: number,
+    forceRefresh = false,
 ): Promise<Driver[]> {
-    const url = `${API_URL}/openf1/sessions/${sessionKey}/drivers`;
+    const freshQuery = forceRefresh ? '?fresh=true' : '';
+    const url = `${API_URL}/openf1/sessions/${sessionKey}/drivers${freshQuery}`;
     try {
         // Une session future peut répondre 500 tant qu'OpenF1 n'a pas encore
         // publié sa liste. Réessayer la même requête ajoute plusieurs secondes
@@ -353,23 +378,8 @@ export async function fetchDrivers(
         console.warn(`Session drivers unavailable for ${sessionKey}, using standings fallback:`, error);
     }
 
-    // En cas de remplacement en cours de week-end, la dernière session déjà
-    // disputée contient la grille exacte (contrairement au classement saison).
-    if (previousSessionKey && previousSessionKey !== sessionKey) {
-        try {
-            const response = await fetchWithRetry(
-                `${API_URL}/openf1/sessions/${previousSessionKey}/drivers`,
-                0,
-            );
-            const data = await response.json();
-            if (data.drivers?.length > 0) return data.drivers;
-        } catch (error) {
-            console.warn(`Previous-session drivers unavailable for ${previousSessionKey}:`, error);
-        }
-    }
-
     try {
-        return await fetchDriversFromStandings(year);
+        return await fetchDriversFromStandings(year, forceRefresh);
     } catch (error) {
         console.warn(`Failed to fetch fallback drivers for ${sessionKey}:`, error);
         return [];
