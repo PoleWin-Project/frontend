@@ -208,6 +208,8 @@ export interface Prediction {
     type: string;
     closesAt: string;
     winningValue?: string;
+    /** Le résultat peut encore être révisé après une décision des commissaires. */
+    resultStatus?: 'pending' | 'provisional' | 'corrected' | 'final';
     rewardOptions?: RewardOption[];
 }
 

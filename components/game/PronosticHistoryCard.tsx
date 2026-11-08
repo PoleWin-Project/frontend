@@ -71,6 +71,11 @@ export function PronosticHistoryCard({ pronostic }: { pronostic: Pronostic }) {
 
     const prediction = pronostic.prediction as any;
     const sessionName = prediction?.session?.name ? prediction.session.name.split(' - ')[0] : null;
+    const resultLabel = prediction?.resultStatus === 'provisional'
+        ? 'Résultat provisoire'
+        : prediction?.resultStatus === 'corrected'
+            ? 'Résultat corrigé · provisoire'
+            : 'Résultat final';
 
     return (
         <View className="bg-card/80 border border-border/40 rounded-2xl p-4 mb-3 flex-row items-center justify-between">
@@ -94,7 +99,7 @@ export function PronosticHistoryCard({ pronostic }: { pronostic: Pronostic }) {
                     {prediction?.winningValue && (isLost || isWon) && (
                         <View className={`mt-1.5 self-start px-2 py-0.5 rounded border ${isWon ? 'bg-green-500/10 border-green-500/20' : 'bg-red-500/10 border-red-500/20'}`}>
                             <Text className={`text-[10px] font-bold ${isWon ? 'text-green-500' : 'text-red-400'}`}>
-                                Vrai résultat : {formatValue(prediction.type, prediction.winningValue)}
+                                {resultLabel} : {formatValue(prediction.type, prediction.winningValue)}
                             </Text>
                         </View>
                     )}
