@@ -10,7 +10,7 @@ import { BlurView } from 'expo-blur';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Text } from '@/components/ui/text';
 import { ScreenHeader } from '@/components/ui/ScreenHeader';
-import { Search, ChevronDown, X, Users, Trophy } from 'lucide-react-native';
+import { Search, ChevronDown, ChevronRight, Flag, Shield, X, Users, Trophy } from 'lucide-react-native';
 import {
     fetchGlobalLeaderboard, fetchMyRank,
     PlayerRank, MyRank, LeaderboardSort,
@@ -121,6 +121,7 @@ function PlayerRow({ item, index, isMe, sort }: { item: PlayerRank; index: numbe
 
 // ─── Main Screen ──────────────────────────────────────────────────────────────
 export default function PlayerLeaderboardScreen() {
+    const router = useRouter();
     const { user } = useAuth();
     const [loading, setLoading] = useState(true);
     const [allPlayers, setAllPlayers] = useState<PlayerRank[]>([]);
@@ -230,6 +231,33 @@ export default function PlayerLeaderboardScreen() {
                 showPoints
             />
 
+            <AnimatedPressable
+                entering={FadeInDown.springify().damping(16)}
+                accessibilityRole="button"
+                accessibilityLabel="Ouvrir mes Écuries privées"
+                onPress={() => router.push('/leagues' as never)}
+                style={styles.privateLeagueCard}
+            >
+                <LinearGradient
+                    colors={['rgba(225,6,0,0.32)', 'rgba(225,6,0,0.08)', 'rgba(255,255,255,0.02)']}
+                    start={{ x: 0, y: 0 }}
+                    end={{ x: 1, y: 1 }}
+                    style={StyleSheet.absoluteFillObject}
+                />
+                <View style={styles.privateLeagueIcon}>
+                    <Flag size={22} color="#fff" fill="rgba(255,255,255,0.14)" />
+                </View>
+                <View style={styles.privateLeagueCopy}>
+                    <View style={styles.privateLeagueEyebrow}>
+                        <Shield size={11} color="#ff6961" />
+                        <Text style={styles.privateLeagueTag}>PADDOCK PRIVÉ</Text>
+                    </View>
+                    <Text style={styles.privateLeagueTitle}>Mes Écuries</Text>
+                    <Text style={styles.privateLeagueSubtitle}>Défie tes amis dans ton propre championnat</Text>
+                </View>
+                <ChevronRight size={22} color="#fff" />
+            </AnimatedPressable>
+
             <View style={styles.searchWrap}>
                 <View style={[styles.searchBar, focused && styles.searchBarFocused]}>
                     <Search size={18} color={focused ? '#fff' : 'rgba(255,255,255,0.4)'} />
@@ -328,6 +356,23 @@ export default function PlayerLeaderboardScreen() {
 // ─── Styles ───────────────────────────────────────────────────────────────────
 const styles = StyleSheet.create({
     root: { flex: 1, backgroundColor: '#000' },
+
+    privateLeagueCard: {
+        minHeight: 92, marginHorizontal: 20, marginTop: 10, paddingHorizontal: 16,
+        flexDirection: 'row', alignItems: 'center', borderRadius: 22, overflow: 'hidden',
+        borderWidth: 1, borderColor: 'rgba(225,6,0,0.34)',
+    },
+    privateLeagueIcon: {
+        width: 50, height: 50, borderRadius: 16, backgroundColor: '#E10600',
+        alignItems: 'center', justifyContent: 'center', marginRight: 13,
+        shadowColor: '#E10600', shadowOpacity: 0.35, shadowRadius: 12,
+        shadowOffset: { width: 0, height: 6 },
+    },
+    privateLeagueCopy: { flex: 1 },
+    privateLeagueEyebrow: { flexDirection: 'row', alignItems: 'center', gap: 5, marginBottom: 3 },
+    privateLeagueTag: { color: '#ff6961', fontSize: 8, fontWeight: '900', letterSpacing: 1.4 },
+    privateLeagueTitle: { color: '#fff', fontSize: 18, fontFamily: 'Montserrat_Bold_Italic' },
+    privateLeagueSubtitle: { color: 'rgba(255,255,255,0.46)', fontSize: 11, marginTop: 2 },
 
     searchWrap: { paddingHorizontal: 20, paddingTop: 10, paddingBottom: 15 },
     searchBar: {
