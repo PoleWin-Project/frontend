@@ -90,7 +90,8 @@ export async function fetchLeagueLeaderboard(leagueId: string, limit = 100): Pro
         const response = await fetch(url, { headers });
         const data = await response.json();
         if (!response.ok) throw new Error(data.message || 'Failed to fetch league leaderboard');
-        return data.leaderboard || [];
+        const items = data.items ?? data.leaderboard ?? [];
+        return items.map((player: PlayerRank, index: number) => ({ ...player, rank: player.rank ?? index + 1 }));
     } catch (error) {
         console.error('League Leaderboard Fetch Error:', error);
         return [];
@@ -105,7 +106,8 @@ export async function fetchSessionLeaderboard(sessionId: string, limit = 100): P
         const response = await fetch(url, { headers });
         const data = await response.json();
         if (!response.ok) throw new Error(data.message || 'Failed to fetch session leaderboard');
-        return data.leaderboard || [];
+        const items = data.items ?? data.leaderboard ?? [];
+        return items.map((player: PlayerRank, index: number) => ({ ...player, rank: player.rank ?? index + 1 }));
     } catch (error) {
         console.error('Session Leaderboard Fetch Error:', error);
         return [];
@@ -120,7 +122,8 @@ export async function fetchSessionLeagueLeaderboard(sessionId: string, leagueId:
         const response = await fetch(url, { headers });
         const data = await response.json();
         if (!response.ok) throw new Error(data.message || 'Failed to fetch leaderboard');
-        return data.leaderboard || [];
+        const items = data.items ?? data.leaderboard ?? [];
+        return items.map((player: PlayerRank, index: number) => ({ ...player, rank: player.rank ?? index + 1 }));
     } catch (error) {
         console.error('Session+League Leaderboard Fetch Error:', error);
         return [];

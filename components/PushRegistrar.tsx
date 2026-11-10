@@ -78,6 +78,9 @@ function routeFromData(router: ReturnType<typeof useRouter>, data: any) {
         case 'badge':
             router.push('/(tabs)/profile');
             break;
+        case 'league':
+            if (data.leagueId) router.push(`/leagues/${data.leagueId}`);
+            break;
     }
 }
 
