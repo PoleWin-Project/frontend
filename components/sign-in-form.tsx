@@ -17,7 +17,7 @@ import {
   useWindowDimensions,
   View,
 } from 'react-native';
-import { Apple, Lock, Mail, RefreshCcw, User } from 'lucide-react-native';
+import { Lock, Mail, RefreshCcw, User } from 'lucide-react-native';
 
 type AuthMode = 'login' | 'register';
 
@@ -548,13 +548,15 @@ export function SignInForm() {
                 <Text className="text-base font-semibold text-white">Continuer avec Google</Text>
               </Button>
 
-              <Button
-                variant="outline"
-                className="h-12 rounded-xl border-white/70 bg-black"
-                onPress={onApplePress}>
-                <Icon as={Apple} size={18} className="text-white" />
-                <Text className="text-base font-semibold text-white">Continuer avec Apple</Text>
-              </Button>
+              {AppleAuthentication ? (
+                <AppleAuthentication.AppleAuthenticationButton
+                  buttonType={AppleAuthentication.AppleAuthenticationButtonType.CONTINUE}
+                  buttonStyle={AppleAuthentication.AppleAuthenticationButtonStyle.BLACK}
+                  cornerRadius={12}
+                  style={{ height: 48, width: '100%' }}
+                  onPress={onApplePress}
+                />
+              ) : null}
             </View>
           </>
         ) : (
