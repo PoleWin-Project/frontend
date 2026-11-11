@@ -332,7 +332,7 @@ export function SignInForm() {
   const displayError = localError || error;
 
   const isRegister = mode === 'register';
-  const registerContentMaxHeight = Math.max(320, screenHeight - 180);
+  const contentMaxHeight = Math.max(320, screenHeight - 180);
 
   return (
     <View
@@ -362,13 +362,13 @@ export function SignInForm() {
       <View className="absolute -top-14 left-20 h-28 w-28 rounded-full bg-[#ef1f14]/20" />
       <View className="absolute -right-12 top-40 h-32 w-32 rounded-full bg-[#ef1f14]/10" />
       <ScrollView
-        scrollEnabled={isRegister}
+        scrollEnabled
         showsVerticalScrollIndicator={false}
         bounces={false}
         nestedScrollEnabled
         keyboardShouldPersistTaps="handled"
-        style={isRegister ? { maxHeight: registerContentMaxHeight } : undefined}
-        contentContainerStyle={{ paddingBottom: isRegister ? 8 : 0 }}>
+        style={{ maxHeight: contentMaxHeight }}
+        contentContainerStyle={{ paddingBottom: 8 }}>
         <Animated.View style={{ transform: [{ translateX: carX }] }}>
           <Image
             source={CAR_IMAGE_URI}
